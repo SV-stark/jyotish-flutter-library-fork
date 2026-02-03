@@ -39,6 +39,29 @@ A production-ready Flutter library for Vedic astrology calculations using Swiss 
 - Combustion detection
 - Whole Sign house system
 
+🔮 **Vedic Aspect Calculations (Graha Drishti)**:
+
+- All planets aspect 7th house (opposition)
+- Mars special aspects (4th, 8th houses)
+- Jupiter special aspects (5th, 9th houses)
+- Saturn special aspects (3rd, 10th houses)
+- Applying/separating aspect detection
+
+🌙 **Transit Calculations**:
+
+- Current planetary transits over natal positions
+- Transit house placements
+- Transit aspects to natal planets
+- Transit event prediction with date ranges
+
+⏳ **Dasha System Support**:
+
+- Vimshottari Dasha (120-year cycle)
+- Yogini Dasha (36-year cycle)
+- Mahadasha, Antardasha, Pratyantardasha levels
+- Current period calculation
+- Birth time precision warnings
+
 🎯 **Easy to Use**: Simple, intuitive API designed for Vedic astrology
 
 🔒 **Production Ready**: Proper error handling, input validation, and resource management
@@ -464,11 +487,12 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Roadmap
 
-- [ ] House calculations
-- [ ] Aspect calculations
-- [ ] Transit calculations
-- [ ] Dasha system support
+- [x] House calculations
+- [x] Aspect calculations (Graha Drishti)
+- [x] Transit calculations
+- [x] Dasha system support (Vimshottari, Yogini)
 - [ ] Chart drawing utilities
+- [ ] Divisional charts (D9, D10, etc.)
 - [ ] More example apps
 
 ---

@@ -3,14 +3,20 @@ import 'models/planet.dart';
 import 'models/planet_position.dart';
 import 'models/calculation_flags.dart';
 import 'models/vedic_chart.dart';
+import 'models/aspect.dart';
+import 'models/transit.dart';
+import 'models/dasha.dart';
 import 'services/ephemeris_service.dart';
 import 'services/vedic_chart_service.dart';
+import 'services/aspect_service.dart';
+import 'services/transit_service.dart';
+import 'services/dasha_service.dart';
 import 'exceptions/jyotish_exception.dart';
 
 /// The main entry point for the Jyotish library.
 ///
-/// This class provides a high-level API for calculating planetary positions
-/// using Swiss Ephemeris.
+/// This class provides a high-level API for calculating planetary positions,
+/// aspects, transits, and dashas using Swiss Ephemeris.
 ///
 /// Example:
 /// ```dart
@@ -32,6 +38,9 @@ class Jyotish {
   static Jyotish? _instance;
   EphemerisService? _ephemerisService;
   VedicChartService? _vedicChartService;
+  AspectService? _aspectService;
+  TransitService? _transitService;
+  DashaService? _dashaService;
   bool _isInitialized = false;
 
   /// Creates a new instance of Jyotish.
@@ -63,6 +72,9 @@ class Jyotish {
       _ephemerisService = EphemerisService();
       await _ephemerisService!.initialize(ephemerisPath: ephemerisPath);
       _vedicChartService = VedicChartService(_ephemerisService!);
+      _aspectService = AspectService();
+      _transitService = TransitService(_ephemerisService!);
+      _dashaService = DashaService();
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -213,6 +225,332 @@ class Jyotish {
     } catch (e) {
       throw JyotishException(
         'Failed to calculate Vedic chart: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  // ============================================================
+  // ASPECT CALCULATIONS
+  // ============================================================
+
+  /// Calculates all Vedic aspects between planets at a given time.
+  ///
+  /// Vedic aspects (Graha Drishti) include:
+  /// - All planets aspect the 7th house (opposition)
+  /// - Mars has special aspects on 4th and 8th houses
+  /// - Jupiter has special aspects on 5th and 9th houses
+  /// - Saturn has special aspects on 3rd and 10th houses
+  ///
+  /// [dateTime] - Date and time for the calculation
+  /// [location] - Geographic location
+  /// [config] - Optional aspect calculation configuration
+  ///
+  /// Returns a list of all aspects found.
+  ///
+  /// Example:
+  /// ```dart
+  /// final aspects = await jyotish.getAspects(
+  ///   dateTime: DateTime.now(),
+  ///   location: location,
+  /// );
+  /// for (final aspect in aspects) {
+  ///   print(aspect.description);
+  /// }
+  /// ```
+  Future<List<AspectInfo>> getAspects({
+    required DateTime dateTime,
+    required GeographicLocation location,
+    AspectConfig config = AspectConfig.vedic,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final positions = await getMultiplePlanetPositions(
+        planets: [...Planet.traditionalPlanets, Planet.meanNode],
+        dateTime: dateTime,
+        location: location,
+      );
+
+      return _aspectService!.calculateAspects(positions, config: config);
+    } catch (e) {
+      throw JyotishException(
+        'Failed to calculate aspects: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Gets all aspects involving a specific planet.
+  ///
+  /// [planet] - The planet to get aspects for
+  /// [dateTime] - Date and time for the calculation
+  /// [location] - Geographic location
+  ///
+  /// Returns aspects where the planet is either aspecting or being aspected.
+  Future<List<AspectInfo>> getAspectsForPlanet({
+    required Planet planet,
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final positions = await getMultiplePlanetPositions(
+        planets: [...Planet.traditionalPlanets, Planet.meanNode],
+        dateTime: dateTime,
+        location: location,
+      );
+
+      return _aspectService!.getAspectsForPlanet(planet, positions);
+    } catch (e) {
+      throw JyotishException(
+        'Failed to calculate aspects for planet: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Calculates aspects within a Vedic chart.
+  ///
+  /// [chart] - A previously calculated Vedic chart
+  /// [config] - Optional aspect configuration
+  ///
+  /// Returns list of all aspects in the chart.
+  List<AspectInfo> getChartAspects(
+    VedicChart chart, {
+    AspectConfig config = AspectConfig.vedic,
+  }) {
+    _ensureInitialized();
+
+    final positions = <Planet, PlanetPosition>{};
+    for (final entry in chart.planets.entries) {
+      positions[entry.key] = entry.value.position;
+    }
+
+    return _aspectService!.calculateAspects(positions, config: config);
+  }
+
+  // ============================================================
+  // TRANSIT CALCULATIONS
+  // ============================================================
+
+  /// Calculates transit positions relative to a natal chart.
+  ///
+  /// [natalChart] - The birth chart to compare transits against
+  /// [transitDateTime] - Date/time for transit positions (default: now)
+  /// [location] - Geographic location for calculations
+  ///
+  /// Returns a map of planets to their transit information including
+  /// which natal house they're transiting and aspects to natal planets.
+  ///
+  /// Example:
+  /// ```dart
+  /// final chart = await jyotish.calculateVedicChart(...);
+  /// final transits = await jyotish.getTransitPositions(
+  ///   natalChart: chart,
+  ///   location: location,
+  /// );
+  /// print('Saturn transiting house ${transits[Planet.saturn]?.transitHouse}');
+  /// ```
+  Future<Map<Planet, TransitInfo>> getTransitPositions({
+    required VedicChart natalChart,
+    DateTime? transitDateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _transitService!.calculateTransits(
+        natalChart: natalChart,
+        transitDateTime: transitDateTime ?? DateTime.now(),
+        location: location,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to calculate transits: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Finds significant transit events within a date range.
+  ///
+  /// [natalChart] - The birth chart
+  /// [startDate] - Start of the date range
+  /// [endDate] - End of the date range
+  /// [location] - Geographic location
+  /// [planets] - Optional list of planets to track (default: all traditional + Rahu)
+  ///
+  /// Returns list of transit events sorted by date.
+  ///
+  /// Example:
+  /// ```dart
+  /// final events = await jyotish.getTransitEvents(
+  ///   natalChart: chart,
+  ///   startDate: DateTime.now(),
+  ///   endDate: DateTime.now().add(Duration(days: 365)),
+  ///   location: location,
+  /// );
+  /// for (final event in events) {
+  ///   print('${event.exactDate}: ${event.description}');
+  /// }
+  /// ```
+  Future<List<TransitEvent>> getTransitEvents({
+    required VedicChart natalChart,
+    required DateTime startDate,
+    required DateTime endDate,
+    required GeographicLocation location,
+    List<Planet>? planets,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final config = TransitConfig(
+        startDate: startDate,
+        endDate: endDate,
+        planets: planets,
+      );
+
+      return await _transitService!.findTransitEvents(
+        natalChart: natalChart,
+        config: config,
+        location: location,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to find transit events: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  // ============================================================
+  // DASHA CALCULATIONS
+  // ============================================================
+
+  /// Calculates Vimshottari Dasha from a birth chart.
+  ///
+  /// Vimshottari is the most commonly used dasha system in Vedic astrology,
+  /// with a 120-year cycle based on the Moon's nakshatra at birth.
+  ///
+  /// [natalChart] - The birth chart (Moon's position is used)
+  /// [levels] - Number of dasha levels to calculate:
+  ///   - 1 = Mahadasha only
+  ///   - 2 = Mahadasha + Antardasha
+  ///   - 3 = Mahadasha + Antardasha + Pratyantardasha (default)
+  /// [birthTimeUncertainty] - Uncertainty in birth time (minutes) for warning
+  ///
+  /// Returns complete Vimshottari dasha calculation.
+  ///
+  /// Example:
+  /// ```dart
+  /// final dasha = await jyotish.getVimshottariDasha(natalChart: chart);
+  /// print('Current dasha: ${dasha.getCurrentPeriodString(DateTime.now())}');
+  /// print('Birth nakshatra: ${dasha.birthNakshatra}');
+  /// ```
+  Future<DashaResult> getVimshottariDasha({
+    required VedicChart natalChart,
+    int levels = 3,
+    int? birthTimeUncertainty,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      // Get Moon's position from the chart
+      final moonInfo = natalChart.planets[Planet.moon];
+      if (moonInfo == null) {
+        throw JyotishException('Moon position not found in natal chart');
+      }
+
+      return _dashaService!.calculateVimshottariDasha(
+        moonLongitude: moonInfo.position.longitude,
+        birthDateTime: natalChart.dateTime,
+        levels: levels,
+        birthTimeUncertainty: birthTimeUncertainty,
+      );
+    } catch (e) {
+      if (e is JyotishException) rethrow;
+      throw JyotishException(
+        'Failed to calculate Vimshottari dasha: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Calculates Yogini Dasha from a birth chart.
+  ///
+  /// Yogini is an alternate dasha system with a 36-year cycle,
+  /// using 8 yoginis instead of 9 planets.
+  ///
+  /// [natalChart] - The birth chart (Moon's position is used)
+  /// [levels] - Number of dasha levels to calculate (1-3)
+  /// [birthTimeUncertainty] - Uncertainty in birth time (minutes) for warning
+  ///
+  /// Returns complete Yogini dasha calculation.
+  Future<DashaResult> getYoginiDasha({
+    required VedicChart natalChart,
+    int levels = 3,
+    int? birthTimeUncertainty,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final moonInfo = natalChart.planets[Planet.moon];
+      if (moonInfo == null) {
+        throw JyotishException('Moon position not found in natal chart');
+      }
+
+      return _dashaService!.calculateYoginiDasha(
+        moonLongitude: moonInfo.position.longitude,
+        birthDateTime: natalChart.dateTime,
+        levels: levels,
+        birthTimeUncertainty: birthTimeUncertainty,
+      );
+    } catch (e) {
+      if (e is JyotishException) rethrow;
+      throw JyotishException(
+        'Failed to calculate Yogini dasha: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Gets the current dasha period at a specific date.
+  ///
+  /// [natalChart] - The birth chart
+  /// [targetDate] - Date to find the current period for (default: now)
+  /// [type] - Dasha system to use (default: Vimshottari)
+  ///
+  /// Returns list of active periods (mahadasha, antardasha, pratyantardasha).
+  ///
+  /// Example:
+  /// ```dart
+  /// final periods = await jyotish.getCurrentDasha(natalChart: chart);
+  /// for (final period in periods) {
+  ///   print('${period.levelName}: ${period.lord.displayName}');
+  /// }
+  /// ```
+  Future<List<DashaPeriod>> getCurrentDasha({
+    required VedicChart natalChart,
+    DateTime? targetDate,
+    DashaType type = DashaType.vimshottari,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final DashaResult result;
+      if (type == DashaType.vimshottari) {
+        result = await getVimshottariDasha(natalChart: natalChart);
+      } else {
+        result = await getYoginiDasha(natalChart: natalChart);
+      }
+
+      return result.getActivePeriodsAt(targetDate ?? DateTime.now());
+    } catch (e) {
+      if (e is JyotishException) rethrow;
+      throw JyotishException(
+        'Failed to get current dasha: ${e.toString()}',
         originalError: e,
       );
     }

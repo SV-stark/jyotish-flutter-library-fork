@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-04
+
+### Added
+
+- **Vedic Aspect Calculations (Graha Drishti)**
+  - All planets aspect 7th house (opposition)
+  - Mars special aspects (4th, 8th houses)
+  - Jupiter special aspects (5th, 9th houses)
+  - Saturn special aspects (3rd, 10th houses)
+  - Applying/separating aspect detection
+  - Aspect strength calculation
+
+- **Transit Calculations**
+  - Current planetary transits over natal positions
+  - Transit house placements
+  - Transit aspects to natal planets
+  - Transit event prediction with date ranges
+
+- **Dasha System Support**
+  - Vimshottari Dasha (120-year cycle)
+  - Yogini Dasha (36-year cycle)
+  - Mahadasha, Antardasha, Pratyantardasha levels
+  - Current period calculation
+  - Birth time precision warnings
+
+### New API Methods
+
+- `getAspects()` - Calculate all Vedic aspects between planets
+- `getAspectsForPlanet()` - Get aspects involving a specific planet
+- `getChartAspects()` - Calculate aspects from a VedicChart
+- `getTransitPositions()` - Calculate transit positions relative to natal chart
+- `getTransitEvents()` - Find significant transit events in a date range
+- `getVimshottariDasha()` - Calculate Vimshottari dasha periods
+- `getYoginiDasha()` - Calculate Yogini dasha periods
+- `getCurrentDasha()` - Get active dasha periods at any date
+
+### New Models
+
+- `AspectType` - Enum of Vedic aspect types
+- `AspectInfo` - Detailed aspect information
+- `AspectConfig` - Aspect calculation configuration
+- `TransitInfo` - Transit position data
+- `TransitEvent` - Transit event details
+- `TransitConfig` - Transit calculation configuration
+- `DashaPeriod` - Dasha period data
+- `DashaResult` - Complete dasha calculation result
+- `DashaType` - Enum of dasha systems
+- `Yogini` - Enum of Yogini dasha lords
+
 ## [1.0.1] - 2025-11-25
 
 ### Fixed
@@ -46,5 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON serialization support
 - Proper resource management
 
+[1.1.0]: https://github.com/rajsanjib/jyotish-flutter-library/releases/tag/v1.1.0
 [1.0.1]: https://github.com/rajsanjib/jyotish-flutter-library/releases/tag/v1.0.1
 [1.0.0]: https://github.com/rajsanjib/jyotish-flutter-library/releases/tag/v1.0.0
