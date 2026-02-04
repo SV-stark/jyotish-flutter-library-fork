@@ -11,6 +11,8 @@ import 'services/vedic_chart_service.dart';
 import 'services/aspect_service.dart';
 import 'services/transit_service.dart';
 import 'services/dasha_service.dart';
+import 'services/divisional_chart_service.dart';
+import 'models/divisional_chart_type.dart';
 import 'exceptions/jyotish_exception.dart';
 
 /// The main entry point for the Jyotish library.
@@ -41,6 +43,7 @@ class Jyotish {
   AspectService? _aspectService;
   TransitService? _transitService;
   DashaService? _dashaService;
+  DivisionalChartService? _divisionalChartService;
   bool _isInitialized = false;
 
   /// Creates a new instance of Jyotish.
@@ -228,6 +231,32 @@ class Jyotish {
         originalError: e,
       );
     }
+  }
+
+  // ============================================================
+  // DIVISIONAL CHART CALCULATIONS
+  // ============================================================
+
+  /// Calculates a specific Divisional Chart (Varga) from a Rashi chart.
+  ///
+  /// [rashiChart] - The base Rashi chart (D1) calculated using [calculateVedicChart]
+  /// [type] - The type of divisional chart to calculate (e.g. [DivisionalChartType.d9])
+  ///
+  /// Returns a new [VedicChart] representing the divisional chart.
+  /// NOTE: The 'longitude' values in the returned chart are the PROJECTED longitudes
+  /// into the 0-360 zodiac. For example, if a planet is in the middle of Aries in D9,
+  /// its longitude will be around 15°.
+  /// The [HouseSystem] in the returned chart is typically a Whole Sign system
+  /// based on the D-Chart Ascendant.
+  VedicChart getDivisionalChart({
+    required VedicChart rashiChart,
+    required DivisionalChartType type,
+  }) {
+    // _ensureInitialized(); // Not needed for pure math
+    if (_divisionalChartService == null) {
+      _divisionalChartService = DivisionalChartService();
+    }
+    return _divisionalChartService!.calculateDivisionalChart(rashiChart, type);
   }
 
   // ============================================================

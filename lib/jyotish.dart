@@ -22,6 +22,7 @@ export 'src/models/vedic_chart.dart';
 export 'src/models/aspect.dart';
 export 'src/models/transit.dart';
 export 'src/models/dasha.dart';
+export 'src/models/divisional_chart_type.dart';
 
 // Exceptions
 export 'src/exceptions/jyotish_exception.dart';
@@ -32,6 +33,7 @@ export 'src/services/vedic_chart_service.dart';
 export 'src/services/aspect_service.dart';
 export 'src/services/transit_service.dart';
 export 'src/services/dasha_service.dart';
+export 'src/services/divisional_chart_service.dart';
 
 // Constants
 export 'src/constants/planet_constants.dart';

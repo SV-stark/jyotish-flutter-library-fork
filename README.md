@@ -266,6 +266,107 @@ for (int i = 0; i < 12; i++) {
 }
 ```
 
+### Aspect Calculations (Graha Drishti)
+
+```dart
+// Calculate planetary aspects
+final aspects = await jyotish.getAspects(
+  dateTime: DateTime.now(),
+  location: location,
+);
+
+for (final aspect in aspects) {
+  print('${aspect.aspectingPlanet.displayName} aspects ${aspect.aspectedPlanet.displayName}');
+  print('Type: ${aspect.type.name}'); // e.g., conjunction, opposition, marsSpecial4th
+  print('Orb: ${aspect.orb.toStringAsFixed(2)}°');
+}
+
+// Get aspects for a specific planet
+final marsAspects = await jyotish.getAspectsForPlanet(
+  planet: Planet.mars,
+  dateTime: DateTime.now(),
+  location: location,
+);
+```
+
+### Divisional Charts (Varga)
+
+```dart
+// 1. Calculate the base Rashi chart (D1)
+final d1Chart = await jyotish.calculateVedicChart(
+  dateTime:  DateTime(1990, 5, 15, 14, 30),
+  location: location,
+);
+
+// 2. generate any divisional chart (D2-D60)
+// Example: Navamsa (D9) - Critical for marriage/dharma
+final navamsa = jyotish.getDivisionalChart(
+  rashiChart: d1Chart,
+  type: DivisionalChartType.d9,
+);
+
+print('Navamsa Ascendant: ${navamsa.ascendantSign}');
+print('Sun in D9: ${navamsa.getPlanet(Planet.sun)?.zodiacSign}');
+
+// Example: Dasamsa (D10) - Critical for career
+final dasamsa = jyotish.getDivisionalChart(
+  rashiChart: d1Chart,
+  type: DivisionalChartType.d10,
+);
+```
+
+### Dasha System Support
+
+```dart
+// Calculate Vimshottari Dasha
+final vimshottari = await jyotish.getVimshottariDasha(
+  natalChart: d1Chart,
+  levels: 3, // Mahadasha, Antardasha, Pratyantardasha
+);
+
+// Get current period
+final now = DateTime.now();
+final currentPeriods = vimshottari.getActivePeriodsAt(now);
+
+print('Current Dasha Period:');
+print('MD: ${currentPeriods[0].lord.displayName}'); // Mahadasha
+print('AD: ${currentPeriods[1].lord.displayName}'); // Antardasha
+print('PD: ${currentPeriods[2].lord.displayName}'); // Pratyantardasha
+
+// Calculate Yogini Dasha
+final yogini = await jyotish.getYoginiDasha(
+  natalChart: d1Chart,
+  levels: 2,
+);
+```
+
+### Transit Calculations
+
+```dart
+// Check transits relative to natal chart
+final transits = await jyotish.getTransitPositions(
+  natalChart: d1Chart,
+  transitDateTime: DateTime.now(),
+  location: location,
+);
+
+final saturnTransit = transits[Planet.saturn];
+print('Saturn is transiting House ${saturnTransit?.transitHouse}');
+
+// Find specific transit events
+final events = await jyotish.getTransitEvents(
+  natalChart: d1Chart,
+  startDate: DateTime.now(),
+  endDate: DateTime.now().add(Duration(days: 365)),
+  location: location,
+  planets: [Planet.jupiter, Planet.saturn], // Track major planets
+);
+
+for (final event in events) {
+  print('${event.description} on ${event.exactDate}');
+}
+```
+
 **Vedic Features:**
 
 - ✨ Sidereal zodiac with Lahiri ayanamsa (authentic Vedic calculations)
@@ -492,7 +593,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 - [x] Transit calculations
 - [x] Dasha system support (Vimshottari, Yogini)
 - [ ] Chart drawing utilities
-- [ ] Divisional charts (D9, D10, etc.)
+- [x] Divisional charts (D1 - D60 supported)
 - [ ] More example apps
 
 ---
