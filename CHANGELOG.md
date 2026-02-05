@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **D249 - 249 Subdivisions (High-Precision Micro Analysis)**
+  - Complete implementation of 249 subdivisions per zodiac sign
+  - Ultra-fine granularity for advanced Vedic analysis (~0.12° per subdivision)
+  - Odd sign mapping: starts from same sign, counts forward through 249 parts
+  - Even sign mapping: starts from 9th sign, counts forward through 249 parts
+  - Compatible with existing D1-D60 divisional chart infrastructure
+  - Comprehensive test suite with 10+ test cases
+  - API: `DivisionalChartType.d249`
+
 - **Shadbala (Six-fold Planetary Strength)**
   - Complete implementation of all 6 strength types:
     - Sthana Bala (Positional Strength)

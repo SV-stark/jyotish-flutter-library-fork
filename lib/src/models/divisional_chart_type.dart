@@ -46,7 +46,10 @@ enum DivisionalChartType {
   d45('D45', 'Akshavedamsa', 'Character', 45),
 
   /// D60 - Shashtiamsa (Past Life/Karma)
-  d60('D60', 'Shashtiamsa', 'Past Life', 60);
+  d60('D60', 'Shashtiamsa', 'Past Life', 60),
+
+  /// D249 - 249 Subdivisions (Micro-Level Analysis)
+  d249('D249', '249 Subdivisions', 'Micro Analysis', 249);
 
   const DivisionalChartType(
       this.code, this.name, this.significance, this.divisions);

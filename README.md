@@ -26,7 +26,7 @@ A production-ready Flutter library for advanced Vedic astrology calculations usi
 
 This fork significantly extends the original library with high-level astrological services:
 
-- **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60) with high-precision mapping rules.
+- **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60) plus D249 (249 subdivisions) for ultra-precise micro-level analysis.
 - **⏳ Dasha Systems**: Comprehensive Vimshottari (120y) and Yogini (36y) calculations with Rahu/Ketu sub-period refinements.
 - **✨ Panchanga**: Tithi, Yoga, Karana, Vara, and precise Sunrise/Sunset modules.
 - **📊 Ashtakavarga**: Full BAV/SAV point system, Trikona Shodhana (reduction), and transit strength analysis.
@@ -280,7 +280,7 @@ final d1Chart = await jyotish.calculateVedicChart(
   location: location,
 );
 
-// 2. generate any divisional chart (D2-D60)
+// 2. generate any divisional chart (D2-D60, D249)
 // Example: Navamsa (D9) - Critical for marriage/dharma
 final navamsa = jyotish.getDivisionalChart(
   rashiChart: d1Chart,
@@ -295,6 +295,14 @@ final dasamsa = jyotish.getDivisionalChart(
   rashiChart: d1Chart,
   type: DivisionalChartType.d10,
 );
+
+// Example: D249 - Ultra-fine micro analysis (249 subdivisions per sign)
+final d249 = jyotish.getDivisionalChart(
+  rashiChart: d1Chart,
+  type: DivisionalChartType.d249,
+);
+print('D249 Ascendant: ${d249.ascendantSign}');
+print('Sun in D249: ${d249.getPlanet(Planet.sun)?.zodiacSign}');
 ```
 
 ### Dasha System Support
@@ -670,7 +678,7 @@ This fork was created to bridge the gap between low-level astronomical calculati
 ### 4. Mathematical Systems
 - **Ashtakavarga**: Automated calculation of Bindus for all 7 planets (BAV) and the total system (SAV), including **Trikona Shodhana** (Trine Reduction) and transit strength analysis.
 - **KP System**: Implementation of the Krishnamurti Paddhati, including high-precision significators, cuspal sub-lords, and precise KP ayanamsa formulas.
-- **Divisional Charts (Varga)**: Calculations for all 16 major charts (D1-D60) with high-precision mapping rules for Saptamsa, Dasamsa, and Shashtiamsa (D60).
+- **Divisional Charts (Varga)**: Calculations for all 16 major charts (D1-D60) plus D249 (249 subdivisions) with high-precision mapping rules for Saptamsa, Dasamsa, Shashtiamsa (D60), and 249-subdivision micro analysis.
 
 ### 5. Transit & Muhurta Analysis
 - **Special Transits**: Real-time detection of Sade Sati, Dhaiya, and Panchak.

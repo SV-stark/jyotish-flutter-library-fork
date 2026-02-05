@@ -494,6 +494,16 @@ class DivisionalChartService {
           // Starts from 9th sign from itself
           return (signIndex + 8 + part) % 12;
         }
+
+      case DivisionalChartType.d249: // 249 Subdivisions
+        final part = (degreeInSign / (30 / 249)).floor(); // 0-248
+        if (isOdd) {
+          // For odd signs: start from same sign
+          return (signIndex + part) % 12;
+        } else {
+          // For even signs: start from 9th sign from itself (like D60)
+          return (signIndex + 8 + part) % 12;
+        }
     }
   }
 
