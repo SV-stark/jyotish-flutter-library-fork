@@ -322,6 +322,57 @@ class DivisionalChartService {
     return (vargaSignIndex * 30) + degreesInNewSign;
   }
 
+  /// Calculates the degrees within the D249 sign based on Vimshottari Dasha proportions.
+  double _calculateD249DegreesInSign(int signIndex, double degreeInSign) {
+    final sign = signIndex + 1;
+    final isOdd = sign % 2 != 0;
+
+    // Vimshottari Dasha data (years and corresponding degrees)
+    final dashaData = [
+      (years: 7, degrees: 1.75), // Ketu
+      (years: 20, degrees: 5.0), // Venus
+      (years: 6, degrees: 1.5), // Sun
+      (years: 10, degrees: 2.5), // Moon
+      (years: 7, degrees: 1.75), // Mars
+      (years: 18, degrees: 4.5), // Rahu
+      (years: 16, degrees: 4.0), // Jupiter
+      (years: 19, degrees: 4.75), // Saturn
+      (years: 17, degrees: 4.25), // Mercury
+    ];
+
+    // Find which subdivision the degree falls into
+    var cumulativeDegrees = 0.0;
+    var subdivisionStart = 0.0;
+
+    // Check 27 complete cycles
+    for (var cycle = 0; cycle < 27; cycle++) {
+      for (var i = 0; i < 9; i++) {
+        final endDegrees = cumulativeDegrees + dashaData[i].degrees;
+        if (degreeInSign < endDegrees) {
+          // Found the subdivision - calculate position within it
+          final posInSubdivision = (degreeInSign - cumulativeDegrees) / dashaData[i].degrees;
+          // Map to 0-30 degrees in the new sign
+          return (cycle * 9 + i + posInSubdivision) * (30.0 / 249.0);
+        }
+        cumulativeDegrees = endDegrees;
+        subdivisionStart = endDegrees;
+      }
+    }
+
+    // Check partial 28th cycle (6 subdivisions)
+    for (var i = 0; i < 6; i++) {
+      final endDegrees = cumulativeDegrees + dashaData[i].degrees;
+      if (degreeInSign < endDegrees) {
+        final posInSubdivision = (degreeInSign - cumulativeDegrees) / dashaData[i].degrees;
+        return (243 + i + posInSubdivision) * (30.0 / 249.0);
+      }
+      cumulativeDegrees = endDegrees;
+    }
+
+    // Edge case: return last subdivision
+    return 30.0 - (30.0 / 249.0);
+  }
+
   int _getVargaSign(
       int signIndex, double degreeInSign, DivisionalChartType type) {
     final sign = signIndex + 1; // 1-12
@@ -495,16 +546,61 @@ class DivisionalChartService {
           return (signIndex + 8 + part) % 12;
         }
 
-      case DivisionalChartType.d249: // 249 Subdivisions
-        final part = (degreeInSign / (30 / 249)).floor(); // 0-248
-        if (isOdd) {
-          // For odd signs: start from same sign
-          return (signIndex + part) % 12;
-        } else {
-          // For even signs: start from 9th sign from itself (like D60)
-          return (signIndex + 8 + part) % 12;
-        }
+      case DivisionalChartType.d249: // 249 Subdivisions (KP Micro-Analysis)
+        // D249 uses Vimshottari Dasha proportions, NOT equal divisions
+        // Each of the 249 subdivisions is proportional to dasha years (total 120 years)
+        // The sequence repeats: Ketu(7), Venus(20), Sun(6), Moon(10), Mars(7), 
+        //                        Rahu(18), Jupiter(16), Saturn(19), Mercury(17)
+        return _calculateD249Sign(signIndex, degreeInSign, isOdd);
     }
+  }
+
+  int _getVargaSign(
+    // Vimshottari Dasha periods and corresponding degree spans
+    // Each year = 0.25° (30° / 120 years)
+    final dashaData = [
+      (planetIndex: 0, years: 7, degrees: 1.75), // Ketu -> Aries (0)
+      (planetIndex: 1, years: 20, degrees: 5.0), // Venus -> Taurus (1)
+      (planetIndex: 2, years: 6, degrees: 1.5), // Sun -> Gemini (2)
+      (planetIndex: 3, years: 10, degrees: 2.5), // Moon -> Cancer (3)
+      (planetIndex: 4, years: 7, degrees: 1.75), // Mars -> Leo (4)
+      (planetIndex: 5, years: 18, degrees: 4.5), // Rahu -> Virgo (5)
+      (planetIndex: 6, years: 16, degrees: 4.0), // Jupiter -> Libra (6)
+      (planetIndex: 7, years: 19, degrees: 4.75), // Saturn -> Scorpio (7)
+      (planetIndex: 8, years: 17, degrees: 4.25), // Mercury -> Sagittarius (8)
+    ];
+
+    // Calculate which subdivision the degree falls into
+    var cumulativeDegrees = 0.0;
+    var subdivisionIndex = 0;
+
+    // Iterate through 27 complete cycles (243 subdivisions)
+    for (var cycle = 0; cycle < 27; cycle++) {
+      for (var i = 0; i < 9; i++) {
+        cumulativeDegrees += dashaData[i].degrees;
+        if (degreeInSign < cumulativeDegrees) {
+          subdivisionIndex = cycle * 9 + i;
+          // Map planet index to zodiac sign (0-11)
+          // Starting sign depends on whether original sign is odd or even
+          final startSign = isOdd ? signIndex : (signIndex + 8) % 12;
+          return (startSign + subdivisionIndex) % 12;
+        }
+      }
+    }
+
+    // Handle the remaining 6 subdivisions (indices 243-248)
+    // Partial 28th cycle: Ketu, Venus, Sun, Moon, Mars, Rahu
+    for (var i = 0; i < 6; i++) {
+      cumulativeDegrees += dashaData[i].degrees;
+      if (degreeInSign < cumulativeDegrees) {
+        subdivisionIndex = 243 + i;
+        final startSign = isOdd ? signIndex : (signIndex + 8) % 12;
+        return (startSign + subdivisionIndex) % 12;
+      }
+    }
+
+    // Fallback for edge case (shouldn't reach here if degreeInSign < 30)
+    return isOdd ? signIndex : (signIndex + 8) % 12;
   }
 
   int _calculateD30Sign(int signIndex, double degree) {

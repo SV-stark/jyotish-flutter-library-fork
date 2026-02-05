@@ -16,6 +16,7 @@ import 'models/relationship.dart';
 import 'models/special_transits.dart';
 import 'models/transit.dart';
 import 'models/vedic_chart.dart';
+import 'services/astrology_time_service.dart';
 import 'services/ashtakavarga_service.dart';
 import 'services/aspect_service.dart';
 import 'services/dasha_service.dart';
@@ -93,6 +94,7 @@ class Jyotish {
     }
 
     try {
+      AstrologyTimeService.initialize();
       _ephemerisService = EphemerisService();
       await _ephemerisService!.initialize(ephemerisPath: ephemerisPath);
       _vedicChartService = VedicChartService(_ephemerisService!);
@@ -104,7 +106,7 @@ class Jyotish {
       _kpService = KPService(_ephemerisService!);
       _specialTransitService = SpecialTransitService(_ephemerisService!);
       _muhurtaService = MuhurtaService();
-      _shadbalaService = ShadbalaService();
+      _shadbalaService = ShadbalaService(_ephemerisService!);
       _masaService = MasaService(_ephemerisService!);
       _isInitialized = true;
     } catch (e) {
@@ -1196,9 +1198,9 @@ class Jyotish {
   ///
   /// [chart] - The Vedic birth chart
   /// Returns a map of planets to their Shadbala results.
-  Map<Planet, ShadbalaResult> getShadbala(VedicChart chart) {
+  Future<Map<Planet, ShadbalaResult>> getShadbala(VedicChart chart) async {
     _ensureInitialized();
-    return _shadbalaService!.calculateShadbala(chart);
+    return await _shadbalaService!.calculateShadbala(chart);
   }
 
   // ============================================================
@@ -1258,7 +1260,8 @@ class Jyotish {
     required DateTime dateTime,
     required GeographicLocation location,
   }) async {
-    return getMasa(dateTime: dateTime, location: location, type: MasaType.amanta);
+    return getMasa(
+        dateTime: dateTime, location: location, type: MasaType.amanta);
   }
 
   /// Calculates lunar month using Purnimanta system.
@@ -1269,7 +1272,8 @@ class Jyotish {
     required DateTime dateTime,
     required GeographicLocation location,
   }) async {
-    return getMasa(dateTime: dateTime, location: location, type: MasaType.purnimanta);
+    return getMasa(
+        dateTime: dateTime, location: location, type: MasaType.purnimanta);
   }
 
   /// Gets the Samvatsara (60-year Jupiter cycle) name for a given year.
@@ -1395,10 +1399,10 @@ class Jyotish {
   /// Gets the Abhijit Nakshatra boundaries.
   ///
   /// Returns a tuple with (startLongitude, endLongitude) in degrees.
-   (double start, double end) getAbhijitBoundaries() {
+  (double start, double end) getAbhijitBoundaries() {
     return (NakshatraInfo.abhijitStart, NakshatraInfo.abhijitEnd);
   }
-  
+
   /// Gets whether library has been initialized.
   bool get isInitialized => _isInitialized;
 }

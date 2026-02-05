@@ -34,6 +34,7 @@ class VedicChartService {
         dateTime: dateTime,
         location: location,
         houseSystem: houseSystem,
+        siderealMode: flags.siderealMode,
       );
 
       // Get list of planets to calculate
@@ -123,6 +124,7 @@ class VedicChartService {
     required DateTime dateTime,
     required GeographicLocation location,
     required String houseSystem,
+    required SiderealMode siderealMode,
   }) async {
     // Calculate houses (returns tropical positions)
     final houseData = await _ephemerisService.calculateHouses(
@@ -134,7 +136,8 @@ class VedicChartService {
     // Get ayanamsa for sidereal correction
     final ayanamsa = await _ephemerisService.getAyanamsa(
       dateTime: dateTime,
-      mode: SiderealMode.lahiri, // Use Lahiri ayanamsa
+      mode: siderealMode, // Use provided ayanamsa
+      timezoneId: location.timezone,
     );
 
     // Convert tropical positions to sidereal

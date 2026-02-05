@@ -6,35 +6,34 @@ void main() {
     late VedicChart mockChart;
     late ShadbalaService shadbalaService;
 
-    setUp(() {
-      shadbalaService = ShadbalaService();
+    setUp(() async {
+      shadbalaService = ShadbalaService(MockEphemerisService());
       mockChart = _createDetailedMockChart();
     });
 
-    test('Uchcha Bala calculates correctly', () {
+    test('Uchcha Bala calculates correctly', () async {
       // Sun at 10° Aries (Deep Exaltation) should have 60 points
-      final sunResult =
-          shadbalaService.calculateShadbala(mockChart)[Planet.sun];
+      final results = await shadbalaService.calculateShadbala(mockChart);
+      final sunResult = results[Planet.sun];
       expect(sunResult?.sthanaBala, greaterThanOrEqualTo(60.0));
 
       // Saturn at 20° Aries (Deep Debilitation) should have 0 points for Uchcha Bala
       // (Total sthana bala might have other components)
     });
 
-    test('Dig Bala calculates correctly', () {
+    test('Dig Bala calculates correctly', () async {
       // Sun in 10th house gets maximum Dig Bala (60)
-      final sunResult =
-          shadbalaService.calculateShadbala(mockChart)[Planet.sun];
+      final results = await shadbalaService.calculateShadbala(mockChart);
+      final sunResult = results[Planet.sun];
       expect(sunResult?.digBala, 60.0);
 
       // Jupiter in 1st house gets maximum Dig Bala (60)
-      final jupResult =
-          shadbalaService.calculateShadbala(mockChart)[Planet.jupiter];
+      final jupResult = results[Planet.jupiter];
       expect(jupResult?.digBala, 60.0);
     });
 
-    test('Kaala Bala components', () {
-      final results = shadbalaService.calculateShadbala(mockChart);
+    test('Kaala Bala components', () async {
+      final results = await shadbalaService.calculateShadbala(mockChart);
 
       // Benefics should get more Paksha Bala in Shukla Paksha
       // (Mock chart has Moon at 30° from Sun = Shukla Paksha)
@@ -45,8 +44,8 @@ void main() {
       expect(satResult!.kalaBala, isNotNull);
     });
 
-    test('Chesta Bala for retrograde planets', () {
-      final results = shadbalaService.calculateShadbala(mockChart);
+    test('Chesta Bala for retrograde planets', () async {
+      final results = await shadbalaService.calculateShadbala(mockChart);
       final rahuResult =
           results[Planet.meanNode]; // Rahu is always retrograde (-0.05 speed)
 
@@ -56,8 +55,8 @@ void main() {
       expect(marsResult?.chestaBala, lessThan(60.0));
     });
 
-    test('Drik Bala (Aspectual Strength)', () {
-      final results = shadbalaService.calculateShadbala(mockChart);
+    test('Drik Bala (Aspectual Strength)', () async {
+      final results = await shadbalaService.calculateShadbala(mockChart);
       final sunResult = results[Planet.sun];
 
       // Drik Bala can be positive or negative
@@ -139,4 +138,22 @@ VedicChart _createDetailedMockChart() {
       ),
     ),
   );
+}
+
+class MockEphemerisService extends EphemerisService {
+  @override
+  Future<(DateTime?, DateTime?)> getSunriseSunset({
+    required DateTime date,
+    required GeographicLocation location,
+    double atpress = 0.0,
+    double attemp = 0.0,
+  }) async {
+    // Return standard sunrise/sunset (6 AM / 6 PM) for testing
+    final sunrise = DateTime.utc(date.year, date.month, date.day, 6, 0);
+    final sunset = DateTime.utc(date.year, date.month, date.day, 18, 0);
+    return (sunrise, sunset);
+  }
+
+  @override
+  Future<void> initialize({String? ephemerisPath}) async {}
 }

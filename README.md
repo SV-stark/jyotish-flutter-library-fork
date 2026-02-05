@@ -781,7 +781,68 @@ final rahuPosition = await jyotish.getPlanetPosition(
 Properties:
 - `description`: Human-readable description
 - `technicalDescription`: Technical explanation
-- `planet`: Returns the appropriate Planet enum (`Planet.meanNode` or `Planet.trueNode`)
+  - `planet`: Returns the appropriate Planet enum (`Planet.meanNode` or `Planet.trueNode`)
+ 
+#### `DivisionalChartType.d249`
+
+D249 (249 Subdivisions) is a KP micro-level divisional chart that uses **Vimshottari Dasha proportional divisions**, NOT linear equal divisions.
+
+**Important**: D249 is NOT a simple 1/249th division. Each subdivision's span is proportional to the dasha period of its ruling planet.
+
+#### Key Characteristics:
+
+1. **Proportional to Vimshottari Dasha**: Each subdivision's span is proportional to the dasha period of its ruling planet
+2. **Total Subdivisions**: 249 = (27 complete cycles × 9 planets) + 6 extra subdivisions
+3. **Pattern**: The 9-planet Vimshottari sequence repeats 27 times, with a partial 28th cycle
+
+#### Vimshottari Dasha Proportions:
+
+| Planet (Ruler) | Dash Period | Degree Span | Subdivisions per Sign |
+|-----------------|------------|-------------|---------------------|
+| Ketu | 7 years | 1.75° | 27 |
+| Venus | 20 years | 5.0° | 54 |
+| Sun | 6 years | 1.5° | 18 |
+| Moon | 10 years | 2.5° | 27 |
+| Mars | 7 years | 1.75° | 18 |
+| Rahu | 18 years | 4.5° | 54 |
+| Jupiter | 16 years | 4.0° | 48 |
+| Saturn | 19 years | 4.75° | 48 |
+| Mercury | 17 years | 4.25° | 51 |
+
+**Complete Cycles**: 27 × 9 = 243 subdivisions  
+**Partial 28th Cycle**: 6 subdivisions (Ketu through Rahu)  
+**Total**: 243 + 6 = 249 subdivisions
+
+#### Usage Example:
+
+```dart
+// Calculate D249 chart
+final d249 = jyotish.getDivisionalChart(
+  rashiChart: rashiChart,
+  type: DivisionalChartType.d249,
+);
+
+// Check which subdivision a planet is in
+final sunDivision = kpData.getPlanetSubLord(Planet.sun);
+print('Sun in D249 subdivision: ${sunDivision?.subSpan.toStringAsFixed(4)}°');
+
+// Works with both KP ayanamsas (already supported)
+final kpOld = await jyotish.calculateKPData(
+  natalChart: chart,
+  useNewAyanamsa: false, // Old KP ayanamsa
+);
+
+final kpNew = await jyotish.calculateKPData(
+  natalChart: chart,
+  useNewAyanamsa: true, // KP New VP291 ayanamsa
+);
+```
+
+#### Important Notes:
+
+1. **KP Ayanamsa Support**: Both old and new KP ayanamsas are already supported via `useNewAyanamsa` parameter in `calculateKPData()`
+2. **Node Type Compatibility**: Works with both Mean Node and True Node via `CalculationFlags.nodeType`
+3. **Precision**: Provides 10-20x more precision than D9 (9 subdivisions) for micro-level analysis
 
 ## Error Handling
 

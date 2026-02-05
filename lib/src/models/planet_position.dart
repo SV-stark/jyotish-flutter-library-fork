@@ -25,6 +25,7 @@ class PlanetPosition {
     required this.longitudeSpeed,
     required this.latitudeSpeed,
     required this.distanceSpeed,
+    this.declination = 0.0,
     this.isCombust = false,
   }) : isRetrograde = longitudeSpeed < 0;
 
@@ -44,6 +45,7 @@ class PlanetPosition {
       longitudeSpeed: results[3],
       latitudeSpeed: results[4],
       distanceSpeed: results[5],
+      declination: results.length > 6 ? results[6] : 0.0,
       isCombust: sunLongitude != null
           ? calculateCombustion(planet, results[0], sunLongitude)
           : false,
@@ -73,6 +75,10 @@ class PlanetPosition {
 
   /// Distance speed in AU per day.
   final double distanceSpeed;
+
+  /// Declination in decimal degrees (-90.0 to 90.0).
+  /// Calculated in equatorial coordinates.
+  final double declination;
 
   /// Whether the planet is in retrograde motion.
   final bool isRetrograde;
@@ -192,6 +198,7 @@ class PlanetPosition {
       'longitudeSpeed': longitudeSpeed,
       'latitudeSpeed': latitudeSpeed,
       'distanceSpeed': distanceSpeed,
+      'declination': declination,
       'isRetrograde': isRetrograde,
       'isCombust': isCombust,
       'zodiacSign': zodiacSign,

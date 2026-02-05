@@ -9,6 +9,7 @@ import '../models/calculation_flags.dart';
 import '../models/geographic_location.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
+import 'astrology_time_service.dart';
 
 /// Service for calculating planetary positions using Swiss Ephemeris.
 ///
@@ -109,6 +110,22 @@ class EphemerisService {
           );
         }
 
+        // Fetch Declination (Equatorial Latitude)
+        // We need an additional call with SEFLG_EQUATORIAL flag
+        // SEFLG_EQUATORIAL = 2048 (0x800)
+        final eqResults = _bindings!.calculateUT(
+          julianDay: julianDay,
+          planetId: planet.swissEphId,
+          flags: flags.toSwissEphFlag() | 0x800,
+          errorBuffer: errorBuffer,
+        );
+
+        if (eqResults != null) {
+          results.add(eqResults[1]); // results[6] is now declination
+        } else {
+          results.add(0.0);
+        }
+
         // Convert tropical to sidereal by subtracting ayanamsa
         results[0] = (results[0] - ayanamsa + 360) % 360;
 
@@ -131,9 +148,11 @@ class EphemerisService {
   }
 
   /// Converts a DateTime to Julian Day number.
-  double _dateTimeToJulianDay(DateTime dateTime) {
+  double _dateTimeToJulianDay(DateTime dateTime, {String? timezoneId}) {
     // Convert to UTC
-    final utc = dateTime.toUtc();
+    final utc = timezoneId != null
+        ? AstrologyTimeService.localToUtc(dateTime, timezoneId)
+        : dateTime.toUtc();
 
     // Calculate hour as decimal
     final hour = utc.hour +
@@ -159,6 +178,7 @@ class EphemerisService {
   Future<double> getAyanamsa({
     required DateTime dateTime,
     required SiderealMode mode,
+    String? timezoneId,
   }) async {
     if (!_isInitialized || _bindings == null) {
       throw CalculationException('EphemerisService is not initialized');
@@ -169,7 +189,7 @@ class EphemerisService {
       _bindings!.setSiderealMode(mode.constant, 0.0, 0.0);
 
       // Convert DateTime to Julian Day
-      final julianDay = _dateTimeToJulianDay(dateTime);
+      final julianDay = _dateTimeToJulianDay(dateTime, timezoneId: timezoneId);
 
       // Get ayanamsa
       return _bindings!.getAyanamsaUT(julianDay);
@@ -202,7 +222,8 @@ class EphemerisService {
 
     try {
       // Convert DateTime to Julian Day
-      final julianDay = _dateTimeToJulianDay(dateTime);
+      final julianDay =
+          _dateTimeToJulianDay(dateTime, timezoneId: location.timezone);
 
       // Calculate houses
       final result = _bindings!.calculateHouses(
@@ -258,7 +279,8 @@ class EphemerisService {
     try {
       // Start search from beginning of the day in UTC
       final searchStart = DateTime.utc(date.year, date.month, date.day);
-      final julianDay = _dateTimeToJulianDay(searchStart);
+      final julianDay =
+          _dateTimeToJulianDay(searchStart, timezoneId: location.timezone);
 
       final errorBuffer = malloc<ffi.Char>(256);
       try {
