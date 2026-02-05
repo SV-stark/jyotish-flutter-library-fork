@@ -11,6 +11,7 @@ Jyotish is a production-ready Flutter library for calculating planetary position
 - 🎯 Nakshatra (lunar mansion) calculations
 - ⚡ Retrograde motion detection
 - 🔧 Multiple ayanamsa systems (40+ options)
+- 🌙 **New Vedic Modules**: Panchanga, Ashtakavarga, KP System, Special Transits, and Muhurta
 - 💯 Production-ready with comprehensive error handling
 
 ## Quick Installation

@@ -1,12 +1,22 @@
+import 'aspect.dart';
 import 'planet.dart';
 import 'planet_position.dart';
-import 'aspect.dart';
 
 /// Transit position information for a planet.
 ///
 /// Contains the current transit position of a planet along with
 /// its relationship to the natal chart (house placement, aspects to natal planets).
 class TransitInfo {
+
+  /// Creates transit info.
+  const TransitInfo({
+    required this.planet,
+    required this.transitPosition,
+    this.natalPosition,
+    required this.transitHouse,
+    required this.transitSignIndex,
+    this.aspectsToNatal = const [],
+  });
   /// The planet being transited
   final Planet planet;
 
@@ -33,16 +43,6 @@ class TransitInfo {
 
   /// Transit planet's nakshatra
   String get transitNakshatra => transitPosition.nakshatra;
-
-  /// Creates transit info.
-  const TransitInfo({
-    required this.planet,
-    required this.transitPosition,
-    this.natalPosition,
-    required this.transitHouse,
-    required this.transitSignIndex,
-    this.aspectsToNatal = const [],
-  });
 
   /// Gets the degree difference from natal position (if available)
   double? get degreesFromNatal {
@@ -82,6 +82,20 @@ class TransitInfo {
 /// Represents a moment when a transiting planet forms an exact aspect
 /// to a natal planet or point.
 class TransitEvent {
+
+  /// Creates a transit event.
+  const TransitEvent({
+    required this.transitPlanet,
+    this.natalPlanet,
+    this.natalPointName,
+    required this.aspectType,
+    required this.exactDate,
+    required this.startDate,
+    required this.endDate,
+    this.isRetrograde = false,
+    required this.description,
+    this.significance = 3,
+  });
   /// The transiting planet
   final Planet transitPlanet;
 
@@ -111,20 +125,6 @@ class TransitEvent {
 
   /// Significance level (1-5, where 5 is most significant)
   final int significance;
-
-  /// Creates a transit event.
-  const TransitEvent({
-    required this.transitPlanet,
-    this.natalPlanet,
-    this.natalPointName,
-    required this.aspectType,
-    required this.exactDate,
-    required this.startDate,
-    required this.endDate,
-    this.isRetrograde = false,
-    required this.description,
-    this.significance = 3,
-  });
 
   /// Duration of the transit event
   Duration get duration => endDate.difference(startDate);
@@ -157,26 +157,6 @@ class TransitEvent {
 
 /// Configuration for transit calculations
 class TransitConfig {
-  /// Start date for transit calculation range
-  final DateTime startDate;
-
-  /// End date for transit calculation range
-  final DateTime endDate;
-
-  /// Interval for checking transits (in days)
-  final int intervalDays;
-
-  /// Which planets to include in transit calculations
-  final List<Planet>? planets;
-
-  /// Whether to include aspects to natal Ascendant
-  final bool includeAscendant;
-
-  /// Whether to include aspects to natal Midheaven
-  final bool includeMidheaven;
-
-  /// Orb for determining when transit enters/leaves effectiveness
-  final double orb;
 
   /// Creates transit configuration.
   const TransitConfig({
@@ -208,4 +188,24 @@ class TransitConfig {
       intervalDays: 30,
     );
   }
+  /// Start date for transit calculation range
+  final DateTime startDate;
+
+  /// End date for transit calculation range
+  final DateTime endDate;
+
+  /// Interval for checking transits (in days)
+  final int intervalDays;
+
+  /// Which planets to include in transit calculations
+  final List<Planet>? planets;
+
+  /// Whether to include aspects to natal Ascendant
+  final bool includeAscendant;
+
+  /// Whether to include aspects to natal Midheaven
+  final bool includeMidheaven;
+
+  /// Orb for determining when transit enters/leaves effectiveness
+  final double orb;
 }

@@ -48,6 +48,8 @@ enum AspectType {
   /// Saturn special 10th house aspect
   saturnSpecial10th('Saturn 10th Aspect', 'Shani Drishti (10th)', 270, 10.0);
 
+  const AspectType(this.english, this.sanskrit, this.angle, this.defaultOrb);
+
   /// English name of the aspect
   final String english;
 
@@ -59,8 +61,6 @@ enum AspectType {
 
   /// Default orb allowance for this aspect
   final double defaultOrb;
-
-  const AspectType(this.english, this.sanskrit, this.angle, this.defaultOrb);
 
   @override
   String toString() => english;
@@ -96,6 +96,18 @@ enum AspectType {
 /// Contains detailed information about the planetary aspect including
 /// the applying/separating status and aspect strength.
 class AspectInfo {
+  /// Creates a new aspect info.
+  const AspectInfo({
+    required this.aspectingPlanet,
+    required this.aspectedPlanet,
+    required this.type,
+    required this.exactOrb,
+    required this.isApplying,
+    required this.strength,
+    required this.aspectingLongitude,
+    required this.aspectedLongitude,
+  });
+
   /// The planet casting the aspect
   final Planet aspectingPlanet;
 
@@ -123,18 +135,6 @@ class AspectInfo {
 
   /// Longitude of the aspected planet
   final double aspectedLongitude;
-
-  /// Creates a new aspect info.
-  const AspectInfo({
-    required this.aspectingPlanet,
-    required this.aspectedPlanet,
-    required this.type,
-    required this.exactOrb,
-    required this.isApplying,
-    required this.strength,
-    required this.aspectingLongitude,
-    required this.aspectedLongitude,
-  });
 
   /// Gets a human-readable description of the aspect
   String get description {
@@ -178,6 +178,13 @@ class AspectInfo {
 
 /// Configuration for aspect calculations
 class AspectConfig {
+  const AspectConfig({
+    this.includeSpecialAspects = true,
+    this.customOrbs,
+    this.minimumStrength = 0.0,
+    this.includeNodes = true,
+  });
+
   /// Whether to include special planetary aspects (Mars, Jupiter, Saturn)
   final bool includeSpecialAspects;
 
@@ -189,13 +196,6 @@ class AspectConfig {
 
   /// Whether to include Rahu/Ketu in aspect calculations
   final bool includeNodes;
-
-  const AspectConfig({
-    this.includeSpecialAspects = true,
-    this.customOrbs,
-    this.minimumStrength = 0.0,
-    this.includeNodes = true,
-  });
 
   /// Default configuration for Vedic astrology
   static const AspectConfig vedic = AspectConfig(

@@ -3,19 +3,6 @@
 /// This class is used to specify the location for which planetary
 /// positions should be calculated.
 class GeographicLocation {
-  /// Latitude in decimal degrees.
-  /// Positive values represent North, negative values represent South.
-  /// Valid range: -90.0 to 90.0
-  final double latitude;
-
-  /// Longitude in decimal degrees.
-  /// Positive values represent East, negative values represent West.
-  /// Valid range: -180.0 to 180.0
-  final double longitude;
-
-  /// Altitude/elevation above sea level in meters.
-  /// Defaults to 0.0 (sea level).
-  final double altitude;
 
   /// Creates a new [GeographicLocation].
   ///
@@ -72,6 +59,28 @@ class GeographicLocation {
       altitude: altitude,
     );
   }
+
+  /// Creates a location from a JSON map.
+  factory GeographicLocation.fromJson(Map<String, dynamic> json) {
+    return GeographicLocation(
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      altitude: (json['altitude'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+  /// Latitude in decimal degrees.
+  /// Positive values represent North, negative values represent South.
+  /// Valid range: -90.0 to 90.0
+  final double latitude;
+
+  /// Longitude in decimal degrees.
+  /// Positive values represent East, negative values represent West.
+  /// Valid range: -180.0 to 180.0
+  final double longitude;
+
+  /// Altitude/elevation above sea level in meters.
+  /// Defaults to 0.0 (sea level).
+  final double altitude;
 
   /// Converts DMS (Degrees, Minutes, Seconds) to decimal degrees.
   static double _dmsToDecimal(
@@ -160,14 +169,5 @@ class GeographicLocation {
       'longitude': longitude,
       'altitude': altitude,
     };
-  }
-
-  /// Creates a location from a JSON map.
-  factory GeographicLocation.fromJson(Map<String, dynamic> json) {
-    return GeographicLocation(
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      altitude: (json['altitude'] as num?)?.toDouble() ?? 0.0,
-    );
   }
 }

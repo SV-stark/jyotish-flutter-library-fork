@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:jyotish/jyotish.dart';
+import 'package:test/test.dart';
 
 /// Unit tests for Jyotish library models and calculations.
 /// These tests verify mathematical calculations without requiring Swiss Ephemeris.
@@ -105,7 +105,7 @@ void main() {
     });
 
     test('calculates nakshatras correctly', () {
-      final nakshatraWidth = 360.0 / 27;
+      const nakshatraWidth = 360.0 / 27;
 
       for (var i = 0; i < 27; i++) {
         final longitude = (i * nakshatraWidth) + (nakshatraWidth / 2);
@@ -155,7 +155,7 @@ void main() {
     });
 
     test('AspectInfo creates correctly', () {
-      final aspect = AspectInfo(
+      const aspect = AspectInfo(
         aspectingPlanet: Planet.mars,
         aspectedPlanet: Planet.jupiter,
         type: AspectType.opposition,
@@ -473,7 +473,7 @@ void main() {
         longitude: 85.3240,
       );
 
-      final flags = CalculationFlags(
+      const flags = CalculationFlags(
         siderealMode: SiderealMode.lahiri,
         calculateSpeed: true,
       );

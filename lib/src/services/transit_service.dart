@@ -1,22 +1,19 @@
+import '../models/aspect.dart';
+import '../models/calculation_flags.dart';
+import '../models/geographic_location.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
-import '../models/geographic_location.dart';
-import '../models/calculation_flags.dart';
-import '../models/vedic_chart.dart';
-import '../models/aspect.dart';
 import '../models/transit.dart';
+import '../models/vedic_chart.dart';
 import 'ephemeris_service.dart';
-import 'aspect_service.dart';
 
 /// Service for calculating planetary transits.
 ///
 /// Transits show the current positions of planets relative to a natal chart,
 /// identifying significant aspects between transit and natal positions.
 class TransitService {
+  TransitService(this._ephemerisService);
   final EphemerisService _ephemerisService;
-  final AspectService _aspectService;
-
-  TransitService(this._ephemerisService) : _aspectService = AspectService();
 
   /// Calculates transit positions for all planets at a given time.
   ///
@@ -52,7 +49,8 @@ class TransitService {
       final natalPosition = natalInfo?.position;
 
       // Determine which house the transit planet is in (natal chart houses)
-      final transitHouse = natalChart.houses.getHouseForLongitude(transitPosition.longitude);
+      final transitHouse =
+          natalChart.houses.getHouseForLongitude(transitPosition.longitude);
       final transitSignIndex = (transitPosition.longitude / 30).floor() % 12;
 
       // Calculate aspects to natal planets
@@ -80,7 +78,7 @@ class TransitService {
     VedicChart natalChart,
   ) {
     final aspects = <AspectInfo>[];
-    final config = AspectConfig.vedic;
+    const config = AspectConfig.vedic;
 
     for (final entry in natalChart.planets.entries) {
       final natalPlanet = entry.key;
@@ -149,14 +147,20 @@ class TransitService {
     if (transitPos.planet == Planet.mars) {
       if ((angularDiff - 90).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.marsSpecial4th, angularDiff - 90,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.marsSpecial4th,
+          angularDiff - 90,
         ));
       }
       if ((angularDiff - 210).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.marsSpecial8th, angularDiff - 210,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.marsSpecial8th,
+          angularDiff - 210,
         ));
       }
     }
@@ -165,14 +169,20 @@ class TransitService {
     if (transitPos.planet == Planet.jupiter) {
       if ((angularDiff - 120).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.jupiterSpecial5th, angularDiff - 120,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.jupiterSpecial5th,
+          angularDiff - 120,
         ));
       }
       if ((angularDiff - 240).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.jupiterSpecial9th, angularDiff - 240,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.jupiterSpecial9th,
+          angularDiff - 240,
         ));
       }
     }
@@ -181,14 +191,20 @@ class TransitService {
     if (transitPos.planet == Planet.saturn) {
       if ((angularDiff - 60).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.saturnSpecial3rd, angularDiff - 60,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.saturnSpecial3rd,
+          angularDiff - 60,
         ));
       }
       if ((angularDiff - 270).abs() <= orb) {
         aspects.add(_createTransitAspect(
-          transitPos, natalPlanet, natalPos,
-          AspectType.saturnSpecial10th, angularDiff - 270,
+          transitPos,
+          natalPlanet,
+          natalPos,
+          AspectType.saturnSpecial10th,
+          angularDiff - 270,
         ));
       }
     }
@@ -228,13 +244,13 @@ class TransitService {
     required GeographicLocation location,
   }) async {
     final events = <TransitEvent>[];
-    final planets = config.planets ?? [
-      ...Planet.traditionalPlanets,
-      Planet.meanNode,
-    ];
+    final planets = config.planets ??
+        [
+          ...Planet.traditionalPlanets,
+          Planet.meanNode,
+        ];
 
     var currentDate = config.startDate;
-    Map<Planet, TransitInfo>? previousTransits;
 
     while (currentDate.isBefore(config.endDate)) {
       final transits = await calculateTransits(
@@ -256,10 +272,12 @@ class TransitService {
               natalPlanet: aspect.aspectedPlanet,
               aspectType: aspect.type,
               exactDate: currentDate,
-              startDate: currentDate.subtract(Duration(days: config.intervalDays * 3)),
+              startDate:
+                  currentDate.subtract(Duration(days: config.intervalDays * 3)),
               endDate: currentDate.add(Duration(days: config.intervalDays * 3)),
               isRetrograde: transit.isRetrograde,
-              description: _generateTransitDescription(aspect, transit.isRetrograde),
+              description:
+                  _generateTransitDescription(aspect, transit.isRetrograde),
               significance: _calculateSignificance(aspect),
             );
             events.add(event);
@@ -267,7 +285,6 @@ class TransitService {
         }
       }
 
-      previousTransits = transits;
       currentDate = currentDate.add(Duration(days: config.intervalDays));
     }
 

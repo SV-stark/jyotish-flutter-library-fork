@@ -1,6 +1,6 @@
+import '../models/aspect.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
-import '../models/aspect.dart';
 
 /// Service for calculating Vedic planetary aspects (Graha Drishti).
 ///

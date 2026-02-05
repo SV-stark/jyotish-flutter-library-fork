@@ -2,6 +2,8 @@
 ///
 /// These constants correspond to the planet numbers used by Swiss Ephemeris.
 class SwissEphConstants {
+
+  SwissEphConstants._();
   // Main planets
   static const int sun = 0;
   static const int moon = 1;
@@ -81,6 +83,11 @@ class SwissEphConstants {
   static const int sidmGalcentMula0 = 40;
   static const int sidmGalcentMulaVerneau = 41;
   static const int sidmValensBow = 42;
+  static const int sidmLahiri1940 = 43;
+  static const int sidmLahiriVP285 = 44;
+  static const int sidmKrishnamurtiVP291 = 45; // KP New (VP291)
+  static const int sidmLahiriICRC = 46;
+  static const int sidmKhullar = 47; // Khullar Ayanamsa
   static const int sidmUserDefined = 255;
 
   // House systems
@@ -97,5 +104,17 @@ class SwissEphConstants {
   static const String houseAlcabitus = 'B';
   static const String houseKrusinski = 'U';
 
-  SwissEphConstants._();
+  // Rise/Set calculation flags (rsmi)
+  static const int calcRise = 1; // SE_CALC_RISE
+  static const int calcSet = 2; // SE_CALC_SET
+  static const int calcMTransit = 4; // SE_CALC_MTRANSIT
+  static const int calcITransit = 8; // SE_CALC_ITRANSIT
+  static const int bitDiscCenter = 256; // SE_BIT_DISC_CENTER
+  static const int bitDiscBottom = 8192; // SE_BIT_DISC_BOTTOM
+  static const int bitNoRefraction = 512; // SE_BIT_NO_REFRACTION
+  static const int bitCivilTwilight = 1024; // SE_BIT_CIVIL_TWILIGHT
+  static const int bitNauticTwilight = 2048; // SE_BIT_NAUTIC_TWILIGHT
+  static const int bitAstroTwilight = 4096; // SE_BIT_ASTRO_TWILIGHT
+  static const int bitFixedDiscSize = 16384; // SE_BIT_FIXED_DISC_SIZE
+  static const int bitHinduRising = bitDiscCenter | bitNoRefraction;
 }

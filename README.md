@@ -1,66 +1,49 @@
-# Jyotish
+# Jyotish (SV-stark Fork)
 
-A production-ready Flutter library for Vedic astrology calculations using Swiss Ephemeris. Provides high-precision sidereal planetary positions with Lahiri ayanamsa for authentic Jyotish (Vedic astrology) applications.
+> [!NOTE]  
+> This project is a **fork** of the original [jyotish-flutter-library](https://github.com/rajsanjib/jyotish-flutter-library). It builds upon the core high-precision Swiss Ephemeris integration and adds significant advanced Vedic astrology features.
 
-[![GitHub](https://img.shields.io/badge/GitHub-rajsanjib%2Fjyotish--flutter--library-blue?logo=github)](https://github.com/rajsanjib/jyotish-flutter-library)
+A production-ready Flutter library for advanced Vedic astrology calculations using Swiss Ephemeris. Provides high-precision sidereal planetary positions with Lahiri ayanamsa for authentic Jyotish applications.
+
+[![GitHub](https://img.shields.io/badge/GitHub-SV--stark%2Fjyotish--flutter--library--fork-blue?logo=github)](https://github.com/SV-stark/jyotish-flutter-library-fork)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.0.0-blue?logo=flutter)](https://flutter.dev)
 
-## Features
+## Core Features
 
-✨ **High-Precision Sidereal Calculations**: Uses Swiss Ephemeris with Lahiri ayanamsa for accurate Vedic astrology
+✨ **High-Precision Sidereal Calculations**: Uses Swiss Ephemeris with Lahiri ayanamsa for accurate Vedic astrology.
 
 🌍 **Authentic Vedic System**:
-
-- Sidereal zodiac
-- Lahiri ayanamsa (default) with support for 40+ other ayanamsas
-- Geocentric and topocentric calculations
+- Sidereal zodiac with support for 40+ ayanamsas.
+- Geocentric and topocentric calculations.
 
 🪐 **Comprehensive Planet Support**:
+- Traditional Vedic planets + Rahu and Ketu.
+- Optional outer planets (Uranus, Neptune, Pluto).
+- Lunar apogees and asteroids.
 
-- Traditional Vedic planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn)
-- Rahu and Ketu (Lunar Nodes)
-- Optional outer planets (Uranus, Neptune, Pluto)
-- Lunar apogees and asteroids
+## Advanced Vedic Features (Fork Additions)
 
-📍 **Rich Vedic Data**:
+This fork significantly extends the original library with high-level astrological services:
 
-- Sidereal longitude, latitude, and distance
-- Zodiac sign and position within sign
-- 27 Nakshatras with pada (quarter) divisions
-- Retrograde detection
-- Velocity/speed calculations
-
-🎯 **Complete Vedic Chart**:
-
-- Birth chart calculation with house cusps
-- Rahu and Ketu positions
-- Planetary dignities (exaltation, debilitation, own sign, moola trikona)
-- Combustion detection
-- Whole Sign house system
-
-🔮 **Vedic Aspect Calculations (Graha Drishti)**:
-
-- All planets aspect 7th house (opposition)
-- Mars special aspects (4th, 8th houses)
-- Jupiter special aspects (5th, 9th houses)
-- Saturn special aspects (3rd, 10th houses)
-- Applying/separating aspect detection
-
-🌙 **Transit Calculations**:
-
-- Current planetary transits over natal positions
-- Transit house placements
-- Transit aspects to natal planets
-- Transit event prediction with date ranges
-
-⏳ **Dasha System Support**:
-
-- Vimshottari Dasha (120-year cycle)
-- Yogini Dasha (36-year cycle)
+- **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60).
+- **⏳ Dasha Systems**: Comprehensive Vimshottari (120y) and Yogini (36y) calculations.
+- **✨ Panchanga**: Tithi, Yoga, Karana, Vara, and precise Sunrise/Sunset modules.
+- **📊 Ashtakavarga**: Full BAV/SAV point system and transit strength analysis.
+- **🎯 KP System**: Significators, Sub-Lord, and Sub-Sub-Lord logic.
+- **🪐 Special Transits**: Automated analysis for Sade Sati, Dhaiya, and Panchak.
+- **📅 Muhurta**: Auspicious timings via Hora, Choghadiya, and Kalam analysis.
 - Mahadasha, Antardasha, Pratyantardasha levels
 - Current period calculation
 - Birth time precision warnings
+
+✨ **New Vedic Modules**:
+
+- **Panchanga**: Tithi, Yoga, Karana, Vara, and Sunrise/Sunset
+- **Ashtakavarga**: Bhinna and Sarvashtakavarga, transit strength analysis
+- **KP System (Krishnamurti Paddhati)**: Significators, Sub-Lord, and Sub-Sub-Lord calculations
+- **Special Transits**: Sade Sati, Dhaiya (Panoti), and Panchak analysis
+- **Muhurta**: Hora, Choghadiya, and Inauspicious periods (Rahukalam, Gulikalam, Yamagandam)
 
 🎯 **Easy to Use**: Simple, intuitive API designed for Vedic astrology
 
@@ -367,6 +350,95 @@ for (final event in events) {
 }
 ```
 
+### Panchanga calculations
+
+```dart
+// Calculate daily Panchanga
+final panchanga = await jyotish.calculatePanchanga(
+  dateTime: DateTime.now(),
+  location: location,
+);
+
+print('Tithi: ${panchanga.tithi.name}');
+print('Yoga: ${panchanga.yoga.name}');
+print('Karana: ${panchanga.karana.name}');
+print('Vara: ${panchanga.vara}');
+print('Sunrise: ${panchanga.sunrise}');
+```
+
+### Ashtakavarga analysis
+
+```dart
+// Calculate Ashtakavarga from a birth chart
+final ashtakavarga = jyotish.calculateAshtakavarga(d1Chart);
+
+// Get SAV (Sarvashtakavarga) points for 1st house
+print('1st House Points: ${ashtakavarga.getTotalBindusForHouse(1)}');
+
+// Analyze transit strength
+final transitStrength = jyotish.analyzeAshtakavargaTransit(
+  ashtakavarga: ashtakavarga,
+  transitPlanet: Planet.jupiter,
+  transitSign: 5, // Virgo
+);
+print('Jupiter transit strength: ${transitStrength.strengthScore}%');
+```
+
+### KP System (Krishnamurti Paddhati)
+
+```dart
+// Calculate KP System data
+final kpData = jyotish.calculateKPData(d1Chart);
+
+// Get Sub-Lord for a planet
+final sunSubLord = kpData.planetaryData[Planet.sun]?.subLord;
+print('Sun Sub-Lord: ${sunSubLord?.displayName}');
+
+// Get house significators
+final house1Significators = kpData.houseSignificators[1];
+print('House 1 Significators: $house1Significators');
+```
+
+### Special Transits (Sade Sati, etc.)
+
+```dart
+// Check for Sade Sati and Dhaiya
+final specialTransits = await jyotish.calculateSpecialTransits(
+  natalChart: d1Chart,
+  location: location,
+);
+
+if (specialTransits.sadeSati.isActive) {
+  print('Sade Sati Phase: ${specialTransits.sadeSati.phase?.name}');
+}
+
+if (specialTransits.panchak?.isActive ?? false) {
+  print('Panchak is currently active');
+}
+```
+
+### Muhurta and Auspicious Timing
+
+```dart
+// Calculate daily Muhurta
+final muhurta = await jyotish.calculateMuhurta(
+  date: DateTime.now(),
+  location: location,
+);
+
+// Get current Choghadiya
+final currentChoghadiya = muhurta.choghadiya.getPeriodForTime(DateTime.now());
+print('Current Choghadiya: ${currentChoghadiya?.name} (${currentChoghadiya?.nature})');
+
+// Check for inauspicious periods
+if (muhurta.isCurrentlyInauspicious) {
+  print('Active Period: ${muhurta.inauspiciousPeriods.getActivePeriod(DateTime.now())}');
+}
+
+// Find best Muhurta for an activity
+final bestTimes = jyotish.findBestMuhurta(muhurta: muhurta, activity: 'marriage');
+```
+
 **Vedic Features:**
 
 - ✨ Sidereal zodiac with Lahiri ayanamsa (authentic Vedic calculations)
@@ -578,23 +650,27 @@ This library uses:
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/rajsanjib/jyotish-flutter-library/issues)
-- 📖 Documentation: [GitHub Wiki](https://github.com/rajsanjib/jyotish-flutter-library/wiki)
-- 💬 Discussions: [GitHub Discussions](https://github.com/rajsanjib/jyotish-flutter-library/discussions)
+- Issues: [GitHub Issues](https://github.com/SV-stark/jyotish-flutter-library-fork/issues)
+- Original Repo: [rajsanjib/jyotish-flutter-library](https://github.com/rajsanjib/jyotish-flutter-library)
 
-## Changelog
+## Detailed Fork Additions Summary
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+This fork was created to bridge the gap between low-level astronomical calculations and high-level Vedic astrological analysis. The following modules were added entirely in this version:
 
-## Roadmap
+### 1. Advanced Predictive Service
+- **Vimshottari Dasha**: Full 120-year cycle with 5 levels of depth (Mahadasha to Sukshma Dasha).
+- **Yogini Dasha**: 36-year cycle with accurate lord calculation and Nakshatra alignment.
 
-- [x] House calculations
-- [x] Aspect calculations (Graha Drishti)
-- [x] Transit calculations
-- [x] Dasha system support (Vimshottari, Yogini)
-- [ ] Chart drawing utilities
-- [x] Divisional charts (D1 - D60 supported)
-- [ ] More example apps
+### 2. Comprehensive Panchanga
+- A complete Indian lunar calendar module providing **Tithi, Yoga, Karana, Vara**, and precise solar times (Sunrise/Sunset/Noon).
+
+### 3. Mathematical Systems
+- **Ashtakavarga**: Automated calculation of Bindus for all 7 planets (BAV) and the total system (SAV), including transit strength analysis.
+- **KP System**: Implementation of the Krishnamurti Paddhati, including high-precision significators and cuspal sub-lords.
+
+### 4. Transit & Muhurta Analysis
+- **Special Transits**: Real-time detection of Sade Sati, Dhaiya, and Panchak.
+- **Muhurta Engine**: Daily Hora, Choghadiya, and inauspicious period (Rahu Kalam) tracking.
 
 ---
 

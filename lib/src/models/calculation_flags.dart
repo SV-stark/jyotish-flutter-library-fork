@@ -5,21 +5,6 @@ import '../constants/planet_constants.dart';
 /// This library is designed for Vedic astrology and uses sidereal zodiac
 /// with Lahiri ayanamsa by default.
 class CalculationFlags {
-  /// Use Swiss Ephemeris (high precision)
-  final bool useSwissEphemeris;
-
-  /// Calculate speed (velocity)
-  final bool calculateSpeed;
-
-  /// Sidereal ayanamsa mode (Lahiri by default for Vedic astrology)
-  final SiderealMode siderealMode;
-
-  /// Use topocentric positions (observed from surface of Earth)
-  /// instead of geocentric (from Earth's center)
-  final bool useTopocentric;
-
-  /// Use equatorial coordinates instead of ecliptic
-  final bool useEquatorial;
 
   /// Creates calculation flags for Vedic astrology (sidereal calculations).
   ///
@@ -53,6 +38,21 @@ class CalculationFlags {
   factory CalculationFlags.topocentric() => const CalculationFlags(
         useTopocentric: true,
       );
+  /// Use Swiss Ephemeris (high precision)
+  final bool useSwissEphemeris;
+
+  /// Calculate speed (velocity)
+  final bool calculateSpeed;
+
+  /// Sidereal ayanamsa mode (Lahiri by default for Vedic astrology)
+  final SiderealMode siderealMode;
+
+  /// Use topocentric positions (observed from surface of Earth)
+  /// instead of geocentric (from Earth's center)
+  final bool useTopocentric;
+
+  /// Use equatorial coordinates instead of ecliptic
+  final bool useEquatorial;
 
   /// Converts flags to Swiss Ephemeris integer flag value.
   /// Note: We always calculate tropical and subtract ayanamsa manually
@@ -162,7 +162,12 @@ enum SiderealMode {
   galcentMula0(SwissEphConstants.sidmGalcentMula0, 'Galactic Center Mula 0'),
   galcentMulaVerneau(
       SwissEphConstants.sidmGalcentMulaVerneau, 'Galactic Center Mula Verneau'),
-  valensBow(SwissEphConstants.sidmValensBow, 'Valens Bow');
+  valensBow(SwissEphConstants.sidmValensBow, 'Valens Bow'),
+  lahiri1940(SwissEphConstants.sidmLahiri1940, 'Lahiri 1940'),
+  lahiriVP285(SwissEphConstants.sidmLahiriVP285, 'Lahiri VP285'),
+  krishnamurtiVP291(SwissEphConstants.sidmKrishnamurtiVP291, 'Krishnamurti VP291 (KP New)'),
+  lahiriICRC(SwissEphConstants.sidmLahiriICRC, 'Lahiri ICRC'),
+  khullar(SwissEphConstants.sidmKhullar, 'Khullar Ayanamsa');
 
   final int constant;
   final String name;

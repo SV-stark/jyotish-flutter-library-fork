@@ -1,5 +1,5 @@
-import '../models/planet.dart';
 import '../models/dasha.dart';
+import '../models/planet.dart';
 
 /// Service for calculating Vedic dasha periods.
 ///
@@ -39,39 +39,9 @@ class DashaService {
     _VimshottariPlanetInfo(Planet.jupiter, 'Jupiter', 16.0),
     _VimshottariPlanetInfo(Planet.saturn, 'Saturn', 19.0),
     _VimshottariPlanetInfo(Planet.mercury, 'Mercury', 17.0),
-    _VimshottariPlanetInfo(Planet.meanNode, 'Ketu', 7.0), // Ketu uses meanNode but different years
+    _VimshottariPlanetInfo(
+        Planet.meanNode, 'Ketu', 7.0), // Ketu uses meanNode but different years
     _VimshottariPlanetInfo(Planet.venus, 'Venus', 20.0),
-  ];
-
-  /// Nakshatra to dasha lord mapping (0-26)
-  static const List<int> _nakshatraToDashaLord = [
-    0, // Ashwini -> Ketu (index 7)
-    1, // Bharani -> Venus (index 8)
-    2, // Krittika -> Sun (index 0)
-    3, // Rohini -> Moon (index 1)
-    4, // Mrigashira -> Mars (index 2)
-    5, // Ardra -> Rahu (index 3)
-    6, // Punarvasu -> Jupiter (index 4)
-    7, // Pushya -> Saturn (index 5)
-    8, // Ashlesha -> Mercury (index 6)
-    0, // Magha -> Ketu
-    1, // Purva Phalguni -> Venus
-    2, // Uttara Phalguni -> Sun
-    3, // Hasta -> Moon
-    4, // Chitra -> Mars
-    5, // Swati -> Rahu
-    6, // Vishakha -> Jupiter
-    7, // Anuradha -> Saturn
-    8, // Jyeshtha -> Mercury
-    0, // Mula -> Ketu
-    1, // Purva Ashadha -> Venus
-    2, // Uttara Ashadha -> Sun
-    3, // Shravana -> Moon
-    4, // Dhanishta -> Mars
-    5, // Shatabhisha -> Rahu
-    6, // Purva Bhadrapada -> Jupiter
-    7, // Uttara Bhadrapada -> Saturn
-    8, // Revati -> Mercury
   ];
 
   /// Nakshatra dasha lord indices (which _vimshottariPlanets index each nakshatra starts from)
@@ -106,12 +76,33 @@ class DashaService {
   ];
 
   static const List<String> _nakshatraNames = [
-    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira',
-    'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha',
-    'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati',
-    'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha',
-    'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha',
-    'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati',
+    'Ashwini',
+    'Bharani',
+    'Krittika',
+    'Rohini',
+    'Mrigashira',
+    'Ardra',
+    'Punarvasu',
+    'Pushya',
+    'Ashlesha',
+    'Magha',
+    'Purva Phalguni',
+    'Uttara Phalguni',
+    'Hasta',
+    'Chitra',
+    'Swati',
+    'Vishakha',
+    'Anuradha',
+    'Jyeshtha',
+    'Mula',
+    'Purva Ashadha',
+    'Uttara Ashadha',
+    'Shravana',
+    'Dhanishta',
+    'Shatabhisha',
+    'Purva Bhadrapada',
+    'Uttara Bhadrapada',
+    'Revati',
   ];
 
   /// Calculates Vimshottari Dasha from birth details.
@@ -129,7 +120,7 @@ class DashaService {
     int? birthTimeUncertainty,
   }) {
     // Calculate nakshatra and pada from Moon longitude
-    final nakshatraWidth = 360.0 / 27; // 13.333... degrees
+    const nakshatraWidth = 360.0 / 27; // 13.333... degrees
     final nakshatraIndex = (moonLongitude / nakshatraWidth).floor() % 27;
     final positionInNakshatra = moonLongitude % nakshatraWidth;
     final pada = (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1;
@@ -150,7 +141,8 @@ class DashaService {
     // Generate precision warning if applicable
     String? precisionWarning;
     if (birthTimeUncertainty != null && birthTimeUncertainty > 5) {
-      precisionWarning = 'Birth time uncertainty of $birthTimeUncertainty minutes may affect dasha accuracy. '
+      precisionWarning =
+          'Birth time uncertainty of $birthTimeUncertainty minutes may affect dasha accuracy. '
           'Moon moves approximately 0.5° per hour, which can shift nakshatra boundaries.';
     }
 
@@ -324,7 +316,7 @@ class DashaService {
     int? birthTimeUncertainty,
   }) {
     // Calculate nakshatra from Moon longitude
-    final nakshatraWidth = 360.0 / 27;
+    const nakshatraWidth = 360.0 / 27;
     final nakshatraIndex = (moonLongitude / nakshatraWidth).floor() % 27;
     final positionInNakshatra = moonLongitude % nakshatraWidth;
     final pada = (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1;
@@ -343,7 +335,8 @@ class DashaService {
     // Generate precision warning
     String? precisionWarning;
     if (birthTimeUncertainty != null && birthTimeUncertainty > 5) {
-      precisionWarning = 'Birth time uncertainty of $birthTimeUncertainty minutes may affect dasha accuracy.';
+      precisionWarning =
+          'Birth time uncertainty of $birthTimeUncertainty minutes may affect dasha accuracy.';
     }
 
     // Calculate all mahadashas
@@ -505,16 +498,16 @@ class DashaService {
   /// [targetDate] - Date to find the current period for
   ///
   /// Returns list of active periods (mahadasha, antardasha, pratyantardasha).
-  List<DashaPeriod> getCurrentPeriods(DashaResult dashaResult, DateTime targetDate) {
+  List<DashaPeriod> getCurrentPeriods(
+      DashaResult dashaResult, DateTime targetDate) {
     return dashaResult.getActivePeriodsAt(targetDate);
   }
 }
 
 /// Internal helper class for Vimshottari planet info.
 class _VimshottariPlanetInfo {
+  const _VimshottariPlanetInfo(this.planet, this.name, this.years);
   final Planet planet;
   final String name;
   final double years;
-
-  const _VimshottariPlanetInfo(this.planet, this.name, this.years);
 }

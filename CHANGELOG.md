@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-05
+
+### Added
+
+- **Panchanga Module**
+  - Tithi, Yoga, Karana, and Vara calculations
+  - High-precision sunrise and sunset times using Swiss Ephemeris
+- **Ashtakavarga System**
+  - Bhinnashtakavarga (BAV) for all planets
+  - Sarvashtakavarga (SAV) calculation
+  - Ashtakavarga-based transit strength analysis
+- **KP System (Krishnamurti Paddhati)**
+  - Support for KP-specific ayanamsas (New VP291, Khullar)
+  - Sign, Star, Sub-Lord, and Sub-Sub-Lord calculations
+  - House and planet significators
+- **Special Transits**
+  - Sade Sati (Saturn's 7.5 year transit) status and phase analysis
+  - Dhaiya (Saturn's 2.5 year transit/Panoti) analysis
+  - Panchak detection and precautions
+- **Muhurta & Auspicious Timings**
+  - Hourly Hora Lord calculation
+  - Daytime and Nighttime Choghadiya periods
+  - Inauspicious periods: Rahukalam, Gulikalam, and Yamagandam
+  - Activity-based Muhurta filtering
+
+### Improved
+
+- **Ephemeris Service**: Enhanced support for rise/set transitions and topocentric corrections.
+- **Vedic Chart**: Improved planet data model to support extended Vedic properties.
+
 ## [1.1.0] - 2026-02-04
 
 ### Added

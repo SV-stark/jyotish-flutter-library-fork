@@ -48,11 +48,11 @@ enum DivisionalChartType {
   /// D60 - Shashtiamsa (Past Life/Karma)
   d60('D60', 'Shashtiamsa', 'Past Life', 60);
 
+  const DivisionalChartType(
+      this.code, this.name, this.significance, this.divisions);
+
   final String code;
   final String name;
   final String significance;
   final int divisions;
-
-  const DivisionalChartType(
-      this.code, this.name, this.significance, this.divisions);
 }

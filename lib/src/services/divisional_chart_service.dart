@@ -1,7 +1,7 @@
+import '../models/divisional_chart_type.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
 import '../models/vedic_chart.dart';
-import '../models/divisional_chart_type.dart';
 
 /// Service for calculating Divisional Charts (Varga).
 class DivisionalChartService {

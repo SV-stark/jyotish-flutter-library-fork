@@ -8,13 +8,13 @@ enum DashaType {
   /// Yogini Dasha - 36 year cycle, uses 8 yoginis
   yogini('Yogini', 36);
 
+  const DashaType(this.displayName, this.totalYears);
+
   /// Display name of the dasha system
   final String displayName;
 
   /// Total cycle length in years
   final int totalYears;
-
-  const DashaType(this.displayName, this.totalYears);
 
   @override
   String toString() => displayName;
@@ -25,6 +25,17 @@ enum DashaType {
 /// Dasha periods are planetary periods in Vedic astrology that indicate
 /// which planet's influence is dominant during that time.
 class DashaPeriod {
+  /// Creates a dasha period.
+  const DashaPeriod({
+    required this.lord,
+    required this.startDate,
+    required this.endDate,
+    required this.duration,
+    required this.level,
+    this.subPeriods = const [],
+    this.parent,
+  });
+
   /// The ruling planet (lord) of this dasha period
   final Planet lord;
 
@@ -68,17 +79,6 @@ class DashaPeriod {
         return 'Level $level';
     }
   }
-
-  /// Creates a dasha period.
-  const DashaPeriod({
-    required this.lord,
-    required this.startDate,
-    required this.endDate,
-    required this.duration,
-    required this.level,
-    this.subPeriods = const [],
-    this.parent,
-  });
 
   /// Duration in years (approximate)
   double get durationYears => duration.inDays / 365.25;
@@ -162,6 +162,18 @@ class DashaPeriod {
 /// Contains the full dasha sequence from birth, current periods,
 /// and methods to query periods at any date.
 class DashaResult {
+  /// Creates a dasha result.
+  const DashaResult({
+    required this.type,
+    required this.birthDateTime,
+    required this.moonLongitude,
+    required this.birthNakshatra,
+    required this.birthPada,
+    required this.balanceOfFirstDasha,
+    required this.allMahadashas,
+    this.precisionWarning,
+  });
+
   /// Type of dasha system used
   final DashaType type;
 
@@ -185,18 +197,6 @@ class DashaResult {
 
   /// Calculation precision warning (if birth time uncertain)
   final String? precisionWarning;
-
-  /// Creates a dasha result.
-  const DashaResult({
-    required this.type,
-    required this.birthDateTime,
-    required this.moonLongitude,
-    required this.birthNakshatra,
-    required this.birthPada,
-    required this.balanceOfFirstDasha,
-    required this.allMahadashas,
-    this.precisionWarning,
-  });
 
   /// Gets the current mahadasha at a given date
   DashaPeriod? getMahadashaAt(DateTime date) {
@@ -256,7 +256,8 @@ class DashaResult {
   DashaPeriod? get currentAntardasha => getAndardashaAt(DateTime.now());
 
   /// Gets the current pratyantardasha (convenience for current time)
-  DashaPeriod? get currentPratyantardasha => getPratyantardashaAt(DateTime.now());
+  DashaPeriod? get currentPratyantardasha =>
+      getPratyantardashaAt(DateTime.now());
 
   @override
   String toString() =>
@@ -289,6 +290,8 @@ enum Yogini {
   siddha(Planet.venus, 'Siddha', 7),
   sankata(Planet.meanNode, 'Sankata', 8);
 
+  const Yogini(this.planet, this.name, this.years);
+
   /// The associated planet
   final Planet planet;
 
@@ -297,8 +300,6 @@ enum Yogini {
 
   /// Duration in years
   final int years;
-
-  const Yogini(this.planet, this.name, this.years);
 
   @override
   String toString() => name;
