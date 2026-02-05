@@ -150,10 +150,10 @@ void main() {
       );
     }
 
-    test('D249 - Aries (Odd Sign) at 0.0 (Part 0) starts from Aries', () {
-      // Aries is index 0. Degree 0.0 -> Part 0.
+    test('D249 - Aries (Odd Sign) at 0.12 (Part 0) starts from Aries', () {
+      // Aries is index 0. Degree ~0.12 (30/249) -> Part 0.
       // Rule (Odd): signIndex (0) + part (0) = 0 (Aries)
-      final chart = createMockChart(0.0, signIndex: 0);
+      final chart = createMockChart(30 / 249, signIndex: 0);
       final d249 = jyotish.getDivisionalChart(
           rashiChart: chart, type: DivisionalChartType.d249);
 
@@ -185,20 +185,18 @@ void main() {
     });
 
     test(
-        'D249 - Taurus (Even Sign) at 0.0 (Part 0) starts from 9th sign (Capricorn)',
+        'D249 - Taurus (Even Sign) at 0.12 (Part 0) starts from 9th sign (Capricorn)',
         () {
-      // Taurus is index 1. Degree 0.0 -> Part 0.
+      // Taurus is index 1. Degree ~0.12 (30/249) -> Part 0.
       // Rule (Even): signIndex (1) + 8 (9th from self) + part (0) = 9 (Capricorn)
-      final chart = createMockChart(0.0, signIndex: 1);
+      final chart = createMockChart(30 / 249, signIndex: 1);
       final d249 = jyotish.getDivisionalChart(
           rashiChart: chart, type: DivisionalChartType.d249);
 
       expect(d249.planets[Planet.sun]!.zodiacSign, 'Capricorn');
     });
 
-    test(
-        'D249 - Taurus (Even Sign) at 15° (Part 124) maps correctly',
-        () {
+    test('D249 - Taurus (Even Sign) at 15° (Part 124) maps correctly', () {
       // Taurus is index 1. Degree 15 -> Part 124.
       // Rule (Even): (1 + 8 + 124) % 12 = 133 % 12 = 1 (Taurus)
       final chart = createMockChart(15.0, signIndex: 1);
@@ -208,8 +206,7 @@ void main() {
       expect(d249.planets[Planet.sun]!.zodiacSign, 'Taurus');
     });
 
-    test(
-        'D249 - Taurus (Even Sign) at 29.88° (Part 248) maps to Sagittarius',
+    test('D249 - Taurus (Even Sign) at 29.88° (Part 248) maps to Sagittarius',
         () {
       // Taurus is index 1. Degree 29.88 -> Part 248.
       // Rule (Even): (1 + 8 + 248) % 12 = 257 % 12 = 5 (Virgo)
@@ -223,19 +220,19 @@ void main() {
 
     test('D249 - Gemini (Odd Sign) at various degrees maps correctly', () {
       // Gemini is index 2 (odd sign)
-      // At 0.0 degrees (Part 0): (2 + 0) % 12 = 2 (Gemini)
-      final chart1 = createMockChart(0.0, signIndex: 2);
+      // At 0.12 degrees (Part 0): (2 + 0) % 12 = 2 (Gemini)
+      final chart1 = createMockChart(30 / 249, signIndex: 2);
       final d249_1 = jyotish.getDivisionalChart(
           rashiChart: chart1, type: DivisionalChartType.d249);
       expect(d249_1.planets[Planet.sun]!.zodiacSign, 'Gemini');
     });
 
     test(
-        'D249 - Cancer (Even Sign) at 0.0 (Part 0) starts from 9th sign (Pisces)',
+        'D249 - Cancer (Even Sign) at 0.12 (Part 0) starts from 9th sign (Pisces)',
         () {
-      // Cancer is index 3. Degree 0.0 -> Part 0.
+      // Cancer is index 3. Degree ~0.12 (30/249) -> Part 0.
       // Rule (Even): signIndex (3) + 8 + part (0) = 11 (Pisces)
-      final chart = createMockChart(0.0, signIndex: 3);
+      final chart = createMockChart(30 / 249, signIndex: 3);
       final d249 = jyotish.getDivisionalChart(
           rashiChart: chart, type: DivisionalChartType.d249);
 
@@ -244,14 +241,15 @@ void main() {
 
     test('D249 calculation validates subdivision size', () {
       // Each subdivision should be 30/249 degrees
-      final subdivisionSize = 30.0 / 249.0;
+      const subdivisionSize = 30.0 / 249.0;
       expect(subdivisionSize, closeTo(0.12048, 0.00001));
-      
+
       // Total degrees in sign should be covered by 249 parts
       expect(subdivisionSize * 249, closeTo(30.0, 0.0001));
     });
 
-    test('D249 - Multiple planets in same Rashi sign get different D249 signs', () {
+    test('D249 - Multiple planets in same Rashi sign get different D249 signs',
+        () {
       // In D249, different degrees in the same sign should map to different D249 signs
       final houses = HouseSystem(
         system: 'Whole Sign',
