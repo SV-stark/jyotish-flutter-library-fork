@@ -6,11 +6,12 @@ import 'models/dasha.dart';
 import 'models/divisional_chart_type.dart';
 import 'models/geographic_location.dart';
 import 'models/kp_calculations.dart';
+import 'models/masa.dart';
 import 'models/muhurta.dart';
+import 'models/nakshatra.dart';
 import 'models/panchanga.dart';
 import 'models/planet.dart';
 import 'models/planet_position.dart';
-import 'models/rashi.dart';
 import 'models/relationship.dart';
 import 'models/special_transits.dart';
 import 'models/transit.dart';
@@ -21,6 +22,7 @@ import 'services/dasha_service.dart';
 import 'services/divisional_chart_service.dart';
 import 'services/ephemeris_service.dart';
 import 'services/kp_service.dart';
+import 'services/masa_service.dart';
 import 'services/muhurta_service.dart';
 import 'services/panchanga_service.dart';
 import 'services/shadbala_service.dart';
@@ -74,6 +76,7 @@ class Jyotish {
   SpecialTransitService? _specialTransitService;
   MuhurtaService? _muhurtaService;
   ShadbalaService? _shadbalaService;
+  MasaService? _masaService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -102,6 +105,7 @@ class Jyotish {
       _specialTransitService = SpecialTransitService(_ephemerisService!);
       _muhurtaService = MuhurtaService();
       _shadbalaService = ShadbalaService();
+      _masaService = MasaService(_ephemerisService!);
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -239,6 +243,7 @@ class Jyotish {
     required GeographicLocation location,
     String houseSystem = 'W',
     bool includeOuterPlanets = false,
+    CalculationFlags? flags,
   }) async {
     _ensureInitialized();
 
@@ -248,6 +253,7 @@ class Jyotish {
         location: location,
         houseSystem: houseSystem,
         includeOuterPlanets: includeOuterPlanets,
+        flags: flags,
       );
     } catch (e) {
       throw JyotishException(
@@ -711,10 +717,25 @@ class Jyotish {
     }
   }
 
-  /// Gets only the Vara (weekday lord) for a specific date.
-  VaraInfo getVara(DateTime dateTime) {
+  /// Gets the Vara (weekday lord) for a specific date and location.
+  Future<VaraInfo> getVara({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
     _ensureInitialized();
-    return _panchangaService!.getVara(dateTime);
+    return await _panchangaService!.getVara(dateTime, location);
+  }
+
+  /// Finds the exact end time of the current Tithi.
+  Future<DateTime> getTithiEndTime({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+    return await _panchangaService!.getTithiEndTime(
+      dateTime: dateTime,
+      location: location,
+    );
   }
 
   /// Calculates high-precision sunrise and sunset times.
@@ -1180,6 +1201,204 @@ class Jyotish {
     return _shadbalaService!.calculateShadbala(chart);
   }
 
-  /// Gets whether the library has been initialized.
+  // ============================================================
+  // LUNAR MONTH (MASA) CALCULATIONS
+  // ============================================================
+
+  /// Calculates the lunar month (Masa) for a given date and location.
+  ///
+  /// Supports both Amanta (month starts from Amavasya/New Moon) and
+  /// Purnimanta (month starts from Purnima/Full Moon) systems.
+  ///
+  /// [dateTime] - The date and time for calculation
+  /// [location] - The geographic location
+  /// [type] - The lunar month system to use (default: Amanta)
+  ///
+  /// Returns [MasaInfo] with month details including:
+  /// - Month name (Chaitra, Vaishakha, etc.)
+  /// - Month number (1-12)
+  /// - System type (Amanta/Purnimanta)
+  /// - Adhika Masa status (extra lunar month)
+  ///
+  /// Example:
+  /// ```dart
+  /// final masa = await jyotish.getMasa(
+  ///   dateTime: DateTime.now(),
+  ///   location: location,
+  ///   type: MasaType.amanta,
+  /// );
+  /// print('Current month: ${masa.displayName}');
+  /// ```
+  Future<MasaInfo> getMasa({
+    required DateTime dateTime,
+    required GeographicLocation location,
+    MasaType type = MasaType.amanta,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _masaService!.calculateMasa(
+        dateTime: dateTime,
+        location: location,
+        type: type,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to calculate Masa: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Calculates lunar month using Amanta system.
+  ///
+  /// Amanta: The lunar month starts from Amavasya (New Moon).
+  /// Used in Southern India, Gujarat, and some other regions.
+  Future<MasaInfo> getAmantaMasa({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    return getMasa(dateTime: dateTime, location: location, type: MasaType.amanta);
+  }
+
+  /// Calculates lunar month using Purnimanta system.
+  ///
+  /// Purnimanta: The lunar month starts from Purnima (Full Moon).
+  /// Used in Northern India.
+  Future<MasaInfo> getPurnimantaMasa({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    return getMasa(dateTime: dateTime, location: location, type: MasaType.purnimanta);
+  }
+
+  /// Gets the Samvatsara (60-year Jupiter cycle) name for a given year.
+  ///
+  /// The Samvatsara is based on the 60-year cycle of Jupiter's transit
+  /// through the zodiac.
+  ///
+  /// [dateTime] - The date to calculate for
+  /// [location] - Geographic location
+  ///
+  /// Returns the Samvatsara name (e.g., 'Prabhava', 'Vibhava', etc.)
+  Future<String> getSamvatsara({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _masaService!.getSamvatsara(
+        dateTime: dateTime,
+        location: location,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to get Samvatsara: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Gets a list of all lunar months for a given year.
+  ///
+  /// Useful for generating a lunar calendar or displaying month transitions.
+  ///
+  /// [year] - The Gregorian year
+  /// [location] - Geographic location
+  /// [type] - Lunar month system to use
+  Future<List<MasaInfo>> getMasaListForYear({
+    required int year,
+    required GeographicLocation location,
+    MasaType type = MasaType.amanta,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _masaService!.getMasaListForYear(
+        year: year,
+        location: location,
+        type: type,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to get Masa list: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  // ============================================================
+  // ABHIJIT NAKSHATRA
+  // ============================================================
+
+  /// Gets Nakshatra information including Abhijit (28th Nakshatra).
+  ///
+  /// Abhijit is the intercalary 28th nakshatra that spans from
+  /// 6°40' to 10°53'20" in Capricorn (Uttara Ashadha).
+  /// It's considered highly auspicious and ruled by Lord Brahma.
+  ///
+  /// [dateTime] - The date and time for calculation
+  /// [location] - Geographic location
+  ///
+  /// Returns [NakshatraInfo] with:
+  /// - Nakshatra name (0-27 for standard, 28 for Abhijit)
+  /// - Ruling planet
+  /// - Pada (1-4)
+  /// - Whether it's Abhijit
+  /// - Abhijit portion (0.0-1.0 if in Abhijit)
+  ///
+  /// Example:
+  /// ```dart
+  /// final nakshatra = await jyotish.getNakshatraWithAbhijit(
+  ///   dateTime: DateTime.now(),
+  ///   location: location,
+  /// );
+  /// print('Nakshatra: ${nakshatra.name}');
+  /// if (nakshatra.isAbhijit) {
+  ///   print('In auspicious Abhijit Nakshatra!');
+  /// }
+  /// ```
+  Future<NakshatraInfo> getNakshatraWithAbhijit({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _masaService!.getNakshatraWithAbhijit(
+        dateTime: dateTime,
+        location: location,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to get Nakshatra with Abhijit: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Checks if a given longitude is within Abhijit Nakshatra.
+  ///
+  /// Abhijit spans from 276°40' to 286°40' (6°40' to 10°40' Capricorn).
+  ///
+  /// [longitude] - The longitude in degrees (0-360)
+  ///
+  /// Returns true if the longitude falls within Abhijit's range.
+  bool isInAbhijitNakshatra(double longitude) {
+    var normalized = longitude % 360;
+    if (normalized < 0) normalized += 360;
+    return normalized >= NakshatraInfo.abhijitStart &&
+        normalized < NakshatraInfo.abhijitEnd;
+  }
+
+  /// Gets the Abhijit Nakshatra boundaries.
+  ///
+  /// Returns a tuple with (startLongitude, endLongitude) in degrees.
+   (double start, double end) getAbhijitBoundaries() {
+    return (NakshatraInfo.abhijitStart, NakshatraInfo.abhijitEnd);
+  }
+  
+  /// Gets whether library has been initialized.
   bool get isInitialized => _isInitialized;
 }

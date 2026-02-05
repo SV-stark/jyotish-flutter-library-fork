@@ -17,15 +17,17 @@ class VedicChartService {
   /// [location] - Birth location
   /// [houseSystem] - House system to use (default: Whole Sign 'W')
   /// [includeOuterPlanets] - Include Uranus, Neptune, Pluto (default: false)
+  /// [flags] - Optional calculation flags (uses default if not provided)
   Future<VedicChart> calculateChart({
     required DateTime dateTime,
     required GeographicLocation location,
     String houseSystem = 'W', // Whole Sign by default
     bool includeOuterPlanets = false,
+    CalculationFlags? flags,
   }) async {
     try {
-      // Use default Lahiri ayanamsa (sidereal is now default)
-      final flags = CalculationFlags.defaultFlags();
+      // Use provided flags or default Lahiri ayanamsa (sidereal is now default)
+      flags ??= CalculationFlags.defaultFlags();
 
       // Calculate Ascendant and house cusps
       final houses = await _calculateHouses(
@@ -50,9 +52,9 @@ class VedicChartService {
         planetPositions[planet] = position;
       }
 
-      // Calculate Rahu (Mean Node)
+      // Calculate Rahu based on node type (Mean Node or True Node)
       final rahuPosition = await _ephemerisService.calculatePlanetPosition(
-        planet: Planet.meanNode,
+        planet: flags.nodeType.planet,
         dateTime: dateTime,
         location: location,
         flags: flags,
@@ -88,7 +90,7 @@ class VedicChartService {
       // Create Vedic info for Rahu
       final rahuHouse = houses.getHouseForLongitude(rahuPosition.longitude);
       final rahuDignity =
-          _calculateDignity(Planet.meanNode, rahuPosition.longitude);
+          _calculateDignity(flags.nodeType.planet, rahuPosition.longitude);
       final rahuInfo = VedicPlanetInfo(
         position: rahuPosition,
         house: rahuHouse,

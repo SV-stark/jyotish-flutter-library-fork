@@ -43,6 +43,12 @@ class PanchangaService {
       flags: flags,
     );
 
+    // Calculate sunrise and sunset (approximate for now)
+    final (sunrise, sunset) = await _calculateSunriseSunset(
+      dateTime: dateTime,
+      location: location,
+    );
+
     // Calculate Tithi
     final tithi = _calculateTithi(sunPos, moonPos);
 
@@ -52,14 +58,8 @@ class PanchangaService {
     // Calculate Karana
     final karana = _calculateKarana(sunPos, moonPos);
 
-    // Calculate Vara
-    final vara = _calculateVara(dateTime);
-
-    // Calculate sunrise and sunset (approximate for now)
-    final (sunrise, sunset) = await _calculateSunriseSunset(
-      dateTime: dateTime,
-      location: location,
-    );
+    // Calculate Vara (Day Lord) using sunrise boundary
+    final vara = _calculateVara(dateTime, sunrise);
 
     return Panchanga(
       dateTime: dateTime,
@@ -184,9 +184,17 @@ class PanchangaService {
   }
 
   /// Calculates the Vara (weekday with planetary lord).
-  VaraInfo _calculateVara(DateTime dateTime) {
+  ///
+  /// In Vedic astrology, the day begins at sunrise.
+  VaraInfo _calculateVara(DateTime dateTime, DateTime sunrise) {
+    // If before sunrise, it belongs to the previous day lord
+    var checkDate = dateTime;
+    if (dateTime.isBefore(sunrise)) {
+      checkDate = dateTime.subtract(const Duration(days: 1));
+    }
+
     // Get weekday (0 = Sunday, 6 = Saturday)
-    final weekday = dateTime.weekday % 7;
+    final weekday = checkDate.weekday % 7;
 
     return VaraInfo(
       weekday: weekday,
@@ -377,8 +385,82 @@ class PanchangaService {
     return _calculateKarana(sunPos, moonPos);
   }
 
-  /// Gets the Vara (weekday lord) for a specific date.
-  VaraInfo getVara(DateTime dateTime) {
-    return _calculateVara(dateTime);
+  /// Gets only the Vara (weekday lord) for a specific date/location.
+  Future<VaraInfo> getVara(
+    DateTime dateTime,
+    GeographicLocation location,
+  ) async {
+    final (sunrise, _) = await _calculateSunriseSunset(
+      dateTime: dateTime,
+      location: location,
+    );
+    return _calculateVara(dateTime, sunrise);
+  }
+
+  /// Finds the exact end time of the current Tithi.
+  ///
+  /// Searches forward in a 24-hour window from the given [dateTime]
+  /// to find when the lunar elongation crosses the next 12° boundary.
+  Future<DateTime> getTithiEndTime({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    final flags = CalculationFlags.defaultFlags();
+
+    // 1. Calculate current elongation
+    final sunPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: dateTime,
+      location: location,
+      flags: flags,
+    );
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: dateTime,
+      location: location,
+      flags: flags,
+    );
+
+    var currentElongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
+    final currentTithi = (currentElongation / 12.0).floor();
+    final targetElongation = (currentTithi + 1) * 12.0;
+
+    // 2. Binary search for target elongation within the next 24 hours
+    var start = dateTime;
+    var end = dateTime
+        .add(const Duration(hours: 26)); // Slightly more than 24h to be safe
+
+    for (var i = 0; i < 20; i++) {
+      // 20 iterations gives sub-second precision (26h / 2^20)
+      final mid = start.add(end.difference(start) ~/ 2);
+
+      final midSun = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: mid,
+        location: location,
+        flags: flags,
+      );
+      final midMoon = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.moon,
+        dateTime: mid,
+        location: location,
+        flags: flags,
+      );
+
+      var midElongation = (midMoon.longitude - midSun.longitude + 360) % 360;
+
+      // Handle the 0/360 boundary
+      if (targetElongation >= 360 && midElongation < 180) {
+        midElongation += 360;
+      }
+
+      if (midElongation < targetElongation) {
+        start = mid;
+      } else {
+        end = mid;
+      }
+    }
+
+    return start;
   }
 }

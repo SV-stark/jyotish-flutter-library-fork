@@ -206,6 +206,41 @@ final position = await jyotish.getPlanetPosition(
 );
 ```
 
+### Choosing Mean Node vs True Node (Rahu)
+
+By default, the library uses **Mean Node** (Planet.meanNode) for Rahu calculations. However, you can switch to **True Node** for greater precision:
+
+```dart
+// Calculate chart with True Node (modern preference)
+final flags = CalculationFlags.withNodeType(NodeType.trueNode);
+
+final chart = await jyotish.calculateVedicChart(
+  dateTime: DateTime(1990, 5, 15, 14, 30),
+  location: location,
+  flags: flags,
+);
+
+print('Rahu Position: ${chart.rahu.position.formattedPosition}');
+print('Rahu Nakshatra: ${chart.rahu.position.nakshatra}');
+
+// Or use NodeType directly with any API that accepts flags
+final customFlags = CalculationFlags(
+  siderealMode: SiderealMode.krishnamurti,
+  nodeType: NodeType.trueNode,
+);
+
+// Get position of True Node directly
+final trueNodePos = await jyotish.getPlanetPosition(
+  planet: Planet.trueNode,
+  dateTime: DateTime.now(),
+  location: location,
+);
+```
+
+**When to use each:**
+- **Mean Node (default)**: Traditional Vedic astrology standard, smoother motion
+- **True Node**: Modern preference, actual position with retrograde motion variations
+
 ### Vedic Astrology Chart
 
 ```dart
@@ -369,8 +404,16 @@ final panchanga = await jyotish.calculatePanchanga(
 print('Tithi: ${panchanga.tithi.name}');
 print('Yoga: ${panchanga.yoga.name}');
 print('Karana: ${panchanga.karana.name}');
-print('Vara: ${panchanga.vara}');
+print('Vara: ${panchanga.vara.name}'); // Weekday name (e.g., "Monday")
+print('Day Lord: ${panchanga.vara.rulingPlanet.displayName}'); // Planetary lord
 print('Sunrise: ${panchanga.sunrise}');
+
+// New: Find exact Tithi end time
+final tithiEnd = await jyotish.getTithiEndTime(
+  dateTime: DateTime.now(),
+  location: location,
+);
+print('Current Tithi ends at: $tithiEnd');
 ```
 
 ### Ashtakavarga analysis
@@ -446,6 +489,79 @@ if (muhurta.isCurrentlyInauspicious) {
 final bestTimes = jyotish.findBestMuhurta(muhurta: muhurta, activity: 'marriage');
 ```
 
+### Abhijit Nakshatra Support
+
+```dart
+// Get Nakshatra with Abhijit detection
+final nakshatra = await jyotish.getNakshatraWithAbhijit(
+  dateTime: DateTime.now(),
+  location: location,
+);
+print('Nakshatra: ${nakshatra.name} #${nakshatra.number}');
+print('Ruler: ${nakshatra.rulingPlanet.displayName}');
+print('Pada: ${nakshatra.pada}');
+
+if (nakshatra.isAbhijit) {
+  print('In auspicious Abhijit Nakshatra! (Portion: ${nakshatra.abhijitPortion.toStringAsFixed(2)})');
+}
+
+// Check if longitude is in Abhijit
+final longitude = 280.0; // 280 degrees = 10° Capricorn
+final isAbhijit = jyotish.isInAbhijitNakshatra(longitude);
+print('Is in Abhijit: $isAbhijit');
+
+// Get Abhijit boundaries
+final (start, end) = jyotish.getAbhijitBoundaries();
+print('Abhijit spans from ${start.toStringAsFixed(2)}° to ${end.toStringAsFixed(2)}°');
+```
+
+### Lunar Month (Masa) Calculations
+
+```dart
+// Get lunar month with Amanta system (Southern India, Gujarat)
+final amantaMasa = await jyotish.getAmantaMasa(
+  dateTime: DateTime.now(),
+  location: location,
+);
+print('Month (Amanta): ${amantaMasa.displayName}');
+print('Month Number: ${amantaMasa.monthNumber}');
+print('Sun Longitude: ${amantaMasa.sunLongitude.toStringAsFixed(2)}°');
+if (amantaMasa.adhikaType == AdhikaMasaType.adhika) {
+  print('Adhika (Extra) Masa!');
+}
+
+// Get lunar month with Purnimanta system (Northern India)
+final purnimantaMasa = await jyotish.getPurnimantaMasa(
+  dateTime: DateTime.now(),
+  location: location,
+);
+print('Month (Purnimanta): ${purnimantaMasa.displayName}');
+
+// Get month with explicit type
+final masa = await jyotish.getMasa(
+  dateTime: DateTime.now(),
+  location: location,
+  type: MasaType.amanta, // or MasaType.purnimanta
+);
+
+// Get Samvatsara (60-year Jupiter cycle)
+final samvatsara = await jyotish.getSamvatsara(
+  dateTime: DateTime.now(),
+  location: location,
+);
+print('Samvatsara: $samvatsara');
+
+// Get list of all months for a year
+final months = await jyotish.getMasaListForYear(
+  year: 2024,
+  location: location,
+  type: MasaType.amanta,
+);
+for (final masa in months) {
+  print('${masa.month.sanskrit}: ${masa.displayName}');
+}
+```
+
 **Vedic Features:**
 
 - ✨ Sidereal zodiac with Lahiri ayanamsa (authentic Vedic calculations)
@@ -487,7 +603,21 @@ The main entry point for the library.
 - `getPlanetPosition(...)`: Calculate a single planet's position
 - `getMultiplePlanetPositions(...)`: Calculate multiple planets
 - `getAllPlanetPositions(...)`: Calculate all major planets
+- `getVara(...)`: Get Vedic Vara (Day Lord) - **Async**
+- `getTithiEndTime(...)`: Find precise Tithi end time - **New**
 - `dispose()`: Clean up resources
+
+**Abhijit Nakshatra Methods:**
+- `getNakshatraWithAbhijit(...)`: Get nakshatra with 28th Abhijit support
+- `isInAbhijitNakshatra(...)`: Check if longitude is in Abhijit (6°40' to 10°53'20" Capricorn)
+- `getAbhijitBoundaries()`: Get start/end longitudes of Abhijit
+
+**Lunar Month (Masa) Methods:**
+- `getMasa(...)`: Calculate lunar month with Amanta/Purnimanta support
+- `getAmantaMasa(...)`: Get lunar month using Amanta system (starts from New Moon)
+- `getPurnimantaMasa(...)`: Get lunar month using Purnimanta system (starts from Full Moon)
+- `getSamvatsara(...)`: Get 60-year Jupiter cycle (Samvatsara) name
+- `getMasaListForYear(...)`: Get list of all lunar months for a year
 
 #### `Planet` (enum)
 
@@ -557,6 +687,101 @@ Popular modes:
 - `SiderealMode.krishnamurti`: KP astrology
 - `SiderealMode.raman`: Raman ayanamsa
 - 40+ other modes available
+
+#### `NakshatraInfo`
+
+Represents nakshatra information including Abhijit (28th nakshatra).
+
+Properties:
+- `number`: Nakshatra number (1-27 for standard, 28 for Abhijit)
+- `name`: Nakshatra name (Sanskrit)
+- `rulingPlanet`: Planet ruling the nakshatra
+- `longitude`: Normalized longitude (0-360°)
+- `pada`: Pada or quarter (1-4)
+- `isAbhijit`: Whether currently in Abhijit nakshatra
+- `abhijitPortion`: Portion through Abhijit (0.0-1.0, 0.0 if not in Abhijit)
+
+Static Properties:
+- `nakshatraNames`: List of all 28 nakshatra names
+- `nakshatraLords`: List of ruling planets for each nakshatra
+- `abhijitStart`: Start longitude of Abhijit (276.6666667°)
+- `abhijitEnd`: End longitude of Abhijit (286.6666667°)
+- `nakshatraDashaLords`: Map of nakshatra to Vimshottari dasha lords
+
+#### `MasaInfo`
+
+Represents lunar month (Masa) information.
+
+Properties:
+- `month`: Lunar month enum (Chaitra through Phalguna)
+- `monthNumber`: Month number (1-12)
+- `type`: MasaType (amanta or purnimanta)
+- `adhikaType`: AdhikaMasaType (none, adhika, nija)
+- `sunLongitude`: Sun's longitude in degrees
+- `tithiInfo`: Current Tithi information
+- `year`: Optional Samvatsara year number
+- `isLunarLeapYear`: Whether it's a lunar leap year
+
+Methods:
+- `displayName`: Full display name including Adhika prefix if applicable
+
+#### `MasaType` (enum)
+
+Lunar month system types.
+- `MasaType.amanta`: Month starts from Amavasya (New Moon) - Southern India, Gujarat
+- `MasaType.purnimanta`: Month starts from Purnima (Full Moon) - Northern India
+
+#### `LunarMonth` (enum)
+
+The 12 lunar months in the Indian calendar.
+- `LunarMonth.chaitra` through `LunarMonth.phalguna`
+- Each month has `sanskrit` and `transliteration` properties
+
+#### `AdhikaMasaType` (enum)
+
+Adhika (extra) Masa status.
+- `AdhikaMasaType.none`: Regular lunar month
+- `AdhikaMasaType.adhika`: Extra leap month
+- `AdhikaMasaType.nija`: Regular month in a year with Adhika
+
+#### `Samvatsara`
+
+Represents the 60-year Jupiter cycle.
+
+Static Methods:
+- `getSamvatsaraName(int yearIndex)`: Get Samvatsara name from year index
+- `samvatsaraNames`: List of all 60 Samvatsara names (Prabhava to Akshaya)
+
+#### `NodeType` (enum)
+
+Lunar node type for Rahu/Ketu calculations.
+
+- `NodeType.meanNode` - Uses Mean Node (default). This is the average position of Moon's orbit crossing. Preferred by traditional Vedic astrologers.
+- `NodeType.trueNode` - Uses True Node. This is the actual position at the exact moment. Preferred by modern Vedic astrologers for greater precision.
+
+Usage:
+```dart
+// Use True Node instead of Mean Node (default)
+final flags = CalculationFlags.withNodeType(NodeType.trueNode);
+
+final chart = await jyotish.calculateVedicChart(
+  dateTime: DateTime.now(),
+  location: location,
+  flags: flags,
+);
+
+// Calculate specific planet with True Node
+final rahuPosition = await jyotish.getPlanetPosition(
+  planet: Planet.trueNode,
+  dateTime: DateTime.now(),
+  location: location,
+);
+```
+
+Properties:
+- `description`: Human-readable description
+- `technicalDescription`: Technical explanation
+- `planet`: Returns the appropriate Planet enum (`Planet.meanNode` or `Planet.trueNode`)
 
 ## Error Handling
 
@@ -670,6 +895,8 @@ This fork was created to bridge the gap between low-level astronomical calculati
 
 ### 2. Comprehensive Panchanga
 - A complete Indian lunar calendar module providing **Tithi, Yoga, Karana, Vara**, and precise solar times (Sunrise/Sunset/Noon).
+- **Corrected Vara**: Day lord now respects the **Sunrise boundary** as per traditional Vedic standards (births between midnight and sunrise use the previous day's lord).
+- **Tithi Analysis**: New high-precision API for finding exact Tithi end times.
 
 ### 3. Strength & Relationship Systems
 - **Shadbala**: Implementation of the complete 6-fold planetary strength system (Shadbala) including positional, directional, temporal, and motional strengths.
@@ -683,6 +910,20 @@ This fork was created to bridge the gap between low-level astronomical calculati
 ### 5. Transit & Muhurta Analysis
 - **Special Transits**: Real-time detection of Sade Sati, Dhaiya, and Panchak.
 - **Muhurta Engine**: Daily Hora, Choghadiya, and inauspicious period (Rahu Kalam/Yamagandam) tracking.
+
+### 6. Lunar Month (Masa) & Abhijit Nakshatra
+- **Abhijit Nakshatra**: Full support for the 28th intercalary nakshatra (6°40' to 10°53'20" in Capricorn), including position checking and nakshatra calculation with Abhijit detection.
+- **Lunar Month (Masa) Calculations**: Complete implementation of both Amanta and Purnimanta lunar month systems:
+  - **Amanta (Amavasyanta)**: Month starts from Amavasya (New Moon). Used in Southern India, Gujarat, and other regions.
+  - **Purnimanta (Suklanta)**: Month starts from Purnima (Full Moon). Used in Northern India.
+- **Adhika Masa Detection**: Automatic detection of extra lunar months (leap months) in the lunar calendar.
+- **Samvatsara**: Support for the 60-year Jupiter cycle (Samvatsara names from Prabhava to Akshaya).
+
+### 7. Mean Node vs True Node (Rahu) Configuration
+- **Configurable Node Type**: Full support for switching between Mean Node (traditional Vedic standard) and True Node (modern preference) for Rahu/Ketu calculations.
+- **Global Setting via CalculationFlags**: Use `NodeType.meanNode` (default) for traditional calculations or `NodeType.trueNode` for greater precision with actual node positions.
+- **Per-Call Flexibility**: Calculate specific charts with different node types without affecting global defaults.
+- **Backward Compatible**: Mean Node remains the default to maintain compatibility with existing code and traditional astrologers.
 
 ---
 

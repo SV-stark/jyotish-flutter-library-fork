@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive test suite with 10+ test cases
   - API: `DivisionalChartType.d249`
 
+- **Corrected Vara (Weekday) Calculation**
+  - Updated `PanchangaService` to use Sunrise as the day boundary instead of midnight
+  - Births between midnight and sunrise now correctly resolve to the previous day's planet lord
+  - API: `jyotish.getVara()` is now asynchronous and requires `location`
+
+- **Tithi End-Time Analysis**
+  - New API for finding exact moments when a Tithi ends
+  - Uses high-precision binary search with sub-second accuracy
+  - API: `jyotish.getTithiEndTime()`
+
 - **Shadbala (Six-fold Planetary Strength)**
   - Complete implementation of all 6 strength types:
     - Sthana Bala (Positional Strength)

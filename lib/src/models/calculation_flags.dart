@@ -1,4 +1,5 @@
 import '../constants/planet_constants.dart';
+import 'planet.dart';
 
 /// Calculation flags for Swiss Ephemeris.
 ///
@@ -12,12 +13,14 @@ class CalculationFlags {
   /// [siderealMode] - Ayanamsa for sidereal calculations (default: Lahiri)
   /// [useTopocentric] - Use topocentric positions (default: false)
   /// [useEquatorial] - Use equatorial coordinates (default: false)
+  /// [nodeType] - Type of lunar node for Rahu/Ketu (default: meanNode)
   const CalculationFlags({
     this.useSwissEphemeris = true,
     this.calculateSpeed = true,
     this.siderealMode = SiderealMode.lahiri,
     this.useTopocentric = false,
     this.useEquatorial = false,
+    this.nodeType = NodeType.meanNode,
   });
 
   /// Creates default calculation flags (Lahiri sidereal, geocentric, with speed).
@@ -38,6 +41,13 @@ class CalculationFlags {
         useTopocentric: true,
       );
 
+  /// Creates flags with specified node type.
+  ///
+  /// [nodeType] - Type of lunar node (meanNode or trueNode)
+  factory CalculationFlags.withNodeType(NodeType nodeType) => CalculationFlags(
+        nodeType: nodeType,
+      );
+
   /// Use Swiss Ephemeris (high precision)
   final bool useSwissEphemeris;
 
@@ -54,9 +64,17 @@ class CalculationFlags {
   /// Use equatorial coordinates instead of ecliptic
   final bool useEquatorial;
 
+  /// Type of lunar node to use for Rahu/Ketu calculations.
+  ///
+  /// Many traditional Vedic astrologers use Mean Node (default), while
+  /// modern Vedic astrologers often prefer True Node for more accuracy.
+  /// - [NodeType.meanNode]: Uses Mean Node (average position of Moon's orbit crossing)
+  /// - [NodeType.trueNode]: Uses True Node (actual position at exact moment)
+  final NodeType nodeType;
+
   /// Converts flags to Swiss Ephemeris integer flag value.
   /// Note: We always calculate tropical and subtract ayanamsa manually
-  /// because SEFLG_SIDEREAL doesn't work properly in the compiled library.
+  /// because SEFLG_SIDEREAL doesn't work properly in compiled library.
   int toSwissEphFlag() {
     int flag = 0;
 
@@ -89,7 +107,8 @@ class CalculationFlags {
         'speed: $calculateSpeed, '
         'ayanamsa: ${siderealMode.name}, '
         'topocentric: $useTopocentric, '
-        'equatorial: $useEquatorial)';
+        'equatorial: $useEquatorial, '
+        'nodeType: ${nodeType.name})';
   }
 
   /// Creates a copy with optional parameter overrides.
@@ -99,6 +118,7 @@ class CalculationFlags {
     SiderealMode? siderealMode,
     bool? useTopocentric,
     bool? useEquatorial,
+    NodeType? nodeType,
   }) {
     return CalculationFlags(
       useSwissEphemeris: useSwissEphemeris ?? this.useSwissEphemeris,
@@ -106,7 +126,35 @@ class CalculationFlags {
       siderealMode: siderealMode ?? this.siderealMode,
       useTopocentric: useTopocentric ?? this.useTopocentric,
       useEquatorial: useEquatorial ?? this.useEquatorial,
+      nodeType: nodeType ?? this.nodeType,
     );
+  }
+}
+
+/// Lunar node type for Rahu/Ketu calculations.
+///
+/// Many traditional Vedic astrologers use Mean Node, while modern Vedic
+/// astrologers often prefer True Node for more accuracy.
+///
+/// - [meanNode]: Uses Mean Node (average position of Moon's orbit crossing)
+/// - [trueNode]: Uses True Node (actual position at exact moment)
+enum NodeType {
+  meanNode('Mean Node', 'Average lunar node position'),
+  trueNode('True Node', 'Actual lunar node position');
+
+  const NodeType(this.description, this.technicalDescription);
+
+  final String description;
+  final String technicalDescription;
+
+  /// Returns the appropriate Planet constant based on node type.
+  Planet get planet {
+    switch (this) {
+      case NodeType.meanNode:
+        return Planet.meanNode;
+      case NodeType.trueNode:
+        return Planet.trueNode;
+    }
   }
 }
 

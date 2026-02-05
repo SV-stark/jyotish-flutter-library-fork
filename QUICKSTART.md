@@ -171,6 +171,10 @@ position.nakshatraPada     // 1-4
 position.isRetrograde      // true/false
 position.longitudeSpeed    // degrees per day
 position.formattedPosition // "15° Taurus 30'"
+
+// Panchanga access
+panchanga.vara.name        // "Monday"
+panchanga.tithi.name       // "Ekadashi"
 ```
 
 ## Advanced Features
