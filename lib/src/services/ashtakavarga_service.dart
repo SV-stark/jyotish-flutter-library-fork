@@ -243,4 +243,208 @@ class AshtakavargaService {
 
     return details;
   }
+
+  /// Applies Trikona Shodhana (Trine Reduction) to Ashtakavarga.
+  ///
+  /// Trikona Shodhana reduces the bindus in trinal houses (1-5-9, 2-6-10, 3-7-11, 4-8-12)
+  /// according to Parashari rules:
+  /// - If all three signs in a trikona have bindus, keep the minimum
+  /// - If two have bindus, keep the lower one
+  /// - If one has bindus, keep that value
+  /// - If none have bindus, all remain zero
+  Ashtakavarga applyTrikonaShodhana(Ashtakavarga ashtakavarga) {
+    final reducedBhinnashtakavarga = <Planet, Bhinnashtakavarga>{};
+
+    for (final entry in ashtakavarga.bhinnashtakavarga.entries) {
+      final planet = entry.key;
+      final bav = entry.value;
+      final reducedBindus = List<int>.from(bav.bindus);
+
+      // Apply reduction to each trikona
+      for (final trikona in _trikonas) {
+        final bindu1 = bav.bindus[trikona[0]];
+        final bindu2 = bav.bindus[trikona[1]];
+        final bindu3 = bav.bindus[trikona[2]];
+
+        // Find minimum bindus among the three
+        final minBindu = [bindu1, bindu2, bindu3]
+            .where((b) => b > 0)
+            .reduce((a, b) => a < b ? a : b);
+
+        // Apply reduction
+        if (bindu1 > 0) reducedBindus[trikona[0]] = minBindu;
+        if (bindu2 > 0) reducedBindus[trikona[1]] = minBindu;
+        if (bindu3 > 0) reducedBindus[trikona[2]] = minBindu;
+      }
+
+      reducedBhinnashtakavarga[planet] = Bhinnashtakavarga(
+        planet: planet,
+        bindus: reducedBindus,
+        contributions: bav.contributions,
+      );
+    }
+
+    // Recalculate Sarvashtakavarga
+    final sarvashtakavarga = _calculateSarvashtakavarga(reducedBhinnashtakavarga);
+
+    return Ashtakavarga(
+      natalChart: ashtakavarga.natalChart,
+      bhinnashtakavarga: reducedBhinnashtakavarga,
+      sarvashtakavarga: sarvashtakavarga,
+      samudayaAshtakavarga: _calculateSamudayaAshtakavarga(reducedBhinnashtakavarga),
+    );
+  }
+
+  /// Applies Ekadhipati Shodhana (Reduction for Same Lordship).
+  ///
+  /// Ekadhipati Shodhana is applied to signs owned by the same planet
+  /// (e.g., both Gemini and Virgo are owned by Mercury).
+  /// The reduction rules are:
+  /// - For signs with odd foot (Aries, Taurus, Gemini, Libra, Scorpio, Sagittarius):
+  ///   If both have bindus, subtract the smaller from the larger
+  /// - For signs with even foot (Cancer, Leo, Virgo, Capricorn, Aquarius, Pisces):
+  ///   If both have bindus, keep the smaller value
+  Ashtakavarga applyEkadhipatiShodhana(Ashtakavarga ashtakavarga) {
+    final reducedBhinnashtakavarga = <Planet, Bhinnashtakavarga>{};
+
+    for (final entry in ashtakavarga.bhinnashtakavarga.entries) {
+      final planet = entry.key;
+      final bav = entry.value;
+      final reducedBindus = List<int>.from(bav.bindus);
+
+      // Apply reduction to each planet's dual signs
+      for (final signPair in _dualSigns) {
+        final sign1 = signPair[0];
+        final sign2 = signPair[1];
+        final bindu1 = bav.bindus[sign1];
+        final bindu2 = bav.bindus[sign2];
+
+        if (bindu1 > 0 && bindu2 > 0) {
+          // Check if signs are odd or even foot
+          final isOddFoot = _oddFootSigns.contains(sign1);
+
+          if (isOddFoot) {
+            // Odd foot: subtract smaller from larger
+            final diff = (bindu1 - bindu2).abs();
+            reducedBindus[sign1] = diff;
+            reducedBindus[sign2] = diff;
+          } else {
+            // Even foot: keep the smaller
+            final minBindu = bindu1 < bindu2 ? bindu1 : bindu2;
+            reducedBindus[sign1] = minBindu;
+            reducedBindus[sign2] = minBindu;
+          }
+        }
+      }
+
+      reducedBhinnashtakavarga[planet] = Bhinnashtakavarga(
+        planet: planet,
+        bindus: reducedBindus,
+        contributions: bav.contributions,
+      );
+    }
+
+    // Recalculate Sarvashtakavarga
+    final sarvashtakavarga = _calculateSarvashtakavarga(reducedBhinnashtakavarga);
+
+    return Ashtakavarga(
+      natalChart: ashtakavarga.natalChart,
+      bhinnashtakavarga: reducedBhinnashtakavarga,
+      sarvashtakavarga: sarvashtakavarga,
+      samudayaAshtakavarga: _calculateSamudayaAshtakavarga(reducedBhinnashtakavarga),
+    );
+  }
+
+  /// Calculates Pinda (Planetary Strength) from Ashtakavarga.
+  ///
+  /// Pinda is the final strength score calculated from the reduced Ashtakavarga.
+  /// It multiplies the bindus by specific multipliers for each sign.
+  Map<Planet, PindaResult> calculatePinda(Ashtakavarga ashtakavarga) {
+    final pindaResults = <Planet, PindaResult>{};
+
+    for (final entry in ashtakavarga.bhinnashtakavarga.entries) {
+      final planet = entry.key;
+      final bav = entry.value;
+
+      var totalPinda = 0.0;
+      final signPindas = <int, double>{};
+
+      for (var signIndex = 0; signIndex < 12; signIndex++) {
+        final bindus = bav.bindus[signIndex];
+        final multiplier = _pindaMultipliers[signIndex];
+        final pinda = bindus * multiplier;
+
+        signPindas[signIndex] = pinda;
+        totalPinda += pinda;
+      }
+
+      pindaResults[planet] = PindaResult(
+        planet: planet,
+        totalPinda: totalPinda,
+        signPindas: signPindas,
+        averagePinda: totalPinda / 12,
+      );
+    }
+
+    return pindaResults;
+  }
+
+  // Trikona groups (trines)
+  static const _trikonas = [
+    [0, 4, 8],   // Aries, Leo, Sagittarius (Fire)
+    [1, 5, 9],   // Taurus, Virgo, Capricorn (Earth)
+    [2, 6, 10],  // Gemini, Libra, Aquarius (Air)
+    [3, 7, 11],  // Cancer, Scorpio, Pisces (Water)
+  ];
+
+  // Dual signs (owned by same planet)
+  static const _dualSigns = [
+    [2, 5],   // Gemini, Virgo (Mercury)
+    [1, 6],   // Taurus, Libra (Venus)
+    [0, 7],   // Aries, Scorpio (Mars)
+    [8, 11],  // Sagittarius, Pisces (Jupiter)
+    [9, 10],  // Capricorn, Aquarius (Saturn)
+  ];
+
+  // Signs with odd foot
+  static const _oddFootSigns = [0, 1, 2, 6, 7, 8]; // Aries to Sagittarius
+
+  // Pinda multipliers for each sign
+  static const _pindaMultipliers = [
+    1.0,  // Aries
+    2.0,  // Taurus
+    3.0,  // Gemini
+    4.0,  // Cancer
+    5.0,  // Leo
+    6.0,  // Virgo
+    7.0,  // Libra
+    8.0,  // Scorpio
+    9.0,  // Sagittarius
+    10.0, // Capricorn
+    11.0, // Aquarius
+    12.0, // Pisces
+  ];
+}
+
+/// Result of Pinda calculation.
+class PindaResult {
+  const PindaResult({
+    required this.planet,
+    required this.totalPinda,
+    required this.signPindas,
+    required this.averagePinda,
+  });
+
+  final Planet planet;
+  final double totalPinda;
+  final Map<int, double> signPindas;
+  final double averagePinda;
+
+  /// Gets Pinda for a specific sign
+  double getPindaForSign(int signIndex) => signPindas[signIndex] ?? 0.0;
+
+  @override
+  String toString() {
+    return '${planet.displayName}: ${totalPinda.toStringAsFixed(1)} total, ${averagePinda.toStringAsFixed(1)} avg';
+  }
 }

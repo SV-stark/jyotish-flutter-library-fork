@@ -26,16 +26,15 @@ A production-ready Flutter library for advanced Vedic astrology calculations usi
 
 This fork significantly extends the original library with high-level astrological services:
 
-- **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60).
-- **⏳ Dasha Systems**: Comprehensive Vimshottari (120y) and Yogini (36y) calculations.
+- **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60) with high-precision mapping rules.
+- **⏳ Dasha Systems**: Comprehensive Vimshottari (120y) and Yogini (36y) calculations with Rahu/Ketu sub-period refinements.
 - **✨ Panchanga**: Tithi, Yoga, Karana, Vara, and precise Sunrise/Sunset modules.
-- **📊 Ashtakavarga**: Full BAV/SAV point system and transit strength analysis.
-- **🎯 KP System**: Significators, Sub-Lord, and Sub-Sub-Lord logic.
+- **📊 Ashtakavarga**: Full BAV/SAV point system, Trikona Shodhana (reduction), and transit strength analysis.
+- **⚖️ Shadbala**: Complete 6-fold planetary strength calculation including Sthana, Dig, Kala, Chesta, Naisargika, and Drik Bala.
+- **🤝 Planetary Friendship**: Logic for temporary (Tatkalika) and permanent (Naisargika) friendship status.
+- **🎯 KP System**: Significators, Sub-Lord, and Sub-Sub-Lord logic with precise KP-specific ayanamsa calculation.
 - **🪐 Special Transits**: Automated analysis for Sade Sati, Dhaiya, and Panchak.
 - **📅 Muhurta**: Auspicious timings via Hora, Choghadiya, and Kalam analysis.
-- Mahadasha, Antardasha, Pratyantardasha levels
-- Current period calculation
-- Birth time precision warnings
 
 ✨ **New Vedic Modules**:
 
@@ -658,19 +657,24 @@ This library uses:
 This fork was created to bridge the gap between low-level astronomical calculations and high-level Vedic astrological analysis. The following modules were added entirely in this version:
 
 ### 1. Advanced Predictive Service
-- **Vimshottari Dasha**: Full 120-year cycle with 5 levels of depth (Mahadasha to Sukshma Dasha).
+- **Vimshottari Dasha**: Full 120-year cycle with 5 levels of depth (Mahadasha to Sukshma Dasha) and refined Rahu/Ketu lordship logic.
 - **Yogini Dasha**: 36-year cycle with accurate lord calculation and Nakshatra alignment.
 
 ### 2. Comprehensive Panchanga
 - A complete Indian lunar calendar module providing **Tithi, Yoga, Karana, Vara**, and precise solar times (Sunrise/Sunset/Noon).
 
-### 3. Mathematical Systems
-- **Ashtakavarga**: Automated calculation of Bindus for all 7 planets (BAV) and the total system (SAV), including transit strength analysis.
-- **KP System**: Implementation of the Krishnamurti Paddhati, including high-precision significators and cuspal sub-lords.
+### 3. Strength & Relationship Systems
+- **Shadbala**: Implementation of the complete 6-fold planetary strength system (Shadbala) including positional, directional, temporal, and motional strengths.
+- **Planetary Relationships**: Automated determination of permanent and temporary friendships used for accurate dignity and strength analysis.
 
-### 4. Transit & Muhurta Analysis
+### 4. Mathematical Systems
+- **Ashtakavarga**: Automated calculation of Bindus for all 7 planets (BAV) and the total system (SAV), including **Trikona Shodhana** (Trine Reduction) and transit strength analysis.
+- **KP System**: Implementation of the Krishnamurti Paddhati, including high-precision significators, cuspal sub-lords, and precise KP ayanamsa formulas.
+- **Divisional Charts (Varga)**: Calculations for all 16 major charts (D1-D60) with high-precision mapping rules for Saptamsa, Dasamsa, and Shashtiamsa (D60).
+
+### 5. Transit & Muhurta Analysis
 - **Special Transits**: Real-time detection of Sade Sati, Dhaiya, and Panchak.
-- **Muhurta Engine**: Daily Hora, Choghadiya, and inauspicious period (Rahu Kalam) tracking.
+- **Muhurta Engine**: Daily Hora, Choghadiya, and inauspicious period (Rahu Kalam/Yamagandam) tracking.
 
 ---
 

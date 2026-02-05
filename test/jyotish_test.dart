@@ -200,7 +200,8 @@ void main() {
       };
 
       final aspects = service.calculateAspects(positions);
-      final conjunction = aspects.where((a) => a.type == AspectType.conjunction);
+      final conjunction =
+          aspects.where((a) => a.type == AspectType.conjunction);
       expect(conjunction.isNotEmpty, true);
     });
 
@@ -332,7 +333,8 @@ void main() {
       );
 
       // Should have close to full Ketu dasha (7 years)
-      expect(result.balanceOfFirstDasha, greaterThan(2000)); // > 5.5 years in days
+      expect(
+          result.balanceOfFirstDasha, greaterThan(2000)); // > 5.5 years in days
     });
 
     test('DashaService calculates Yogini dasha', () {
@@ -442,6 +444,7 @@ void main() {
       try {
         await jyotish.initialize();
       } catch (e) {
+        // ignore: avoid_print
         print('⚠️  Swiss Ephemeris not found. See SETUP.md for installation.');
         rethrow;
       }

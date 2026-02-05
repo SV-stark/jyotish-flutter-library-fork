@@ -78,12 +78,214 @@ class DivisionalChartService {
 
     final house = dHouses.getHouseForLongitude(newLongitude);
 
+    // Calculate dignity in the D-Chart context
+    final dignity = _calculateDignityForVarga(
+      originalInfo.position.planet,
+      newLongitude,
+    );
+
     return VedicPlanetInfo(
       position: newPosition,
       house: house,
-      dignity: PlanetaryDignity.neutralSign, // TODO: Implement D-Chart dignity
+      dignity: dignity,
       isCombust: false,
     );
+  }
+
+  /// Calculates planetary dignity in a divisional chart.
+  PlanetaryDignity _calculateDignityForVarga(Planet planet, double longitude) {
+    final signIndex = (longitude / 30).floor() % 12;
+
+    // Exaltation and debilitation
+    final exaltationSign = _getExaltationSign(planet);
+    final debilitationSign = _getDebilitationSign(planet);
+
+    if (exaltationSign != null && signIndex == exaltationSign) {
+      return PlanetaryDignity.exalted;
+    }
+
+    if (debilitationSign != null && signIndex == debilitationSign) {
+      return PlanetaryDignity.debilitated;
+    }
+
+    // Own signs
+    final ownSigns = _getOwnSigns(planet);
+    if (ownSigns.contains(signIndex)) {
+      return PlanetaryDignity.ownSign;
+    }
+
+    // Moola Trikona
+    final moolaTrikona = _getMoolaTrikona(planet);
+    if (moolaTrikona != null && signIndex == moolaTrikona) {
+      return PlanetaryDignity.moolaTrikona;
+    }
+
+    // Friend/enemy/neutral based on sign lord
+    final signLord = _getSignLord(signIndex);
+    if (signLord != null) {
+      return _calculateFriendshipDignity(planet, signLord);
+    }
+
+    return PlanetaryDignity.neutralSign;
+  }
+
+  /// Calculates friendship-based dignity.
+  PlanetaryDignity _calculateFriendshipDignity(Planet planet, Planet signLord) {
+    final relationships = _getPlanetaryRelationships();
+    final relationship = relationships[planet]?[signLord] ?? 0;
+
+    if (relationship == 1) {
+      final reverseRelationship = relationships[signLord]?[planet] ?? 0;
+      if (reverseRelationship == 1) {
+        return PlanetaryDignity.greatFriend;
+      }
+      return PlanetaryDignity.friendSign;
+    } else if (relationship == -1) {
+      final reverseRelationship = relationships[signLord]?[planet] ?? 0;
+      if (reverseRelationship == -1) {
+        return PlanetaryDignity.greatEnemy;
+      }
+      return PlanetaryDignity.enemySign;
+    }
+
+    return PlanetaryDignity.neutralSign;
+  }
+
+  /// Gets planetary relationships map.
+  Map<Planet, Map<Planet, int>> _getPlanetaryRelationships() {
+    return {
+      Planet.sun: {
+        Planet.moon: 1,
+        Planet.mars: 1,
+        Planet.jupiter: 1,
+        Planet.mercury: 0,
+        Planet.venus: -1,
+        Planet.saturn: -1,
+      },
+      Planet.moon: {
+        Planet.sun: 0,
+        Planet.mercury: 0,
+        Planet.venus: 0,
+        Planet.mars: 0,
+        Planet.jupiter: 0,
+        Planet.saturn: 0,
+      },
+      Planet.mars: {
+        Planet.sun: 1,
+        Planet.moon: 1,
+        Planet.jupiter: 1,
+        Planet.mercury: -1,
+        Planet.venus: -1,
+        Planet.saturn: 0,
+      },
+      Planet.mercury: {
+        Planet.sun: 1,
+        Planet.venus: 1,
+        Planet.saturn: 1,
+        Planet.mars: 0,
+        Planet.jupiter: 0,
+        Planet.moon: 0,
+      },
+      Planet.jupiter: {
+        Planet.sun: 1,
+        Planet.moon: 1,
+        Planet.mars: 1,
+        Planet.mercury: -1,
+        Planet.venus: 0,
+        Planet.saturn: 0,
+      },
+      Planet.venus: {
+        Planet.mercury: 1,
+        Planet.saturn: 1,
+        Planet.mars: 0,
+        Planet.jupiter: 0,
+        Planet.sun: -1,
+        Planet.moon: 0,
+      },
+      Planet.saturn: {
+        Planet.mercury: 1,
+        Planet.venus: 1,
+        Planet.jupiter: 0,
+        Planet.mars: -1,
+        Planet.sun: -1,
+        Planet.moon: -1,
+      },
+    };
+  }
+
+  /// Gets exaltation sign for a planet.
+  int? _getExaltationSign(Planet planet) {
+    const exaltations = {
+      Planet.sun: 0, // Aries
+      Planet.moon: 1, // Taurus
+      Planet.mercury: 5, // Virgo
+      Planet.venus: 11, // Pisces
+      Planet.mars: 9, // Capricorn
+      Planet.jupiter: 3, // Cancer
+      Planet.saturn: 6, // Libra
+    };
+    return exaltations[planet];
+  }
+
+  /// Gets debilitation sign for a planet.
+  int? _getDebilitationSign(Planet planet) {
+    const debilitations = {
+      Planet.sun: 6, // Libra
+      Planet.moon: 7, // Scorpio
+      Planet.mercury: 11, // Pisces
+      Planet.venus: 5, // Virgo
+      Planet.mars: 3, // Cancer
+      Planet.jupiter: 9, // Capricorn
+      Planet.saturn: 0, // Aries
+    };
+    return debilitations[planet];
+  }
+
+  /// Gets own signs for a planet.
+  List<int> _getOwnSigns(Planet planet) {
+    const ownSigns = {
+      Planet.sun: [4], // Leo
+      Planet.moon: [3], // Cancer
+      Planet.mercury: [2, 5], // Gemini, Virgo
+      Planet.venus: [1, 6], // Taurus, Libra
+      Planet.mars: [0, 7], // Aries, Scorpio
+      Planet.jupiter: [8, 11], // Sagittarius, Pisces
+      Planet.saturn: [9, 10], // Capricorn, Aquarius
+    };
+    return ownSigns[planet] ?? [];
+  }
+
+  /// Gets Moola Trikona sign for a planet.
+  int? _getMoolaTrikona(Planet planet) {
+    const moolaTrikona = {
+      Planet.sun: 4, // Leo
+      Planet.moon: 1, // Taurus
+      Planet.mercury: 5, // Virgo
+      Planet.venus: 6, // Libra
+      Planet.mars: 0, // Aries
+      Planet.jupiter: 8, // Sagittarius
+      Planet.saturn: 10, // Aquarius
+    };
+    return moolaTrikona[planet];
+  }
+
+  /// Gets the lord of a zodiac sign.
+  Planet? _getSignLord(int signIndex) {
+    const signLords = {
+      0: Planet.mars, // Aries
+      1: Planet.venus, // Taurus
+      2: Planet.mercury, // Gemini
+      3: Planet.moon, // Cancer
+      4: Planet.sun, // Leo
+      5: Planet.mercury, // Virgo
+      6: Planet.venus, // Libra
+      7: Planet.mars, // Scorpio
+      8: Planet.jupiter, // Sagittarius
+      9: Planet.saturn, // Capricorn
+      10: Planet.saturn, // Aquarius
+      11: Planet.jupiter, // Pisces
+    };
+    return signLords[signIndex];
   }
 
   HouseSystem _createWholeSignHouses(double ascendantLongitude) {
@@ -284,20 +486,14 @@ class DivisionalChartService {
           return (8 + part) % 12;
         }
 
-      case DivisionalChartType.d60: // Shashtiamsa (Simple calculation)
-        final part = (degreeInSign / (30 / 60)).floor();
-        // Ignore sign, simply (part + signIndex? + ...)
-        // Standard Parashara: "Multiply longitude by 2" (Wait, 60 parts per sign = 0.5 deg each)
-        // Rule: Start from the sign itself?
-        // No, D60 usually: (Sign * 60 + part) % 12?
-        // Actually: "To calculate D60, take the degrees, minutes, seconds... multiply by 2? No."
-        // Let's use the simplest: "Cyclic from Sign"?
-        // BV Raman: "Ignore the Rasi. Take the degrees. Each degree is 2 parts. 0-0.5 is part 1."
-        // Index = (Degrees * 2).floor() + 1
-        // Mapping? "In odd signs proceed direct. In even signs proceed reverse?" No that's some others.
-        // D60 Parashara: "Current Sign + Part".
-        // Let's try: (SignIndex + part) % 12.
-        return (signIndex + part) % 12;
+      case DivisionalChartType.d60: // Shashtiamsa
+        final part = (degreeInSign / (30 / 60)).floor(); // 0-59
+        if (isOdd) {
+          return (signIndex + part) % 12;
+        } else {
+          // Starts from 9th sign from itself
+          return (signIndex + 8 + part) % 12;
+        }
     }
   }
 

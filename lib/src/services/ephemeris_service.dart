@@ -38,8 +38,7 @@ class EphemerisService {
       }
 
       // Test that the library is working
-      final version = _bindings!.getVersion();
-      print('Swiss Ephemeris initialized. Version: $version');
+      _bindings!.getVersion();
 
       _isInitialized = true;
     } catch (e, stackTrace) {

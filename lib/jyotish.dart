@@ -42,6 +42,7 @@ export 'src/services/kp_service.dart';
 export 'src/services/muhurta_service.dart';
 // New Feature Services
 export 'src/services/panchanga_service.dart';
+export 'src/services/shadbala_service.dart';
 export 'src/services/special_transit_service.dart';
 export 'src/services/transit_service.dart';
 export 'src/services/vedic_chart_service.dart';

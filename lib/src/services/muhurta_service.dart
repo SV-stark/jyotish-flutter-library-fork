@@ -182,7 +182,8 @@ class MuhurtaService {
       milliseconds: nightDuration.inMilliseconds ~/ 8,
     );
 
-    final nighttimeTypes = MuhurtaConstants.nighttimeChoghadiyaSequence[weekday]!;
+    final nighttimeTypes =
+        MuhurtaConstants.nighttimeChoghadiyaSequence[weekday]!;
     final nighttimePeriods = <Choghadiya>[];
 
     currentTime = nightStart;

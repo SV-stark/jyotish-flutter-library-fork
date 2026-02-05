@@ -206,6 +206,8 @@ class DashaService {
 
         final mahadasha = DashaPeriod(
           lord: planetInfo.planet,
+          lordName:
+              planetInfo.name, // Pass custom name to distinguish Rahu/Ketu
           startDate: currentDate,
           endDate: endDate,
           duration: Duration(days: durationDays.round()),
@@ -254,6 +256,7 @@ class DashaService {
 
       final antardasha = DashaPeriod(
         lord: planetInfo.planet,
+        lordName: planetInfo.name, // Pass custom name to distinguish Rahu/Ketu
         startDate: currentDate,
         endDate: endDate,
         duration: Duration(days: durationDays.round()),
@@ -287,6 +290,7 @@ class DashaService {
 
       final pratyantardasha = DashaPeriod(
         lord: planetInfo.planet,
+        lordName: planetInfo.name, // Pass custom name to distinguish Rahu/Ketu
         startDate: currentDate,
         endDate: endDate,
         duration: Duration(days: durationDays.round()),

@@ -15,7 +15,7 @@ void main() {
         (350.0, 30, 'Chaturdashi'), // Near end
       ];
 
-      for (final (elongation, expectedNumber, expectedName) in testCases) {
+      for (final (elongation, expectedNumber, _) in testCases) {
         // Calculate tithi from elongation
         const tithiDegrees = 12.0;
         final tithiNumber = (elongation / tithiDegrees).floor() + 1;
@@ -90,23 +90,18 @@ void main() {
     });
 
     test('Hora lord sequence is correct', () {
-      final horaSequence = [
-        Planet.sun,
-        Planet.venus,
-        Planet.mercury,
-        Planet.moon,
-        Planet.saturn,
-        Planet.jupiter,
-        Planet.mars,
-      ];
+      // Hora lord sequence: Sun -> Venus -> Mercury -> Moon -> Saturn -> Jupiter -> Mars
+      // (Descending order of orbital speed/height)
 
       // Sunday starts with Sun
-      const varaSunday = VaraInfo(weekday: 0, name: 'Sunday', rulingPlanet: Planet.sun);
+      const varaSunday =
+          VaraInfo(weekday: 0, name: 'Sunday', rulingPlanet: Planet.sun);
       expect(varaSunday.getHoraLord(0), Planet.sun);
       expect(varaSunday.getHoraLord(1), Planet.venus);
 
       // Monday starts with Moon (index 3 in sequence)
-      const varaMonday = VaraInfo(weekday: 1, name: 'Monday', rulingPlanet: Planet.moon);
+      const varaMonday =
+          VaraInfo(weekday: 1, name: 'Monday', rulingPlanet: Planet.moon);
       expect(varaMonday.getHoraLord(0), Planet.moon);
       expect(varaMonday.getHoraLord(1), Planet.saturn);
     });
@@ -118,7 +113,8 @@ void main() {
         final table = AshtakavargaTables.getTableForPlanet(planet);
         expect(table.length, 12, reason: 'Each table should have 12 signs');
         for (final row in table) {
-          expect(row.length, 7, reason: 'Each row should have 7 contributing planets');
+          expect(row.length, 7,
+              reason: 'Each row should have 7 contributing planets');
         }
       }
     });
@@ -132,7 +128,8 @@ void main() {
       expect(sav.average, 30.0); // Average per sign
       expect(sav.strongestSign, 1); // Index 1 has 35 bindus
       expect(sav.weakestSign, 2); // Index 2 has 25 bindus
-      expect(sav.favorableSigns, [0, 1, 4, 5, 6, 7, 9, 10]); // Signs with > 28 bindus
+      expect(sav.favorableSigns,
+          [0, 1, 4, 5, 6, 7, 9, 10]); // Signs with > 28 bindus
     });
 
     test('Bhinnashtakavarga tracks bindus per sign', () {
@@ -169,7 +166,8 @@ void main() {
     test('KP New VP291 ayanamsa is available', () {
       // Check that the new ayanamsa mode is available
       expect(SiderealMode.krishnamurtiVP291.constant, 45);
-      expect(SiderealMode.krishnamurtiVP291.name, 'Krishnamurti VP291 (KP New)');
+      expect(
+          SiderealMode.krishnamurtiVP291.name, 'Krishnamurti VP291 (KP New)');
     });
 
     test('Khullar ayanamsa is available', () {
@@ -187,7 +185,8 @@ void main() {
 
     test('Star ownership follows Vimshottari sequence', () {
       // Stars owned in cycle: Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury
-      expect(KPPlanetOwnership.getStarLord(1), Planet.meanNode); // Ashwini - Ketu
+      expect(
+          KPPlanetOwnership.getStarLord(1), Planet.meanNode); // Ashwini - Ketu
       expect(KPPlanetOwnership.getStarLord(2), Planet.venus); // Bharani
       expect(KPPlanetOwnership.getStarLord(3), Planet.sun); // Krittika
       expect(KPPlanetOwnership.getStarLord(4), Planet.moon); // Rohini
@@ -196,11 +195,16 @@ void main() {
     test('Planet houses ownership is correct', () {
       expect(KPPlanetOwnership.getOwnedHouses(Planet.sun), [5]); // Leo
       expect(KPPlanetOwnership.getOwnedHouses(Planet.moon), [4]); // Cancer
-      expect(KPPlanetOwnership.getOwnedHouses(Planet.mars), [1, 8]); // Aries, Scorpio
-      expect(KPPlanetOwnership.getOwnedHouses(Planet.mercury), [3, 6]); // Gemini, Virgo
-      expect(KPPlanetOwnership.getOwnedHouses(Planet.jupiter), [9, 12]); // Sagittarius, Pisces
-      expect(KPPlanetOwnership.getOwnedHouses(Planet.venus), [2, 7]); // Taurus, Libra
-      expect(KPPlanetOwnership.getOwnedHouses(Planet.saturn), [10, 11]); // Capricorn, Aquarius
+      expect(KPPlanetOwnership.getOwnedHouses(Planet.mars),
+          [1, 8]); // Aries, Scorpio
+      expect(KPPlanetOwnership.getOwnedHouses(Planet.mercury),
+          [3, 6]); // Gemini, Virgo
+      expect(KPPlanetOwnership.getOwnedHouses(Planet.jupiter),
+          [9, 12]); // Sagittarius, Pisces
+      expect(KPPlanetOwnership.getOwnedHouses(Planet.venus),
+          [2, 7]); // Taurus, Libra
+      expect(KPPlanetOwnership.getOwnedHouses(Planet.saturn),
+          [10, 11]); // Capricorn, Aquarius
     });
 
     test('KP Significators track ABCD correctly', () {
@@ -234,22 +238,22 @@ void main() {
 
     test('Vimshottari Dasha totals 120 years with all 9 planets', () {
       // Full Vimshottari cycle should total 120 years
-      // Sequence: Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7), 
+      // Sequence: Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7),
       //           Rahu (18), Jupiter (16), Saturn (19), Mercury (17)
       // Note: Both meanNode and trueNode are treated as nodes (18 years)
       // So we only count 7 traditional planets + nodes once
       final periods = [
-        7,  // Ketu
+        7, // Ketu
         20, // Venus
-        6,  // Sun
+        6, // Sun
         10, // Moon
-        7,  // Mars
+        7, // Mars
         18, // Rahu
         16, // Jupiter
         19, // Saturn
         17, // Mercury
       ];
-      
+
       final total = periods.fold<int>(0, (sum, p) => sum + p);
       expect(total, 120); // Standard Vimshottari total
       expect(periods[5], 18); // Rahu is 18 years
@@ -260,7 +264,7 @@ void main() {
     test('Sade Sati identifies correct Saturn positions', () {
       // Sade Sati houses from Moon are 12th, 1st, and 2nd
       expect(SaturnTransitConstants.sadeSatiHouses, [12, 1, 2]);
-      
+
       // Test that the constants contain the right houses
       expect(SaturnTransitConstants.sadeSatiHouses.contains(12), true);
       expect(SaturnTransitConstants.sadeSatiHouses.contains(1), true);
@@ -272,7 +276,7 @@ void main() {
     test('Dhaiya identifies 4th and 8th house Saturn transits', () {
       // Dhaiya houses are 4 and 8 from Moon
       expect(SaturnTransitConstants.dhaiyaHouses, [4, 8]);
-      
+
       // Test specific house numbers directly
       expect(SaturnTransitConstants.dhaiyaHouses.contains(4), true);
       expect(SaturnTransitConstants.dhaiyaHouses.contains(8), true);
@@ -281,25 +285,29 @@ void main() {
     });
 
     test('Panchak identifies last 6 nakshatras', () {
-      expect(SaturnTransitConstants.panchakNakshatras, [22, 23, 24, 25, 26, 27]);
-      expect(SaturnTransitConstants.panchakNakshatras.contains(22), true); // Dhanishta
-      expect(SaturnTransitConstants.panchakNakshatras.contains(27), true); // Revati
-      expect(SaturnTransitConstants.panchakNakshatras.contains(21), false); // Shravana
+      expect(
+          SaturnTransitConstants.panchakNakshatras, [22, 23, 24, 25, 26, 27]);
+      expect(SaturnTransitConstants.panchakNakshatras.contains(22),
+          true); // Dhanishta
+      expect(SaturnTransitConstants.panchakNakshatras.contains(27),
+          true); // Revati
+      expect(SaturnTransitConstants.panchakNakshatras.contains(21),
+          false); // Shravana
     });
 
     test('Panchak starts at 300 degrees (middle of Dhanishta)', () {
       // Panchak should start at 300° (middle of Dhanishta: 293°20' to 306°40')
       expect(SaturnTransitConstants.panchakStartLongitude, 300.0);
       expect(SaturnTransitConstants.panchakEndLongitude, 360.0);
-      
+
       // Moon at 295° should NOT be in Panchak (before 300°)
       const beforePanchak = 295.0;
       expect(beforePanchak >= 300.0, false);
-      
+
       // Moon at 300° should be in Panchak
       const atPanchakStart = 300.0;
       expect(atPanchakStart >= 300.0, true);
-      
+
       // Moon at 350° should be in Panchak
       const inPanchak = 350.0;
       expect(inPanchak >= 300.0, true);

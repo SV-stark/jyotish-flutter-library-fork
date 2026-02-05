@@ -2,7 +2,6 @@
 ///
 /// These constants correspond to the planet numbers used by Swiss Ephemeris.
 class SwissEphConstants {
-
   SwissEphConstants._();
   // Main planets
   static const int sun = 0;

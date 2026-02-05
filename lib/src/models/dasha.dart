@@ -34,10 +34,14 @@ class DashaPeriod {
     required this.level,
     this.subPeriods = const [],
     this.parent,
+    this.lordName,
   });
 
   /// The ruling planet (lord) of this dasha period
   final Planet lord;
+
+  /// Custom name for the lord (used to distinguish Rahu/Ketu which both use Planet.meanNode)
+  final String? lordName;
 
   /// Start date of the period
   final DateTime startDate;
@@ -102,12 +106,15 @@ class DashaPeriod {
   /// Whether this is a pratyantardasha (sub-sub-period)
   bool get isPratyantardasha => level == 2;
 
+  /// Gets the display name for the lord (uses lordName if available, otherwise lord.displayName)
+  String get lordDisplayName => lordName ?? lord.displayName;
+
   /// Gets the full path name (e.g., "Sun-Moon-Mars")
   String get fullName {
     if (parent == null) {
-      return lord.displayName;
+      return lordDisplayName;
     }
-    return '${parent!.fullName}-${lord.displayName}';
+    return '${parent!.fullName}-$lordDisplayName';
   }
 
   /// Finds the active sub-period at a given date
@@ -143,11 +150,11 @@ class DashaPeriod {
 
   @override
   String toString() =>
-      '$levelName: ${lord.displayName} (${startDate.toIso8601String().substring(0, 10)} to ${endDate.toIso8601String().substring(0, 10)})';
+      '$levelName: $lordDisplayName (${startDate.toIso8601String().substring(0, 10)} to ${endDate.toIso8601String().substring(0, 10)})';
 
   /// Converts to JSON map (without circular references)
   Map<String, dynamic> toJson() => {
-        'lord': lord.displayName,
+        'lord': lordDisplayName,
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
         'durationDays': durationDays,
@@ -246,7 +253,7 @@ class DashaResult {
   String getCurrentPeriodString(DateTime date) {
     final periods = getActivePeriodsAt(date);
     if (periods.isEmpty) return 'Unknown';
-    return periods.map((p) => p.lord.displayName).join('-');
+    return periods.map((p) => p.lordDisplayName).join('-');
   }
 
   /// Gets the current mahadasha (convenience for current time)

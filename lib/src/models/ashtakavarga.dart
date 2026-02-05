@@ -7,13 +7,13 @@ import '../models/vedic_chart.dart';
 /// by counting benefic points (bindus) contributed by each planet
 /// in each sign of the zodiac.
 class Ashtakavarga {
-
   const Ashtakavarga({
     required this.natalChart,
     required this.bhinnashtakavarga,
     required this.sarvashtakavarga,
     required this.samudayaAshtakavarga,
   });
+
   /// Birth chart used for calculations
   final VedicChart natalChart;
 
@@ -67,12 +67,12 @@ class Ashtakavarga {
 /// Contains the bindus (points) contributed by each of the 7 planets
 /// plus ascendant in each of the 12 signs.
 class Bhinnashtakavarga {
-
   const Bhinnashtakavarga({
     required this.planet,
     required this.bindus,
     required this.contributions,
   });
+
   /// The planet this Ashtakavarga belongs to
   final Planet planet;
 
@@ -127,8 +127,8 @@ class Bhinnashtakavarga {
 /// Contains the total bindus contributed by all planets
 /// in each of the 12 signs.
 class Sarvashtakavarga {
-
   const Sarvashtakavarga({required this.bindus});
+
   /// Total bindus in each sign (0-11)
   final List<int> bindus;
 
@@ -173,7 +173,6 @@ class Sarvashtakavarga {
 
 /// Ashtakavarga transit analysis.
 class AshtakavargaTransit {
-
   const AshtakavargaTransit({
     required this.transitDate,
     required this.transitPlanet,
@@ -182,6 +181,7 @@ class AshtakavargaTransit {
     required this.isFavorable,
     required this.strengthScore,
   });
+
   /// Transit date
   final DateTime transitDate;
 

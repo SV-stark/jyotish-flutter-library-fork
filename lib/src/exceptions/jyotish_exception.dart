@@ -3,7 +3,6 @@
 /// This exception is thrown when an error occurs during library initialization,
 /// calculation, or any other operation.
 class JyotishException implements Exception {
-
   /// Creates a new [JyotishException].
   ///
   /// [message] - A description of the error.
@@ -14,6 +13,7 @@ class JyotishException implements Exception {
     this.originalError,
     this.stackTrace,
   });
+
   /// The error message.
   final String message;
 

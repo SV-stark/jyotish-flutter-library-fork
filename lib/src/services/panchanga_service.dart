@@ -13,7 +13,6 @@ import 'ephemeris_service.dart';
 /// - Karana: Half-tithi (60 divisions)
 /// - Vara: Weekday with planetary day lord
 class PanchangaService {
-
   PanchangaService(this._ephemerisService);
   final EphemerisService _ephemerisService;
 

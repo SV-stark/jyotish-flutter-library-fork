@@ -3,7 +3,6 @@
 /// This class is used to specify the location for which planetary
 /// positions should be calculated.
 class GeographicLocation {
-
   /// Creates a new [GeographicLocation].
   ///
   /// [latitude] - Latitude in decimal degrees (-90.0 to 90.0).
@@ -68,6 +67,7 @@ class GeographicLocation {
       altitude: (json['altitude'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
   /// Latitude in decimal degrees.
   /// Positive values represent North, negative values represent South.
   /// Valid range: -90.0 to 90.0

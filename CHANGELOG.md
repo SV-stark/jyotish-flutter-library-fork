@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-02-05
+
+### Added
+
+- **Shadbala (Six-fold Planetary Strength)**
+  - Complete implementation of all 6 strength types:
+    - Sthana Bala (Positional Strength)
+    - Dig Bala (Directional Strength) 
+    - Kala Bala (Temporal Strength)
+    - Chesta Bala (Motional Strength)
+    - Naisargika Bala (Natural Strength)
+    - Drik Bala (Aspectual Strength)
+  - `calculateShadbala()` - Calculate complete Shadbala for all planets
+  - Strength categorization (Very Strong, Strong, Moderate, Weak, Very Weak)
+
+- **Ashtakavarga Reductions (Shodhana)**
+  - `applyTrikonaShodhana()` - Trine reduction for 1-5-9 groups
+  - `applyEkadhipatiShodhana()` - Reduction for same sign ownership
+  - `calculatePinda()` - Final planetary strength (Rupas calculation)
+
+### Fixed
+
+- **Planetary Friendship Calculations**
+  - Now properly calculates friend, enemy, and neutral relationships
+  - Added `greatFriend` (Adhi-Mitra) and `greatEnemy` (Adhi-Shatru) dignities
+  - Affects dignity calculations in both Rashi and all D-Charts
+
+- **D-Chart Dignity Calculations**
+  - All divisional charts (D1-D60) now calculate dignities correctly
+  - Dignities no longer default to "neutral" in D-Charts
+
+- **Sade Sati Date Estimation**
+  - Replaced constant `daysPerSign` with variable Saturn speed calculation
+  - Now accounts for retrograde motion and sign-specific variations
+  - More accurate start/end date predictions
+
+- **Rahu/Ketu Distinguishability**
+  - Added `lordName` field to `DashaPeriod` to properly distinguish Rahu from Ketu
+  - Both planets display correctly in dasha output (e.g., "Rahu-Mercury-Venus")
+
+- **KP Ayanamsa Calculation**
+  - Now uses precise time-varying formula from Swiss Ephemeris
+  - Uses `SiderealMode.krishnamurtiVP291` instead of hardcoded offset
+
+### Breaking Changes
+
+- **`calculateKPData()` is now async** - Returns `Future<KPCalculations>` instead of `KPCalculations`
+  - Migration: Add `await` before the call: `final kpData = await jyotish.calculateKPData(chart)`
+
 ## [1.2.0] - 2026-02-05
 
 ### Added

@@ -8,7 +8,6 @@ import 'ephemeris_service.dart';
 
 /// Service for calculating Vedic astrology charts.
 class VedicChartService {
-
   VedicChartService(this._ephemerisService);
   final EphemerisService _ephemerisService;
 
@@ -184,8 +183,126 @@ class VedicChartService {
       return PlanetaryDignity.moolaTrikona;
     }
 
-    // Friend, enemy, neutral would require more complex calculations
+    // Calculate planetary friendship
+    final signLord = _getSignLord(signIndex);
+    if (signLord != null) {
+      return _calculateFriendshipDignity(planet, signLord);
+    }
+
     return PlanetaryDignity.neutralSign;
+  }
+
+  /// Calculates friendship-based dignity.
+  PlanetaryDignity _calculateFriendshipDignity(Planet planet, Planet signLord) {
+    // Define planetary relationships
+    // Friend (Mitra): +1 relationship value
+    // Enemy (Shatru): -1 relationship value
+    // Neutral (Sama): 0 relationship value
+
+    final relationships = _getPlanetaryRelationships();
+    final relationship = relationships[planet]?[signLord] ?? 0;
+
+    // Check for Great Friend (Adhi-Mitra): Friend's friend
+    // Check for Great Enemy (Adhi-Shatru): Enemy's friend or Friend's enemy
+    if (relationship == 1) {
+      // Check if signLord considers planet as friend (mutual friendship = Great Friend)
+      final reverseRelationship = relationships[signLord]?[planet] ?? 0;
+      if (reverseRelationship == 1) {
+        return PlanetaryDignity.greatFriend;
+      }
+      return PlanetaryDignity.friendSign;
+    } else if (relationship == -1) {
+      // Check if signLord considers planet as enemy (mutual enmity = Great Enemy)
+      final reverseRelationship = relationships[signLord]?[planet] ?? 0;
+      if (reverseRelationship == -1) {
+        return PlanetaryDignity.greatEnemy;
+      }
+      return PlanetaryDignity.enemySign;
+    }
+
+    return PlanetaryDignity.neutralSign;
+  }
+
+  /// Gets planetary relationships map.
+  /// 1 = Friend, -1 = Enemy, 0 = Neutral
+  Map<Planet, Map<Planet, int>> _getPlanetaryRelationships() {
+    return {
+      Planet.sun: {
+        Planet.moon: 1, // Friend
+        Planet.mars: 1, // Friend
+        Planet.jupiter: 1, // Friend
+        Planet.mercury: 0, // Neutral
+        Planet.venus: -1, // Enemy
+        Planet.saturn: -1, // Enemy
+      },
+      Planet.moon: {
+        Planet.sun: 0, // Neutral
+        Planet.mercury: 0, // Neutral
+        Planet.venus: 0, // Neutral
+        Planet.mars: 0, // Neutral
+        Planet.jupiter: 0, // Neutral
+        Planet.saturn: 0, // Neutral
+      },
+      Planet.mars: {
+        Planet.sun: 1, // Friend
+        Planet.moon: 1, // Friend
+        Planet.jupiter: 1, // Friend
+        Planet.mercury: -1, // Enemy
+        Planet.venus: -1, // Enemy
+        Planet.saturn: 0, // Neutral
+      },
+      Planet.mercury: {
+        Planet.sun: 1, // Friend
+        Planet.venus: 1, // Friend
+        Planet.mars: 0, // Neutral
+        Planet.jupiter: 0, // Neutral
+        Planet.saturn: 1, // Friend
+        Planet.moon: 0, // Neutral
+      },
+      Planet.jupiter: {
+        Planet.sun: 1, // Friend
+        Planet.moon: 1, // Friend
+        Planet.mars: 1, // Friend
+        Planet.mercury: -1, // Enemy
+        Planet.venus: 0, // Neutral
+        Planet.saturn: 0, // Neutral
+      },
+      Planet.venus: {
+        Planet.mercury: 1, // Friend
+        Planet.saturn: 1, // Friend
+        Planet.mars: 0, // Neutral
+        Planet.jupiter: 0, // Neutral
+        Planet.sun: -1, // Enemy
+        Planet.moon: 0, // Neutral
+      },
+      Planet.saturn: {
+        Planet.mercury: 1, // Friend
+        Planet.venus: 1, // Friend
+        Planet.jupiter: 0, // Neutral
+        Planet.mars: -1, // Enemy
+        Planet.sun: -1, // Enemy
+        Planet.moon: -1, // Enemy
+      },
+    };
+  }
+
+  /// Gets the lord of a zodiac sign.
+  Planet? _getSignLord(int signIndex) {
+    const signLords = {
+      0: Planet.mars, // Aries
+      1: Planet.venus, // Taurus
+      2: Planet.mercury, // Gemini
+      3: Planet.moon, // Cancer
+      4: Planet.sun, // Leo
+      5: Planet.mercury, // Virgo
+      6: Planet.venus, // Libra
+      7: Planet.mars, // Scorpio
+      8: Planet.jupiter, // Sagittarius
+      9: Planet.saturn, // Capricorn
+      10: Planet.saturn, // Aquarius
+      11: Planet.jupiter, // Pisces
+    };
+    return signLords[signIndex];
   }
 
   /// Gets exaltation sign index for a planet.

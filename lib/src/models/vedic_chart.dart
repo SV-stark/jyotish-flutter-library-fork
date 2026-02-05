@@ -182,9 +182,11 @@ class KetuPosition {
 enum PlanetaryDignity {
   exalted('Exalted', 'Uccha'),
   ownSign('Own Sign', 'Swakshetra'),
+  greatFriend('Great Friend', 'Adhi-Mitra'),
   friendSign('Friend\'s Sign', 'Mitra'),
   neutralSign('Neutral Sign', 'Sama'),
   enemySign('Enemy\'s Sign', 'Shatru'),
+  greatEnemy('Great Enemy', 'Adhi-Shatru'),
   debilitated('Debilitated', 'Neecha'),
   moolaTrikona('Moola Trikona', 'Moola Trikona');
 

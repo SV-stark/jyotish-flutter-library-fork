@@ -5,13 +5,13 @@ import '../models/planet.dart';
 /// KP astrology uses a specific ayanamsa (KP New VP291) and subdivides
 /// zodiac signs into smaller divisions called Sub-Lords.
 class KPCalculations {
-
   const KPCalculations({
     required this.ayanamsa,
     required this.planetDivisions,
     required this.houseDivisions,
     required this.planetSignificators,
   });
+
   /// The ayanamsa used for KP calculations
   final double ayanamsa;
 
@@ -42,7 +42,6 @@ class KPCalculations {
 
 /// Represents a KP division (Sign-Lord, Star-Lord, Sub-Lord, Sub-Sub-Lord).
 class KPDivision {
-
   const KPDivision({
     required this.sign,
     required this.signLord,
@@ -53,6 +52,7 @@ class KPDivision {
     required this.subStartLongitude,
     required this.subEndLongitude,
   });
+
   /// Sign number (1-12)
   final int sign;
 
@@ -140,7 +140,6 @@ class KPDivision {
 /// - C: Houses owned by the planet itself
 /// - D: Houses owned by the planet's sign lord
 class KPSignificators {
-
   const KPSignificators({
     required this.planet,
     required this.aSignificators,
@@ -148,6 +147,7 @@ class KPSignificators {
     required this.cSignificators,
     required this.dSignificators,
   });
+
   /// The planet
   final Planet planet;
 
@@ -181,16 +181,15 @@ class KPSignificators {
 
   /// Gets significators by category
   Map<String, List<int>> get significatorMap => {
-    'A': aSignificators,
-    'B': bSignificators,
-    'C': cSignificators,
-    'D': dSignificators,
-  };
+        'A': aSignificators,
+        'B': bSignificators,
+        'C': cSignificators,
+        'D': dSignificators,
+      };
 }
 
 /// KP House grouping significators.
 class KPHouseGroupSignificators {
-
   const KPHouseGroupSignificators({
     required this.selfSignificators,
     required this.wealthSignificators,
@@ -199,6 +198,7 @@ class KPHouseGroupSignificators {
     required this.childrenSignificators,
     required this.healthSignificators,
   });
+
   /// Houses that signify the self (1, 2, 3)
   final List<Planet> selfSignificators;
 

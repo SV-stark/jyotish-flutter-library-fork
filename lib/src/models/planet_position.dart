@@ -5,7 +5,6 @@ import 'planet.dart';
 /// This class contains the ecliptic longitude, latitude, distance, and speed
 /// of a celestial body as calculated by Swiss Ephemeris.
 class PlanetPosition {
-
   /// Creates a new [PlanetPosition].
   ///
   /// [planet] - The planet this position is for.
@@ -50,6 +49,7 @@ class PlanetPosition {
           : false,
     );
   }
+
   /// The planet this position is for.
   final Planet planet;
 

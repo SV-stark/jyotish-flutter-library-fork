@@ -1,25 +1,34 @@
+import '../models/calculation_flags.dart';
 import '../models/kp_calculations.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
 import '../models/vedic_chart.dart';
+import 'ephemeris_service.dart';
 
 /// Service for calculating KP (Krishnamurti Paddhati) astrology elements.
 ///
 /// KP astrology is a system that uses a specific ayanamsa (KP New VP291)
 /// and subdivides the zodiac into smaller divisions called Sub-Lords.
 class KPService {
+  KPService(this._ephemerisService);
+
+  final EphemerisService _ephemerisService;
+
   /// Calculates complete KP data for a birth chart.
   ///
   /// [natalChart] - The Vedic birth chart
   /// [useNewAyanamsa] - Whether to use KP New VP291 (true) or old KP ayanamsa (false)
   ///
   /// Returns [KPCalculations] with Sub-Lords and significators.
-  KPCalculations calculateKPData(
+  Future<KPCalculations> calculateKPData(
     VedicChart natalChart, {
     bool useNewAyanamsa = true,
-  }) {
-    // Calculate KP ayanamsa
-    final ayanamsa = useNewAyanamsa ? 291.0 : 0.0; // VP291 offset
+  }) async {
+    // Calculate KP ayanamsa using precise time-varying formula from Swiss Ephemeris
+    final ayanamsa = await _calculateKPAyanamsa(
+      natalChart.dateTime,
+      useNewAyanamsa: useNewAyanamsa,
+    );
 
     // Calculate Sub-Lords for planets
     final planetDivisions = <Planet, KPDivision>{};
@@ -77,7 +86,8 @@ class KPService {
     final (subStart, subEnd) = _calculateSubBoundaries(longitude, star);
 
     // Calculate Sub-Sub-Lord using sub-lord boundaries
-    final subSubLord = _calculateSubSubLord(longitude, subLord, subStart, subEnd);
+    final subSubLord =
+        _calculateSubSubLord(longitude, subLord, subStart, subEnd);
 
     return KPDivision(
       sign: sign,
@@ -92,9 +102,9 @@ class KPService {
   }
 
   /// Calculates the Sub-Lord for a given longitude.
-  /// 
+  ///
   /// Uses proper Vimshottari Dasha sequence with all 9 planets (120 years total):
-  /// Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7), 
+  /// Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7),
   /// Rahu (18), Jupiter (16), Saturn (19), Mercury (17)
   Planet _calculateSubLord(double longitude, int star) {
     // Get star boundaries
@@ -106,23 +116,23 @@ class KPService {
     final posInStar = (longitude - starStart) / starSpan;
 
     // Full Vimshottari Dasha periods - total 120 years
-    // Sequence: Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7), 
+    // Sequence: Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7),
     //           Rahu (18), Jupiter (16), Saturn (19), Mercury (17)
     final dashaPeriods = [
-      (Planet.meanNode, 7),   // Ketu (index 0)
-      (Planet.venus, 20),     // Venus
-      (Planet.sun, 6),        // Sun
-      (Planet.moon, 10),      // Moon
-      (Planet.mars, 7),       // Mars
-      (Planet.trueNode, 18),  // Rahu (using trueNode to distinguish from Ketu)
-      (Planet.jupiter, 16),   // Jupiter
-      (Planet.saturn, 19),    // Saturn
-      (Planet.mercury, 17),   // Mercury
+      (Planet.meanNode, 7), // Ketu (index 0)
+      (Planet.venus, 20), // Venus
+      (Planet.sun, 6), // Sun
+      (Planet.moon, 10), // Moon
+      (Planet.mars, 7), // Mars
+      (Planet.trueNode, 18), // Rahu (using trueNode to distinguish from Ketu)
+      (Planet.jupiter, 16), // Jupiter
+      (Planet.saturn, 19), // Saturn
+      (Planet.mercury, 17), // Mercury
     ];
 
     // Total should be exactly 120 years
     const totalPeriods = 120;
-    
+
     var cumulative = 0.0;
 
     for (final (planet, period) in dashaPeriods) {
@@ -136,41 +146,41 @@ class KPService {
   }
 
   /// Calculates the Sub-Sub-Lord for a given longitude.
-  /// 
+  ///
   /// The Sub-Sub-Lord divides each Sub-Lord into 9 parts using the same
   /// Vimshottari sequence (120 years total).
-  Planet? _calculateSubSubLord(double longitude, Planet subLord, double subStart, double subEnd) {
+  Planet? _calculateSubSubLord(
+      double longitude, Planet subLord, double subStart, double subEnd) {
     // Full Vimshottari sequence
     final dashaPeriods = [
-      (Planet.meanNode, 7),   // Ketu
-      (Planet.venus, 20),     // Venus
-      (Planet.sun, 6),        // Sun
-      (Planet.moon, 10),      // Moon
-      (Planet.mars, 7),       // Mars
-      (Planet.trueNode, 18),  // Rahu
-      (Planet.jupiter, 16),   // Jupiter
-      (Planet.saturn, 19),    // Saturn
-      (Planet.mercury, 17),   // Mercury
+      (Planet.meanNode, 7), // Ketu
+      (Planet.venus, 20), // Venus
+      (Planet.sun, 6), // Sun
+      (Planet.moon, 10), // Moon
+      (Planet.mars, 7), // Mars
+      (Planet.trueNode, 18), // Rahu
+      (Planet.jupiter, 16), // Jupiter
+      (Planet.saturn, 19), // Saturn
+      (Planet.mercury, 17), // Mercury
     ];
-    
+
     const totalPeriods = 120;
     final subSpan = subEnd - subStart;
-    
+
     // Position within the sub-lord
     final posInSub = (longitude - subStart) / subSpan;
-    
+
     // Find the starting planet in the sequence
-    final subLordIndex = dashaPeriods.indexWhere((p) => 
-      (p.$1 == Planet.meanNode && subLord == Planet.meanNode) ||
-      (p.$1 == Planet.trueNode && subLord == Planet.trueNode) ||
-      p.$1 == subLord
-    );
-    
+    final subLordIndex = dashaPeriods.indexWhere((p) =>
+        (p.$1 == Planet.meanNode && subLord == Planet.meanNode) ||
+        (p.$1 == Planet.trueNode && subLord == Planet.trueNode) ||
+        p.$1 == subLord);
+
     if (subLordIndex < 0) return null;
-    
+
     // Find which sub-sub-lord this position falls into
     var cumulative = 0.0;
-    
+
     for (var i = 0; i < dashaPeriods.length; i++) {
       final index = (subLordIndex + i) % dashaPeriods.length;
       final (_, period) = dashaPeriods[index];
@@ -179,14 +189,14 @@ class KPService {
         return dashaPeriods[index].$1;
       }
     }
-    
+
     return dashaPeriods[subLordIndex].$1;
   }
 
   /// Calculates the sub-division boundaries.
-  /// 
+  ///
   /// Uses the full 9-planet Vimshottari cycle (120 years total):
-  /// Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7), 
+  /// Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7),
   /// Rahu (18), Jupiter (16), Saturn (19), Mercury (17)
   (double, double) _calculateSubBoundaries(double longitude, int star) {
     final starStart = (star - 1) * (360 / 27);
@@ -197,11 +207,11 @@ class KPService {
 
     // Full Vimshottari cycle - 9 planets, 120 years total
     final dashaPeriods = [
-      7,  // Ketu
-      20, // Venus  
-      6,  // Sun
+      7, // Ketu
+      20, // Venus
+      6, // Sun
       10, // Moon
-      7,  // Mars
+      7, // Mars
       18, // Rahu
       16, // Jupiter
       19, // Saturn
@@ -351,5 +361,23 @@ class KPService {
     }
 
     return divisions;
+  }
+
+  /// Calculates KP Ayanamsa using Swiss Ephemeris precise time-varying formula.
+  ///
+  /// Uses SE_SIDM_KRISHNAMURTI_VP291 (mode 45) for KP New ayanamsa
+  /// or SE_SIDM_KRISHNAMURTI (mode 5) for old KP ayanamsa.
+  Future<double> _calculateKPAyanamsa(
+    DateTime dateTime, {
+    required bool useNewAyanamsa,
+  }) async {
+    final mode = useNewAyanamsa
+        ? SiderealMode.krishnamurtiVP291
+        : SiderealMode.krishnamurti;
+
+    return await _ephemerisService.getAyanamsa(
+      dateTime: dateTime,
+      mode: mode,
+    );
   }
 }

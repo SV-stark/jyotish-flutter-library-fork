@@ -96,8 +96,7 @@ class AspectService {
   }) {
     final allAspects = calculateAspects(positions, config: config);
     return allAspects
-        .where((a) =>
-            a.aspectingPlanet == planet || a.aspectedPlanet == planet)
+        .where((a) => a.aspectingPlanet == planet || a.aspectedPlanet == planet)
         .toList();
   }
 
@@ -130,7 +129,8 @@ class AspectService {
     AspectConfig config,
   ) {
     final aspects = <AspectInfo>[];
-    final angularDiff = _calculateAngularDifference(pos1.longitude, pos2.longitude);
+    final angularDiff =
+        _calculateAngularDifference(pos1.longitude, pos2.longitude);
 
     // Check conjunction (same sign)
     final conjunctionOrb = _getOrb(AspectType.conjunction, config);
@@ -194,14 +194,24 @@ class AspectService {
 
       if ((angularDiff - 90).abs() <= orb4th) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.marsSpecial4th, angularDiff - 90, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.marsSpecial4th,
+          angularDiff - 90,
+          config,
         ));
       }
       if ((angularDiff - 210).abs() <= orb8th) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.marsSpecial8th, angularDiff - 210, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.marsSpecial8th,
+          angularDiff - 210,
+          config,
         ));
       }
     }
@@ -213,14 +223,24 @@ class AspectService {
 
       if ((angularDiff - 120).abs() <= orb5th) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.jupiterSpecial5th, angularDiff - 120, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.jupiterSpecial5th,
+          angularDiff - 120,
+          config,
         ));
       }
       if ((angularDiff - 240).abs() <= orb9th) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.jupiterSpecial9th, angularDiff - 240, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.jupiterSpecial9th,
+          angularDiff - 240,
+          config,
         ));
       }
     }
@@ -232,14 +252,24 @@ class AspectService {
 
       if ((angularDiff - 60).abs() <= orb3rd) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.saturnSpecial3rd, angularDiff - 60, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.saturnSpecial3rd,
+          angularDiff - 60,
+          config,
         ));
       }
       if ((angularDiff - 270).abs() <= orb10th) {
         aspects.add(_createAspect(
-          planet1, pos1, planet2, pos2,
-          AspectType.saturnSpecial10th, angularDiff - 270, config,
+          planet1,
+          pos1,
+          planet2,
+          pos2,
+          AspectType.saturnSpecial10th,
+          angularDiff - 270,
+          config,
         ));
       }
     }
@@ -306,7 +336,8 @@ class AspectService {
       final planet = entry.key;
       final pos = entry.value;
 
-      final angularDiff = _calculateAngularDifference(pos.longitude, targetMidpoint.toDouble());
+      final angularDiff =
+          _calculateAngularDifference(pos.longitude, targetMidpoint.toDouble());
 
       // 7th aspect (all planets)
       if ((angularDiff - 180).abs() <= 15) {
@@ -324,7 +355,8 @@ class AspectService {
 
       // Jupiter special aspects
       if (planet == Planet.jupiter) {
-        if ((angularDiff - 120).abs() <= 15 || (angularDiff - 240).abs() <= 15) {
+        if ((angularDiff - 120).abs() <= 15 ||
+            (angularDiff - 240).abs() <= 15) {
           aspectingPlanets.add(planet);
           continue;
         }

@@ -7,7 +7,6 @@ import 'planet_position.dart';
 /// Contains the current transit position of a planet along with
 /// its relationship to the natal chart (house placement, aspects to natal planets).
 class TransitInfo {
-
   /// Creates transit info.
   const TransitInfo({
     required this.planet,
@@ -17,6 +16,7 @@ class TransitInfo {
     required this.transitSignIndex,
     this.aspectsToNatal = const [],
   });
+
   /// The planet being transited
   final Planet planet;
 
@@ -82,7 +82,6 @@ class TransitInfo {
 /// Represents a moment when a transiting planet forms an exact aspect
 /// to a natal planet or point.
 class TransitEvent {
-
   /// Creates a transit event.
   const TransitEvent({
     required this.transitPlanet,
@@ -96,6 +95,7 @@ class TransitEvent {
     required this.description,
     this.significance = 3,
   });
+
   /// The transiting planet
   final Planet transitPlanet;
 
@@ -134,7 +134,8 @@ class TransitEvent {
       date.isAfter(startDate) && date.isBefore(endDate);
 
   /// The target of the aspect (planet name or point name)
-  String get targetName => natalPlanet?.displayName ?? natalPointName ?? 'Unknown';
+  String get targetName =>
+      natalPlanet?.displayName ?? natalPointName ?? 'Unknown';
 
   @override
   String toString() =>
@@ -157,7 +158,6 @@ class TransitEvent {
 
 /// Configuration for transit calculations
 class TransitConfig {
-
   /// Creates transit configuration.
   const TransitConfig({
     required this.startDate,
@@ -188,6 +188,7 @@ class TransitConfig {
       intervalDays: 30,
     );
   }
+
   /// Start date for transit calculation range
   final DateTime startDate;
 

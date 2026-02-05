@@ -47,7 +47,6 @@ import 'services/vedic_chart_service.dart';
 /// print('Sun longitude: ${position.longitude}');
 /// ```
 class Jyotish {
-
   /// Creates a new instance of Jyotish.
   ///
   /// Use [initialize] to set up the Swiss Ephemeris data path before
@@ -95,7 +94,7 @@ class Jyotish {
       _dashaService = DashaService();
       _panchangaService = PanchangaService(_ephemerisService!);
       _ashtakavargaService = AshtakavargaService();
-      _kpService = KPService();
+      _kpService = KPService(_ephemerisService!);
       _specialTransitService = SpecialTransitService(_ephemerisService!);
       _muhurtaService = MuhurtaService();
       _isInitialized = true;
@@ -893,14 +892,14 @@ class Jyotish {
   /// final subLord = kpData.getPlanetSubLord(Planet.sun);
   /// print('Sun Sub-Lord: ${subLord?.subLord.displayName}');
   /// ```
-  KPCalculations calculateKPData(
+  Future<KPCalculations> calculateKPData(
     VedicChart natalChart, {
     bool useNewAyanamsa = true,
-  }) {
+  }) async {
     _ensureInitialized();
 
     try {
-      return _kpService!.calculateKPData(
+      return await _kpService!.calculateKPData(
         natalChart,
         useNewAyanamsa: useNewAyanamsa,
       );

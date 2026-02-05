@@ -5,7 +5,6 @@ import '../constants/planet_constants.dart';
 /// This library is designed for Vedic astrology and uses sidereal zodiac
 /// with Lahiri ayanamsa by default.
 class CalculationFlags {
-
   /// Creates calculation flags for Vedic astrology (sidereal calculations).
   ///
   /// [useSwissEphemeris] - Use Swiss Ephemeris (default: true)
@@ -38,6 +37,7 @@ class CalculationFlags {
   factory CalculationFlags.topocentric() => const CalculationFlags(
         useTopocentric: true,
       );
+
   /// Use Swiss Ephemeris (high precision)
   final bool useSwissEphemeris;
 
@@ -165,14 +165,15 @@ enum SiderealMode {
   valensBow(SwissEphConstants.sidmValensBow, 'Valens Bow'),
   lahiri1940(SwissEphConstants.sidmLahiri1940, 'Lahiri 1940'),
   lahiriVP285(SwissEphConstants.sidmLahiriVP285, 'Lahiri VP285'),
-  krishnamurtiVP291(SwissEphConstants.sidmKrishnamurtiVP291, 'Krishnamurti VP291 (KP New)'),
+  krishnamurtiVP291(
+      SwissEphConstants.sidmKrishnamurtiVP291, 'Krishnamurti VP291 (KP New)'),
   lahiriICRC(SwissEphConstants.sidmLahiriICRC, 'Lahiri ICRC'),
   khullar(SwissEphConstants.sidmKhullar, 'Khullar Ayanamsa');
 
+  const SiderealMode(this.constant, this.name);
+
   final int constant;
   final String name;
-
-  const SiderealMode(this.constant, this.name);
 
   @override
   String toString() => name;
