@@ -38,6 +38,9 @@ enum Planet {
   /// True Lunar Node (True Rahu)
   trueNode(SwissEphConstants.trueNode, 'True Node'),
 
+  /// Ketu (South Lunar Node) - the descending node, opposite to Rahu
+  ketu(SwissEphConstants.ketu, 'Ketu'),
+
   /// Mean Lunar Apogee (Black Moon Lilith)
   meanApogee(SwissEphConstants.meanApog, 'Mean Apogee'),
 
@@ -109,6 +112,7 @@ enum Planet {
   static List<Planet> get lunarNodes => [
         meanNode,
         trueNode,
+        ketu,
       ];
 
   /// Returns a list of lunar apogees.

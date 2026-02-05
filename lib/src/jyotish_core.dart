@@ -10,6 +10,8 @@ import 'models/muhurta.dart';
 import 'models/panchanga.dart';
 import 'models/planet.dart';
 import 'models/planet_position.dart';
+import 'models/rashi.dart';
+import 'models/relationship.dart';
 import 'models/special_transits.dart';
 import 'models/transit.dart';
 import 'models/vedic_chart.dart';
@@ -21,6 +23,7 @@ import 'services/ephemeris_service.dart';
 import 'services/kp_service.dart';
 import 'services/muhurta_service.dart';
 import 'services/panchanga_service.dart';
+import 'services/shadbala_service.dart';
 import 'services/special_transit_service.dart';
 import 'services/transit_service.dart';
 import 'services/vedic_chart_service.dart';
@@ -70,6 +73,7 @@ class Jyotish {
   KPService? _kpService;
   SpecialTransitService? _specialTransitService;
   MuhurtaService? _muhurtaService;
+  ShadbalaService? _shadbalaService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -97,6 +101,7 @@ class Jyotish {
       _kpService = KPService(_ephemerisService!);
       _specialTransitService = SpecialTransitService(_ephemerisService!);
       _muhurtaService = MuhurtaService();
+      _shadbalaService = ShadbalaService();
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -1077,13 +1082,102 @@ class Jyotish {
     _isInitialized = false;
   }
 
+  /// Calculates Chara Dasha from a birth chart.
+  ///
+  /// Chara Dasha is a Jaimini-style sign-based dasha system.
+  ///
+  /// [natalChart] - The birth chart to use
+  /// [levels] - Number of dasha levels (currently supports 1 level)
+  Future<DashaResult> getCharaDasha({
+    required VedicChart natalChart,
+    int levels = 1,
+  }) async {
+    _ensureInitialized();
+    return _dashaService!.calculateCharaDasha(natalChart, levels: levels);
+  }
+
+  /// Calculates complete planetary relationships (Panchadha Maitri).
+  ///
+  /// Includes Natural (Naisargika) and Temporary (Tatkalika) relationships.
+  ///
+  /// [natalChart] - The birth chart to calculate temporary relationships from.
+  List<PlanetaryRelationship> getPlanetaryRelationships({
+    required VedicChart natalChart,
+  }) {
+    _ensureInitialized();
+    final results = <PlanetaryRelationship>[];
+    final traditional = Planet.traditionalPlanets;
+
+    for (var i = 0; i < traditional.length; i++) {
+      final p1 = traditional[i];
+      final info1 = natalChart.planets[p1];
+      if (info1 == null) continue;
+
+      for (var j = 0; j < traditional.length; j++) {
+        if (i == j) continue;
+        final p2 = traditional[j];
+        final info2 = natalChart.planets[p2];
+        if (info2 == null) continue;
+
+        final natural = RelationshipCalculator.naturalRelationships[p1]?[p2] ??
+            RelationshipType.neutral;
+
+        final temporary =
+            RelationshipCalculator.calculateTemporary(info1.house, info2.house);
+
+        final compound =
+            RelationshipCalculator.calculateCompound(natural, temporary);
+
+        results.add(PlanetaryRelationship(
+          planet: p1,
+          otherPlanet: p2,
+          natural: natural,
+          temporary: temporary,
+          compound: compound,
+        ));
+      }
+    }
+    return results;
+  }
+
+  /// Applies reductions to an Ashtakavarga.
+  ///
+  /// [ashtakavarga] - The base Ashtakavarga to reduce
+  /// [trikonaReduction] - Whether to apply Trikona Shodhana
+  /// [ekadhipatiReduction] - Whether to apply Ekadhipati Shodhana
+  Ashtakavarga getAshtakavargaReductions(
+    Ashtakavarga ashtakavarga, {
+    bool trikonaReduction = true,
+    bool ekadhipatiReduction = true,
+  }) {
+    _ensureInitialized();
+    _ashtakavargaService ??= AshtakavargaService();
+
+    var result = ashtakavarga;
+    if (trikonaReduction) {
+      result = _ashtakavargaService!.applyTrikonaShodhana(result);
+    }
+    if (ekadhipatiReduction) {
+      result = _ashtakavargaService!.applyEkadhipatiShodhana(result);
+    }
+    return result;
+  }
+
   /// Ensures that the library has been initialized.
   void _ensureInitialized() {
-    if (!_isInitialized || _ephemerisService == null) {
+    if (!_isInitialized) {
       throw JyotishException(
-        'Jyotish is not initialized. Call initialize() first.',
-      );
+          'Jyotish library not initialized. Call initialize() first.');
     }
+  }
+
+  /// Calculates Shadbala (six-fold strength) for all planets in a chart.
+  ///
+  /// [chart] - The Vedic birth chart
+  /// Returns a map of planets to their Shadbala results.
+  Map<Planet, ShadbalaResult> getShadbala(VedicChart chart) {
+    _ensureInitialized();
+    return _shadbalaService!.calculateShadbala(chart);
   }
 
   /// Gets whether the library has been initialized.

@@ -1,4 +1,5 @@
 import 'planet.dart';
+import 'rashi.dart';
 
 /// Type of dasha system used in Vedic astrology.
 enum DashaType {
@@ -6,7 +7,10 @@ enum DashaType {
   vimshottari('Vimshottari', 120),
 
   /// Yogini Dasha - 36 year cycle, uses 8 yoginis
-  yogini('Yogini', 36);
+  yogini('Yogini', 36),
+
+  /// Chara Dasha - Jaimini system using signs
+  chara('Chara', 96);
 
   const DashaType(this.displayName, this.totalYears);
 
@@ -27,7 +31,7 @@ enum DashaType {
 class DashaPeriod {
   /// Creates a dasha period.
   const DashaPeriod({
-    required this.lord,
+    this.lord,
     required this.startDate,
     required this.endDate,
     required this.duration,
@@ -35,10 +39,14 @@ class DashaPeriod {
     this.subPeriods = const [],
     this.parent,
     this.lordName,
+    this.rashi,
   });
 
-  /// The ruling planet (lord) of this dasha period
-  final Planet lord;
+  /// The ruling planet (lord) of this dasha period (optional for sign-based dashas)
+  final Planet? lord;
+
+  /// The ruling sign (rashi) of this dasha period (used for Chara Dasha)
+  final Rashi? rashi;
 
   /// Custom name for the lord (used to distinguish Rahu/Ketu which both use Planet.meanNode)
   final String? lordName;
@@ -107,7 +115,8 @@ class DashaPeriod {
   bool get isPratyantardasha => level == 2;
 
   /// Gets the display name for the lord (uses lordName if available, otherwise lord.displayName)
-  String get lordDisplayName => lordName ?? lord.displayName;
+  String get lordDisplayName =>
+      lordName ?? rashi?.name ?? lord?.displayName ?? 'Unknown';
 
   /// Gets the full path name (e.g., "Sun-Moon-Mars")
   String get fullName {
@@ -154,7 +163,9 @@ class DashaPeriod {
 
   /// Converts to JSON map (without circular references)
   Map<String, dynamic> toJson() => {
-        'lord': lordDisplayName,
+        'lord': lord?.displayName,
+        'rashi': rashi?.name,
+        'lordDisplayName': lordDisplayName,
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
         'durationDays': durationDays,

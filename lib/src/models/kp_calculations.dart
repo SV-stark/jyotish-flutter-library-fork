@@ -279,12 +279,12 @@ class KPPlanetOwnership {
     // Stars are owned by planets in cycles of 9
     // Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury
     final starLords = [
-      Planet.meanNode, // Ketu (represented by meanNode)
+      Planet.ketu,
       Planet.venus,
       Planet.sun,
       Planet.moon,
       Planet.mars,
-      Planet.meanNode, // Rahu (represented by meanNode)
+      Planet.meanNode, // Rahu
       Planet.jupiter,
       Planet.saturn,
       Planet.mercury,

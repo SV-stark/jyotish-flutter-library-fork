@@ -185,8 +185,7 @@ void main() {
 
     test('Star ownership follows Vimshottari sequence', () {
       // Stars owned in cycle: Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury
-      expect(
-          KPPlanetOwnership.getStarLord(1), Planet.meanNode); // Ashwini - Ketu
+      expect(KPPlanetOwnership.getStarLord(1), Planet.ketu); // Ashwini - Ketu
       expect(KPPlanetOwnership.getStarLord(2), Planet.venus); // Bharani
       expect(KPPlanetOwnership.getStarLord(3), Planet.sun); // Krittika
       expect(KPPlanetOwnership.getStarLord(4), Planet.moon); // Rohini

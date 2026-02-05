@@ -1,5 +1,7 @@
 import '../models/dasha.dart';
 import '../models/planet.dart';
+import '../models/rashi.dart';
+import '../models/vedic_chart.dart';
 
 /// Service for calculating Vedic dasha periods.
 ///
@@ -14,7 +16,7 @@ class DashaService {
     Planet.jupiter,
     Planet.saturn,
     Planet.mercury,
-    Planet.meanNode, // Ketu (same as Rahu for calculation purposes)
+    Planet.ketu,
     Planet.venus,
   ];
 
@@ -39,8 +41,7 @@ class DashaService {
     _VimshottariPlanetInfo(Planet.jupiter, 'Jupiter', 16.0),
     _VimshottariPlanetInfo(Planet.saturn, 'Saturn', 19.0),
     _VimshottariPlanetInfo(Planet.mercury, 'Mercury', 17.0),
-    _VimshottariPlanetInfo(
-        Planet.meanNode, 'Ketu', 7.0), // Ketu uses meanNode but different years
+    _VimshottariPlanetInfo(Planet.ketu, 'Ketu', 7.0),
     _VimshottariPlanetInfo(Planet.venus, 'Venus', 20.0),
   ];
 
@@ -494,6 +495,113 @@ class DashaService {
     }
 
     return pratyantardashas;
+  }
+
+  /// Calculates Chara Dasha from a Rashi chart.
+  ///
+  /// Chara Dasha is a sign-based dasha system where the sequence and duration
+  /// depend on the Lagna (Ascendant) and the positions of signs and their lords.
+  DashaResult calculateCharaDasha(VedicChart rashiChart, {int levels = 1}) {
+    final ascendantSign = Rashi.fromLongitude(rashiChart.houses.ascendant);
+    final isDirect = ascendantSign.isOdd;
+
+    // Determine the sequence of signs
+    final sequence = <Rashi>[];
+    for (var i = 0; i < 12; i++) {
+      final signIndex = isDirect
+          ? (ascendantSign.number + i) % 12
+          : (ascendantSign.number - i + 12) % 12;
+      sequence.add(Rashi.fromIndex(signIndex));
+    }
+
+    final mahadashas = <DashaPeriod>[];
+    var currentDate = rashiChart.dateTime;
+
+    for (final sign in sequence) {
+      final years = _calculateCharaDashaYears(sign, rashiChart);
+
+      // Approximation: using 365.25 days per year
+      final durationDays = years * 365.25;
+      final endDate = currentDate.add(Duration(days: durationDays.round()));
+
+      final mahadasha = DashaPeriod(
+        rashi: sign,
+        startDate: currentDate,
+        endDate: endDate,
+        duration: Duration(days: durationDays.round()),
+        level: 0,
+        subPeriods: const [], // Sub-periods for Chara Dasha can be implemented later if needed
+      );
+
+      mahadashas.add(mahadasha);
+      currentDate = endDate;
+    }
+
+    return DashaResult(
+      type: DashaType.chara,
+      birthDateTime: rashiChart.dateTime,
+      moonLongitude: rashiChart.planets[Planet.moon]?.position.longitude ?? 0,
+      birthNakshatra: rashiChart.planets[Planet.moon]?.nakshatra ?? 'Unknown',
+      birthPada: rashiChart.planets[Planet.moon]?.pada ?? 0,
+      balanceOfFirstDasha:
+          0, // Sign-based dashas typically start fully at birth
+      allMahadashas: mahadashas,
+    );
+  }
+
+  /// Internal: Calculate years for a sign in Chara Dasha.
+  int _calculateCharaDashaYears(Rashi sign, VedicChart chart) {
+    final lord = _getSignLord(sign, chart);
+    final lordPos = chart.getPlanet(lord)?.position;
+    if (lordPos == null) return 0;
+
+    final lordSign = Rashi.fromLongitude(lordPos.longitude);
+
+    int diff;
+    if (sign.isOdd) {
+      // Direct distance
+      diff = (lordSign.number - sign.number + 12) % 12;
+    } else {
+      // Indirect distance
+      diff = (sign.number - lordSign.number + 12) % 12;
+    }
+
+    return diff == 0 ? 12 : diff;
+  }
+
+  /// Internal: Get the primary lord of a sign (handling Scorpio/Aquarius).
+  Planet _getSignLord(Rashi sign, VedicChart chart) {
+    switch (sign) {
+      case Rashi.aries:
+      case Rashi.scorpio:
+        if (sign == Rashi.scorpio) {
+          // Scorpio has two lords: Mars and Ketu.
+          // Simplified: Use the one that is stronger or just Mars for now.
+          // Most implementations default to Mars if No planet is in Scorpio.
+          return Planet.mars;
+        }
+        return Planet.mars;
+      case Rashi.taurus:
+      case Rashi.libra:
+        return Planet.venus;
+      case Rashi.gemini:
+      case Rashi.virgo:
+        return Planet.mercury;
+      case Rashi.cancer:
+        return Planet.moon;
+      case Rashi.leo:
+        return Planet.sun;
+      case Rashi.sagittarius:
+      case Rashi.pisces:
+        return Planet.jupiter;
+      case Rashi.capricorn:
+      case Rashi.aquarius:
+        if (sign == Rashi.aquarius) {
+          // Aquarius has two lords: Saturn and Rahu.
+          return Planet.saturn;
+        }
+        return Planet.saturn;
+    }
   }
 
   /// Finds the current dasha period at a given date.

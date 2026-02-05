@@ -119,12 +119,12 @@ class KPService {
     // Sequence: Ketu (7), Venus (20), Sun (6), Moon (10), Mars (7),
     //           Rahu (18), Jupiter (16), Saturn (19), Mercury (17)
     final dashaPeriods = [
-      (Planet.meanNode, 7), // Ketu (index 0)
+      (Planet.ketu, 7), // Ketu (index 0)
       (Planet.venus, 20), // Venus
       (Planet.sun, 6), // Sun
       (Planet.moon, 10), // Moon
       (Planet.mars, 7), // Mars
-      (Planet.trueNode, 18), // Rahu (using trueNode to distinguish from Ketu)
+      (Planet.meanNode, 18), // Rahu
       (Planet.jupiter, 16), // Jupiter
       (Planet.saturn, 19), // Saturn
       (Planet.mercury, 17), // Mercury
@@ -153,12 +153,12 @@ class KPService {
       double longitude, Planet subLord, double subStart, double subEnd) {
     // Full Vimshottari sequence
     final dashaPeriods = [
-      (Planet.meanNode, 7), // Ketu
+      (Planet.ketu, 7), // Ketu
       (Planet.venus, 20), // Venus
       (Planet.sun, 6), // Sun
       (Planet.moon, 10), // Moon
       (Planet.mars, 7), // Mars
-      (Planet.trueNode, 18), // Rahu
+      (Planet.meanNode, 18), // Rahu
       (Planet.jupiter, 16), // Jupiter
       (Planet.saturn, 19), // Saturn
       (Planet.mercury, 17), // Mercury

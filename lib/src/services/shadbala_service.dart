@@ -1,10 +1,11 @@
+import '../models/divisional_chart_type.dart';
 import '../models/planet.dart';
 import '../models/vedic_chart.dart';
+import 'divisional_chart_service.dart';
 
 /// Service for calculating Shadbala (Six-fold Strength) of planets.
 ///
-/// Shadbala is a comprehensive system for evaluating planetary strength
-/// in Vedic astrology. It consists of six types of strength:
+/// Shadbala consists of six types of strength:
 /// 1. Sthana Bala (Positional Strength)
 /// 2. Dig Bala (Directional Strength)
 /// 3. Kala Bala (Temporal Strength)
@@ -12,10 +13,10 @@ import '../models/vedic_chart.dart';
 /// 5. Naisargika Bala (Natural Strength)
 /// 6. Drik Bala (Aspectual Strength)
 class ShadbalaService {
+  final DivisionalChartService _divisionalChartService =
+      DivisionalChartService();
+
   /// Calculates complete Shadbala for all planets in a chart.
-  ///
-  /// [chart] - The Vedic birth chart
-  /// Returns a map of planets to their Shadbala results.
   Map<Planet, ShadbalaResult> calculateShadbala(VedicChart chart) {
     final results = <Planet, ShadbalaResult>{};
 
@@ -40,7 +41,7 @@ class ShadbalaService {
     required VedicChart chart,
   }) {
     // 1. Sthana Bala (Positional Strength)
-    final sthanaBala = _calculateSthanaBala(planet, planetInfo);
+    final sthanaBala = _calculateSthanaBala(planet, planetInfo, chart);
 
     // 2. Dig Bala (Directional Strength)
     final digBala = _calculateDigBala(planet, planetInfo);
@@ -81,178 +82,220 @@ class ShadbalaService {
     );
   }
 
-  /// Calculates Sthana Bala (Positional Strength).
-  ///
-  /// Based on:
-  /// - Exaltation/Debilitation
-  /// - Own sign/Moola Trikona
-  /// - Friendly/Enemy signs
-  /// - Placement in angles/trines
-  double _calculateSthanaBala(Planet planet, VedicPlanetInfo planetInfo) {
+  double _calculateSthanaBala(
+      Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) {
     var strength = 0.0;
 
-    // Base strength from dignity
-    switch (planetInfo.dignity) {
-      case PlanetaryDignity.exalted:
-        strength += 60.0;
-        break;
-      case PlanetaryDignity.ownSign:
-        strength += 45.0;
-        break;
-      case PlanetaryDignity.moolaTrikona:
-        strength += 40.0;
-        break;
-      case PlanetaryDignity.greatFriend:
-        strength += 30.0;
-        break;
-      case PlanetaryDignity.friendSign:
-        strength += 22.5;
-        break;
-      case PlanetaryDignity.neutralSign:
-        strength += 15.0;
-        break;
-      case PlanetaryDignity.enemySign:
-        strength += 7.5;
-        break;
-      case PlanetaryDignity.greatEnemy:
-        strength += 3.75;
-        break;
-      case PlanetaryDignity.debilitated:
-        strength += 0.0;
-        break;
-    }
+    // 1. Precise Uchcha Bala (Exaltation Strength)
+    strength += _calculateUchchaBala(planet, planetInfo.position.longitude);
 
-    // House placement bonus
-    final house = planetInfo.house;
-    if (_kendraHouses.contains(house)) {
-      strength += 15.0; // Angular houses (1, 4, 7, 10)
-    } else if (_trikonaHouses.contains(house)) {
-      strength += 12.0; // Trinal houses (5, 9)
-    } else if (_upachayaHouses.contains(house)) {
-      strength += 8.0; // Growth houses (3, 6, 10, 11)
-    } else if (_dusthanaHouses.contains(house)) {
-      strength += 4.0; // Difficult houses (6, 8, 12)
-    } else {
-      strength += 6.0; // Other houses (2)
-    }
+    // 2. Saptavargaja Bala (Seven-fold divisional dignity)
+    strength += _calculateSaptavargajaBala(planet, chart);
 
-    return strength.clamp(0.0, 100.0);
+    // 3. Ojayugmarasyamsa Bala (Odd/Even sign and Navamsa)
+    strength += _calculateOjayugmarasyamsaBala(
+        planet, planetInfo.position.longitude, chart);
+
+    // 4. Drekkana Bala
+    strength += _calculateDrekkanaBala(planet, planetInfo.position.longitude);
+
+    // 5. Kendra Bala (House placement)
+    strength += _calculateKendraBala(planetInfo.house);
+
+    return strength;
   }
 
-  /// Calculates Dig Bala (Directional Strength).
-  ///
-  /// Planets have maximum strength in specific directions:
-  /// - Sun & Mars: 10th house (South)
-  /// - Saturn: 7th house (West)
-  /// - Moon & Venus: 4th house (North)
-  /// - Mercury & Jupiter: 1st house (East)
+  /// Calculates precise Uchcha Bala (Exaltation Strength).
+  double _calculateUchchaBala(Planet planet, double longitude) {
+    final deepExaltation = _deepExaltationPoints[planet];
+    if (deepExaltation == null) return 0.0;
+
+    final deepDebilitation = (deepExaltation + 180) % 360;
+    final elongation = (longitude - deepDebilitation + 360) % 360;
+    return (elongation > 180 ? (360 - elongation) : elongation) / 180.0 * 60.0;
+  }
+
+  /// Calculates Saptavargaja Bala (Strength in 7 divisional charts).
+  double _calculateSaptavargajaBala(Planet planet, VedicChart rashiChart) {
+    if (Planet.lunarNodes.contains(planet)) return 0.0;
+
+    final charts = [
+      DivisionalChartType.d1,
+      DivisionalChartType.d2,
+      DivisionalChartType.d3,
+      DivisionalChartType.d7,
+      DivisionalChartType.d9,
+      DivisionalChartType.d12,
+      DivisionalChartType.d30,
+    ];
+
+    var totalStrength = 0.0;
+    for (final type in charts) {
+      final vargaChart =
+          _divisionalChartService.calculateDivisionalChart(rashiChart, type);
+      final info = vargaChart.getPlanet(planet);
+      if (info == null) continue;
+
+      totalStrength += _getSaptavargajaScore(info.dignity);
+    }
+
+    return totalStrength;
+  }
+
+  double _getSaptavargajaScore(PlanetaryDignity dignity) {
+    return switch (dignity) {
+      PlanetaryDignity.moolaTrikona => 45.0,
+      PlanetaryDignity.ownSign => 30.0,
+      PlanetaryDignity.greatFriend => 22.5,
+      PlanetaryDignity.friendSign => 15.0,
+      PlanetaryDignity.neutralSign => 7.5,
+      PlanetaryDignity.enemySign => 3.75,
+      PlanetaryDignity.greatEnemy => 1.875,
+      PlanetaryDignity.exalted => 60.0,
+      PlanetaryDignity.debilitated => 0.0,
+    };
+  }
+
+  double _calculateOjayugmarasyamsaBala(
+      Planet planet, double rashiLong, VedicChart rashiChart) {
+    final rashiSignIndex = (rashiLong / 30).floor() % 12;
+    final rashiIsOdd = (rashiSignIndex + 1) % 2 != 0;
+
+    final navamsaChart = _divisionalChartService.calculateDivisionalChart(
+        rashiChart, DivisionalChartType.d9);
+    final navamsaInfo = navamsaChart.getPlanet(planet);
+    if (navamsaInfo == null) return 0.0;
+
+    final navamsaSignIndex = (navamsaInfo.longitude / 30).floor() % 12;
+    final navamsaIsOdd = (navamsaSignIndex + 1) % 2 != 0;
+
+    final isFemale = [Planet.moon, Planet.venus].contains(planet);
+    final isMale = [Planet.sun, Planet.mars, Planet.jupiter].contains(planet);
+
+    var strength = 0.0;
+    if (isMale) {
+      if (rashiIsOdd) strength += 15.0;
+      if (navamsaIsOdd) strength += 15.0;
+    } else if (isFemale) {
+      if (!rashiIsOdd) strength += 15.0;
+      if (!navamsaIsOdd) strength += 15.0;
+    }
+
+    return strength;
+  }
+
+  double _calculateDrekkanaBala(Planet planet, double longitude) {
+    final degInSign = longitude % 30;
+    final decanate = (degInSign / 10).floor(); // 0, 1, 2
+
+    final isMale = [Planet.sun, Planet.mars, Planet.jupiter].contains(planet);
+    final isFemale = [Planet.moon, Planet.venus].contains(planet);
+    final isNeutral = [Planet.mercury, Planet.saturn].contains(planet);
+
+    if (isMale && decanate == 0) return 15.0;
+    if (isNeutral && decanate == 1) return 15.0;
+    if (isFemale && decanate == 2) return 15.0;
+
+    return 0.0;
+  }
+
+  double _calculateKendraBala(int house) {
+    if (_kendraHouses.contains(house)) return 60.0;
+    if ([2, 5, 8, 11].contains(house)) return 30.0;
+    return 15.0;
+  }
+
   double _calculateDigBala(Planet planet, VedicPlanetInfo planetInfo) {
     final house = planetInfo.house;
-
-    // Define optimal houses for each planet
     final optimalHouse = switch (planet) {
-      Planet.sun || Planet.mars => 10, // South
-      Planet.saturn => 7, // West
-      Planet.moon || Planet.venus => 4, // North
-      Planet.mercury || Planet.jupiter => 1, // East
+      Planet.sun || Planet.mars => 10,
+      Planet.saturn => 7,
+      Planet.moon || Planet.venus => 4,
+      Planet.mercury || Planet.jupiter => 1,
       _ => 1,
     };
 
-    // Calculate distance from optimal house
     var distance = (house - optimalHouse).abs();
     if (distance > 6) distance = 12 - distance;
-
-    // Maximum dig bala is 60 when in optimal house
-    // Decreases linearly to 0 at opposite house
     final strength = 60.0 * (1.0 - (distance / 6.0));
-
     return strength.clamp(0.0, 60.0);
   }
 
-  /// Calculates Kala Bala (Temporal Strength).
-  ///
-  /// Based on:
-  /// - Day/night birth
-  /// - Hora (planetary hour)
-  /// - Season
-  /// - Planetary year/month/day/hour
   double _calculateKalaBala(
-    Planet planet,
-    VedicPlanetInfo planetInfo,
-    VedicChart chart,
-  ) {
+      Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) {
     var strength = 0.0;
+    strength += _calculateNatonnataBala(planet, chart);
+    strength += _calculatePakshaBala(planet, planetInfo, chart);
+    strength += _calculateTribhagaBala(planet, chart);
+    strength += _calculateVMDHBala(planet, chart);
+    strength += _calculateAyanaBala(planet, planetInfo.position.longitude);
+    return strength;
+  }
 
-    // Base temporal strength
-    strength += 30.0;
+  double _calculateNatonnataBala(Planet planet, VedicChart chart) {
+    final sunHouse = chart.getPlanet(Planet.sun)?.house ?? 1;
+    final isDay = sunHouse > 6;
+    final isDayPowerful =
+        [Planet.sun, Planet.jupiter, Planet.saturn].contains(planet);
+    final isNightPowerful =
+        [Planet.moon, Planet.mars, Planet.venus].contains(planet);
 
-    // Diurnal/nocturnal strength
-    final isDayPlanet = [
-      Planet.sun,
-      Planet.jupiter,
-      Planet.saturn,
-    ].contains(planet);
-
-    // Simplified: assume day birth for now
-    // In full implementation, check if birth was during day or night
-    if (isDayPlanet) {
-      strength += 15.0;
+    if (planet == Planet.mercury) return 60.0;
+    if (isDay) {
+      return isDayPowerful ? 60.0 : 0.0;
     } else {
-      strength += 10.0;
+      return isNightPowerful ? 60.0 : 0.0;
     }
+  }
 
-    // Paksha Bala (Lunar phase strength for Moon)
+  double _calculatePakshaBala(
+      Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) {
+    final sunInfo = chart.getPlanet(Planet.sun);
+    final moonInfo = chart.getPlanet(Planet.moon);
+    if (sunInfo == null || moonInfo == null) return 0.0;
+
+    var elongation = (moonInfo.longitude - sunInfo.longitude + 360) % 360;
+
     if (planet == Planet.moon) {
-      // Check Moon's position relative to Sun
-      final sunInfo = chart.planets[Planet.sun];
-      if (sunInfo != null) {
-        final moonSunDistance =
-            (planetInfo.longitude - sunInfo.longitude).abs();
-        // Full Moon (180°) gets maximum strength
-        final pakshaStrength =
-            60.0 * (1.0 - ((moonSunDistance - 180).abs() / 180));
-        strength += pakshaStrength.clamp(0.0, 60.0);
-      }
+      var pakshaStrength = elongation > 180 ? (360 - elongation) : elongation;
+      return (pakshaStrength / 180.0) * 60.0;
     }
 
-    return strength.clamp(0.0, 100.0);
+    final isBenefic = [Planet.jupiter, Planet.venus].contains(planet);
+    final isMalefic = [Planet.sun, Planet.mars, Planet.saturn].contains(planet);
+
+    if (isBenefic) {
+      return (elongation / 360.0) * 60.0;
+    } else if (isMalefic) {
+      return ((360 - elongation) / 360.0) * 60.0;
+    }
+
+    return 30.0;
   }
 
-  /// Calculates Chesta Bala (Motional Strength).
-  ///
-  /// Based on:
-  /// - Retrograde motion (higher strength)
-  /// - Fast/slow motion
-  /// - Stationary points
+  double _calculateTribhagaBala(Planet planet, VedicChart chart) {
+    return 0.0; // Placeholder
+  }
+
+  double _calculateAyanaBala(Planet planet, double longitude) {
+    final value = (longitude - 270).abs();
+    return (value / 360.0) * 60.0;
+  }
+
+  double _calculateVMDHBala(Planet planet, VedicChart chart) {
+    return 0.0; // Placeholder
+  }
+
   double _calculateChestaBala(Planet planet, VedicPlanetInfo planetInfo) {
-    var strength = 30.0; // Base strength
-
+    if (planet == Planet.sun || planet == Planet.moon) return 0.0;
     final speed = planetInfo.position.longitudeSpeed;
-
-    // Retrograde planets get extra strength
-    if (speed < 0) {
-      strength += 30.0;
-    }
-
-    // Very slow or stationary planets also get strength
-    if (speed.abs() < 0.1) {
-      strength += 15.0;
-    }
-
-    // Normal speed bonus (simplified)
-    if (speed.abs() > 0.5 && speed.abs() < 1.5) {
-      strength += 10.0;
-    }
-
-    return strength.clamp(0.0, 60.0);
+    if (speed < 0) return 60.0;
+    final avgSpeed = _averageSpeeds[planet] ?? 1.0;
+    var ratio = (speed / avgSpeed).clamp(0.0, 1.0);
+    return ratio * 60.0;
   }
 
-  /// Calculates Naisargika Bala (Natural Strength).
-  ///
-  /// Based on the inherent brightness/size of planets.
-  /// Simplified values based on traditional texts.
   double _calculateNaisargikaBala(Planet planet) {
-    // Natural strength values (out of 60)
     const naturalStrengths = {
       Planet.sun: 60.0,
       Planet.moon: 51.43,
@@ -262,95 +305,77 @@ class ShadbalaService {
       Planet.mars: 17.14,
       Planet.saturn: 8.57,
     };
-
     return naturalStrengths[planet] ?? 30.0;
   }
 
-  /// Calculates Drik Bala (Aspectual Strength).
-  ///
-  /// Based on benefic/malefic aspects from other planets.
   double _calculateDrikBala(
-    Planet planet,
-    VedicPlanetInfo planetInfo,
-    VedicChart chart,
-  ) {
-    var beneficAspects = 0.0;
-    var maleficAspects = 0.0;
-
-    // Benefic planets
-    const benefics = [
-      Planet.jupiter,
-      Planet.venus,
-      Planet.mercury,
-      Planet.moon
-    ];
-    // Malefic planets
-    const malefics = [Planet.saturn, Planet.mars, Planet.sun];
-
-    for (final entry in chart.planets.entries) {
-      final otherPlanet = entry.key;
+      Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) {
+    var netDrishti = 0.0;
+    for (final otherPlanet in Planet.traditionalPlanets) {
       if (otherPlanet == planet) continue;
+      final otherInfo = chart.getPlanet(otherPlanet);
+      if (otherInfo == null) continue;
 
-      final otherInfo = entry.value;
-      final aspect =
-          _calculateAspect(planetInfo.longitude, otherInfo.longitude);
+      final drishtiValue = _getDrishtiValue(
+          otherPlanet, otherInfo.longitude, planetInfo.longitude);
+      final isBenefic = [Planet.jupiter, Planet.venus].contains(otherPlanet);
+      final isMalefic =
+          [Planet.sun, Planet.mars, Planet.saturn].contains(otherPlanet);
 
-      if (aspect) {
-        if (benefics.contains(otherPlanet)) {
-          beneficAspects += 10.0;
-        } else if (malefics.contains(otherPlanet)) {
-          maleficAspects += 10.0;
-        }
+      if (isBenefic || otherPlanet == Planet.mercury) {
+        netDrishti += drishtiValue / 4.0;
+      } else if (isMalefic) {
+        netDrishti -= drishtiValue / 4.0;
       }
     }
-
-    // Drik Bala = Benefic aspects - Malefic aspects
-    // Range: -60 to +60
-    final drikBala = beneficAspects - maleficAspects;
-
-    // Normalize to 0-60 range
-    return (drikBala + 60.0).clamp(0.0, 60.0);
+    return netDrishti;
   }
 
-  /// Checks if two planets are in aspect.
-  ///
-  /// Simplified aspect calculation for Vedic astrology:
-  /// - 7th house aspect (180°) for all planets
-  /// - Special aspects for Jupiter (5, 9), Mars (4, 8), Saturn (3, 10)
-  bool _calculateAspect(double longitude1, double longitude2) {
-    final diff = (longitude1 - longitude2).abs();
-
-    // 7th house aspect (180° ± 8° orb)
-    if ((diff - 180).abs() < 8 || diff < 8 || diff > 352) {
-      return true;
-    }
-
-    return false;
+  double _getDrishtiValue(Planet aspecting, double long1, double long2) {
+    var diff = (long2 - long1 + 360) % 360;
+    final houseDiff = (diff / 30).floor() + 1;
+    if (aspecting == Planet.mars && (houseDiff == 4 || houseDiff == 8))
+      return 60.0;
+    if (aspecting == Planet.jupiter && (houseDiff == 5 || houseDiff == 9))
+      return 60.0;
+    if (aspecting == Planet.saturn && (houseDiff == 3 || houseDiff == 10))
+      return 60.0;
+    if (houseDiff == 7) return 60.0;
+    if ([4, 8].contains(houseDiff)) return 45.0;
+    if ([5, 9].contains(houseDiff)) return 30.0;
+    if ([3, 10].contains(houseDiff)) return 15.0;
+    return 0.0;
   }
 
-  /// Gets strength category based on total Shadbala.
   ShadbalaStrength _getStrengthCategory(double totalBala) {
-    if (totalBala >= 380) {
-      return ShadbalaStrength.veryStrong;
-    } else if (totalBala >= 330) {
-      return ShadbalaStrength.strong;
-    } else if (totalBala >= 280) {
-      return ShadbalaStrength.moderate;
-    } else if (totalBala >= 230) {
-      return ShadbalaStrength.weak;
-    } else {
-      return ShadbalaStrength.veryWeak;
-    }
+    if (totalBala >= 380) return ShadbalaStrength.veryStrong;
+    if (totalBala >= 330) return ShadbalaStrength.strong;
+    if (totalBala >= 280) return ShadbalaStrength.moderate;
+    if (totalBala >= 230) return ShadbalaStrength.weak;
+    return ShadbalaStrength.veryWeak;
   }
 
-  // House classifications
+  static const _averageSpeeds = {
+    Planet.mars: 0.524,
+    Planet.mercury: 1.383,
+    Planet.jupiter: 0.083,
+    Planet.venus: 1.2,
+    Planet.saturn: 0.033,
+  };
+
   static const _kendraHouses = [1, 4, 7, 10];
-  static const _trikonaHouses = [5, 9];
-  static const _upachayaHouses = [3, 6, 10, 11];
-  static const _dusthanaHouses = [6, 8, 12];
+
+  static const _deepExaltationPoints = {
+    Planet.sun: 10.0,
+    Planet.moon: 33.0,
+    Planet.mars: 298.0,
+    Planet.mercury: 165.0,
+    Planet.jupiter: 95.0,
+    Planet.venus: 357.0,
+    Planet.saturn: 200.0,
+  };
 }
 
-/// Result of Shadbala calculation for a planet.
 class ShadbalaResult {
   const ShadbalaResult({
     required this.planet,
@@ -374,13 +399,8 @@ class ShadbalaResult {
   final double totalBala;
   final ShadbalaStrength strengthCategory;
 
-  /// Checks if planet is strong enough to give results
   bool get isStrong => totalBala >= 330;
-
-  /// Checks if planet is weak
   bool get isWeak => totalBala < 280;
-
-  /// Gets Rupas (1 Rupa = 60 Shashtiamsas)
   double get rupas => totalBala / 60.0;
 
   @override
@@ -389,7 +409,6 @@ class ShadbalaResult {
   }
 }
 
-/// Strength categories for Shadbala.
 enum ShadbalaStrength {
   veryStrong('Very Strong', 'Excellent planetary influence'),
   strong('Strong', 'Good planetary influence'),
@@ -398,7 +417,6 @@ enum ShadbalaStrength {
   veryWeak('Very Weak', 'Minimal planetary influence');
 
   const ShadbalaStrength(this.name, this.description);
-
   final String name;
   final String description;
 }

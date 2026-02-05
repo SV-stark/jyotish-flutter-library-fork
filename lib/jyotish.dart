@@ -29,6 +29,8 @@ export 'src/models/muhurta.dart';
 export 'src/models/panchanga.dart';
 export 'src/models/planet.dart';
 export 'src/models/planet_position.dart';
+export 'src/models/rashi.dart';
+export 'src/models/relationship.dart';
 export 'src/models/special_transits.dart';
 export 'src/models/transit.dart';
 export 'src/models/vedic_chart.dart';
