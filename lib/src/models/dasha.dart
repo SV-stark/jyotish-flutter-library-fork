@@ -36,6 +36,42 @@ enum DashaType {
   String toString() => displayName;
 }
 
+/// Schemes for Ashtottari Dasha calculation.
+enum AshtottariScheme {
+  /// Standard starting from Ardra (Ardra-adi)
+  ardraAdi('Ardra-adi'),
+
+  /// Alternative starting from Krittika (Krittika-adi)
+  krittikaAdi('Krittika-adi');
+
+  const AshtottariScheme(this.displayName);
+  final String displayName;
+
+  @override
+  String toString() => displayName;
+}
+
+/// Types of jumps (Gati) in Kalachakra Dasha sequence.
+enum KalachakraGati {
+  /// Normal movement
+  normal('Normal'),
+
+  /// Frog Jump (skipping signs)
+  manduka('Manduka Gati (Frog Jump)'),
+
+  /// Lion's Gaze (jumping across signs)
+  simhavalokana('Simhavalokana Gati (Lion\'s Gaze)'),
+
+  /// Return movement
+  aprati('Aprati Gati (Return Jump)');
+
+  const KalachakraGati(this.displayName);
+  final String displayName;
+
+  @override
+  String toString() => displayName;
+}
+
 /// Represents a dasha period (major, sub, or sub-sub period).
 ///
 /// Dasha periods are planetary periods in Vedic astrology that indicate

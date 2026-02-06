@@ -559,12 +559,6 @@ class EphemerisService {
     }
 
     try {
-      final julianDay = _dateTimeToJulianDay(date);
-
-      // Search for eclipse within a window
-      final searchStart = julianDay - 15; // 15 days before
-      final searchEnd = julianDay + 15; // 15 days after
-
       // This is a simplified placeholder - real implementation would use
       // Swiss Ephemeris eclipse functions (swe_sol_eclipse_when_glob, etc.)
 
