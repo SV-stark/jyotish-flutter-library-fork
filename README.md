@@ -441,12 +441,16 @@ print('Jupiter transit strength: ${transitStrength.strengthScore}%');
 final kpData = jyotish.calculateKPData(d1Chart);
 
 // Get Sub-Lord for a planet
-final sunSubLord = kpData.planetaryData[Planet.sun]?.subLord;
-print('Sun Sub-Lord: ${sunSubLord?.displayName}');
+final sunDivision = kpData.planetDivisions[Planet.sun];
+print('Sun Sub-Lord: ${sunDivision?.subLord.displayName}');
 
-// Get house significators
-final house1Significators = kpData.houseSignificators[1];
-print('House 1 Significators: $house1Significators');
+// Get planet significators (ABCD significators)
+final sunSignificators = kpData.planetSignificators[Planet.sun];
+print('Sun Significators: ${sunSignificators?.allSignificators}');
+
+// Get house cusp Sub-Lord
+final house1Division = kpData.houseDivisions[1];
+print('House 1 Sub-Lord: ${house1Division?.subLord.displayName}');
 ```
 
 ### Special Transits (Sade Sati, etc.)

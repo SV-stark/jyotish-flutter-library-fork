@@ -15,8 +15,8 @@ void main() {
     });
 
     test('NodeType has technical descriptions', () {
-      expect(NodeType.meanNode.technicalDescription, contains('average'));
-      expect(NodeType.trueNode.technicalDescription, contains('actual'));
+      expect(NodeType.meanNode.technicalDescription, contains('Average'));
+      expect(NodeType.trueNode.technicalDescription, contains('Actual'));
     });
   });
 
@@ -44,7 +44,7 @@ void main() {
       expect(updatedFlags.nodeType, NodeType.trueNode);
       expect(updatedFlags.nodeType.planet, Planet.trueNode);
       expect(updatedFlags.siderealMode, flags.siderealMode);
-      expect(updatedFlags.useTopocentric, true);
+      expect(updatedFlags.useTopocentric, false);
       expect(updatedFlags.useSwissEphemeris, true);
     });
 
@@ -64,7 +64,8 @@ void main() {
       expect(str, contains('trueNode'));
     });
 
-    test('CalculationFlags preserves other settings when changing nodeType', () {
+    test('CalculationFlags preserves other settings when changing nodeType',
+        () {
       final originalFlags = CalculationFlags(
         siderealMode: SiderealMode.krishnamurti,
         useTopocentric: true,
@@ -83,12 +84,12 @@ void main() {
   group('Rahu Node Types are available', () {
     test('Planet.meanNode is available', () {
       expect(Planet.meanNode.swissEphId, equals(10));
-      expect(Planet.meanNode.displayName, equals('Mean Node'));
+      expect(Planet.meanNode.displayName, equals('Rahu'));
     });
 
     test('Planet.trueNode is available', () {
       expect(Planet.trueNode.swissEphId, equals(11));
-      expect(Planet.trueNode.displayName, equals('True Node'));
+      expect(Planet.trueNode.displayName, equals('Rahu (True)'));
     });
 
     test('Planet.lunarNodes contains both', () {

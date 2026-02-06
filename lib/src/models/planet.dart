@@ -33,10 +33,10 @@ enum Planet {
   pluto(SwissEphConstants.pluto, 'Pluto'),
 
   /// Mean Lunar Node (Rahu in Vedic astrology)
-  meanNode(SwissEphConstants.meanNode, 'Mean Node'),
+  meanNode(SwissEphConstants.meanNode, 'Rahu'),
 
   /// True Lunar Node (True Rahu)
-  trueNode(SwissEphConstants.trueNode, 'True Node'),
+  trueNode(SwissEphConstants.trueNode, 'Rahu (True)'),
 
   /// Ketu (South Lunar Node) - the descending node, opposite to Rahu
   ketu(SwissEphConstants.ketu, 'Ketu'),
