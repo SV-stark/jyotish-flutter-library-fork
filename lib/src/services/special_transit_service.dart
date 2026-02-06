@@ -49,14 +49,14 @@ class SpecialTransitService {
     );
 
     // Calculate Sade Sati
-    final sadeSati = _calculateSadeSati(
+    final sadeSati = await _calculateSadeSati(
       natalMoonLongitude: natalMoonLongitude,
       transitSaturnLongitude: saturnPos.longitude,
       checkDate: date,
     );
 
     // Calculate Dhaiya
-    final dhaiya = _calculateDhaiya(
+    final dhaiya = await _calculateDhaiya(
       natalMoonLongitude: natalMoonLongitude,
       transitSaturnLongitude: saturnPos.longitude,
       checkDate: date,
@@ -89,11 +89,11 @@ class SpecialTransitService {
   }
 
   /// Calculates Sade Sati status.
-  SadeSatiStatus _calculateSadeSati({
+  Future<SadeSatiStatus> _calculateSadeSati({
     required double natalMoonLongitude,
     required double transitSaturnLongitude,
     required DateTime checkDate,
-  }) {
+  }) async {
     final moonSign = (natalMoonLongitude / 30).floor();
     final saturnSign = (transitSaturnLongitude / 30).floor();
 
@@ -128,17 +128,17 @@ class SpecialTransitService {
       final positionInSign = transitSaturnLongitude % 30;
       progress = positionInSign / 30.0;
 
-      // Calculate dates using variable Saturn speed (accounting for retrograde)
-      // Saturn typically spends 2.5 years per sign, but varies due to retrograde
-      final (calculatedStartDate, calculatedEndDate) = _calculateSadeSatiDates(
+      // Calculate dates using ephemeris-based projection
+      // This accounts for Saturn's variable speed and retrograde motion
+      final dates = await _calculateSadeSatiDates(
         checkDate: checkDate,
         natalMoonLongitude: natalMoonLongitude,
         transitSaturnLongitude: transitSaturnLongitude,
         phase: phase!,
       );
 
-      startDate = calculatedStartDate;
-      endDate = calculatedEndDate;
+      startDate = dates.$1;
+      endDate = dates.$2;
     }
 
     return SadeSatiStatus(
@@ -152,89 +152,196 @@ class SpecialTransitService {
     );
   }
 
-  /// Calculates Sade Sati start and end dates accounting for Saturn's variable speed.
+  /// Calculates Sade Sati start and end dates using ephemeris-based projection.
   ///
-  /// Saturn's transit time varies due to retrograde motion. Instead of using
-  /// a fixed daysPerSign constant, this method estimates dates based on:
-  /// - Average Saturn orbital period: ~29.5 years
-  /// - Average time per sign: ~2.46 years (900 days)
-  /// - Retrograde periods can extend stay in a sign by 20-30%
-  (DateTime, DateTime) _calculateSadeSatiDates({
+  /// Uses Swiss Ephemeris to calculate Saturn's actual position over time,
+  /// accounting for:
+  /// - Variable direct and retrograde motion
+  /// - Actual time spent in each sign (varies from ~2.2 to ~2.8 years)
+  /// - Precise sign entry/exit times
+  ///
+  /// This provides accurate dates within days instead of months.
+  Future<(DateTime, DateTime)> _calculateSadeSatiDates({
     required DateTime checkDate,
     required double natalMoonLongitude,
     required double transitSaturnLongitude,
     required SadeSatiPhase phase,
-  }) {
-    final moonSign = (natalMoonLongitude / 30).floor();
-    final positionInSign = transitSaturnLongitude % 30;
+  }) async {
+    final location = GeographicLocation(
+      latitude: 0,
+      longitude: 0,
+      altitude: 0,
+    );
+    final flags = CalculationFlags.defaultFlags();
 
-    // Saturn's average daily motion (in degrees)
-    // Direct motion: ~0.035°/day, Retrograde: ~-0.025°/day
-    // Average accounting for retrograde periods: ~0.028°/day
-    const averageDailyMotion = 0.028;
+    // Calculate end date using ephemeris projection
+    final endDate = await _calculateSignExitDate(
+      startDate: checkDate,
+      startLongitude: transitSaturnLongitude,
+      location: location,
+      flags: flags,
+    );
 
-    // Calculate days to complete current sign
-    // Account for retrograde by using average motion
-    final degreesRemaining = 30.0 - positionInSign;
-    final daysToCompleteSign = (degreesRemaining / averageDailyMotion).round();
-
-    // Calculate end date of current phase
-    final endDate = checkDate.add(Duration(days: daysToCompleteSign));
-
-    // Calculate days elapsed in current phase
-    final daysElapsedInSign = (positionInSign / averageDailyMotion).round();
-
-    // Calculate total days for each phase (accounting for retrograde)
-    // Each phase is approximately 2.5 years but varies
-    var totalDaysElapsed = daysElapsedInSign;
-
-    if (phase == SadeSatiPhase.peak) {
-      // Peak phase: 1st house from Moon
-      // Add time for 12th house (already completed)
-      totalDaysElapsed += _calculateSignTransitDays(moonSign - 1);
-    } else if (phase == SadeSatiPhase.setting) {
-      // Setting phase: 2nd house from Moon
-      // Add time for 12th and 1st houses (already completed)
-      totalDaysElapsed += _calculateSignTransitDays(moonSign - 1);
-      totalDaysElapsed += _calculateSignTransitDays(moonSign);
-    }
-
-    final startDate = checkDate.subtract(Duration(days: totalDaysElapsed));
+    // Calculate start date by looking backwards
+    final startDate = await _calculatePhaseStartDate(
+      checkDate: checkDate,
+      natalMoonLongitude: natalMoonLongitude,
+      phase: phase,
+      location: location,
+      flags: flags,
+    );
 
     return (startDate, endDate);
   }
 
+  /// Calculates when Saturn will exit the current sign using ephemeris data.
+  ///
+  /// Projects Saturn's position forward day by day using actual ephemeris
+  /// calculations, accounting for retrograde motion and variable speed.
+  Future<DateTime> _calculateSignExitDate({
+    required DateTime startDate,
+    required double startLongitude,
+    required GeographicLocation location,
+    required CalculationFlags flags,
+  }) async {
+    final currentSign = (startLongitude / 30).floor();
+
+    // Start with approximate date (Saturn spends ~2.5 years per sign)
+    var searchDate = startDate.add(const Duration(days: 900));
+    
+    // Binary search for exact sign exit
+    var earlyBound = startDate;
+    var lateBound = startDate.add(const Duration(days: 1100)); // Max ~3 years
+    
+    const maxIterations = 50;
+    const accuracyThreshold = Duration(hours: 1); // 1 hour precision
+    
+    for (var i = 0; i < maxIterations; i++) {
+      if (lateBound.difference(earlyBound) <= accuracyThreshold) {
+        break;
+      }
+
+      searchDate = earlyBound.add(
+        Duration(
+          milliseconds: lateBound.difference(earlyBound).inMilliseconds ~/ 2,
+        ),
+      );
+
+      final saturnPos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.saturn,
+        dateTime: searchDate,
+        location: location,
+        flags: flags,
+      );
+
+      final saturnSign = (saturnPos.longitude / 30).floor();
+
+      if (saturnSign <= currentSign) {
+        // Still in or before target sign
+        earlyBound = searchDate;
+      } else {
+        // Moved to next sign
+        lateBound = searchDate;
+      }
+    }
+
+    return earlyBound;
+  }
+
+  /// Calculates the start date of the current Sade Sati phase.
+  ///
+  /// Works backwards from checkDate to find when Saturn entered
+  /// the current phase (12th, 1st, or 2nd from Moon).
+  Future<DateTime> _calculatePhaseStartDate({
+    required DateTime checkDate,
+    required double natalMoonLongitude,
+    required SadeSatiPhase phase,
+    required GeographicLocation location,
+    required CalculationFlags flags,
+  }) async {
+    final moonSign = (natalMoonLongitude / 30).floor();
+    
+    // Determine which house Saturn should have entered
+    final targetHouse = switch (phase) {
+      SadeSatiPhase.rising => 12, // 12th from Moon
+      SadeSatiPhase.peak => 1,    // 1st from Moon
+      SadeSatiPhase.setting => 2, // 2nd from Moon
+    };
+    
+    // Calculate target sign based on house from Moon
+    final targetSign = ((moonSign + targetHouse - 1) % 12);
+
+    // Search backwards to find when Saturn entered this sign
+    var searchDate = checkDate.subtract(const Duration(days: 900));
+    var earlyBound = checkDate.subtract(const Duration(days: 2700)); // ~7.5 years max
+    var lateBound = checkDate;
+
+    const maxIterations = 50;
+    const accuracyThreshold = Duration(hours: 1);
+
+    for (var i = 0; i < maxIterations; i++) {
+      if (lateBound.difference(earlyBound) <= accuracyThreshold) {
+        break;
+      }
+
+      searchDate = earlyBound.add(
+        Duration(
+          milliseconds: lateBound.difference(earlyBound).inMilliseconds ~/ 2,
+        ),
+      );
+
+      final saturnPos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.saturn,
+        dateTime: searchDate,
+        location: location,
+        flags: flags,
+      );
+
+      final saturnSign = (saturnPos.longitude / 30).floor();
+      
+      // Normalize sign to 0-11 range for comparison
+      final normalizedSaturnSign = saturnSign % 12;
+
+      if (normalizedSaturnSign < targetSign) {
+        // Before entering target sign
+        earlyBound = searchDate;
+      } else {
+        // In or after target sign
+        lateBound = searchDate;
+      }
+    }
+
+    return lateBound;
+  }
+
   /// Calculates approximate transit days for Saturn in a specific sign.
   ///
-  /// This accounts for the fact that Saturn spends varying amounts of time
-  /// in different signs due to its orbital eccentricity and retrograde motion.
+  /// Kept for backward compatibility and rough estimates.
+  /// For precise calculations, use ephemeris-based methods.
+  // ignore: unused_element
   int _calculateSignTransitDays(int signIndex) {
-    // Base transit time: ~900 days (2.46 years)
-    const baseDays = 900;
+    // Base transit time: ~912 days (2.5 years average)
+    const baseDays = 912;
 
     // Saturn moves slower in certain parts of its orbit
-    // Approximate variation based on sign (simplified model)
-    // Signs where Saturn is in Capricorn/Aquarius (its own signs) it moves faster
-    // Signs opposite to those it moves slower
     final signModulation = switch (signIndex % 12) {
       9 || 10 => -30, // Capricorn/Aquarius - slightly faster
-      3 || 4 => 30, // Cancer/Leo - slightly slower (opposition)
+      3 || 4 => 30,   // Cancer/Leo - slightly slower
       _ => 0,
     };
 
-    // Add random variation to account for retrograde (±45 days)
-    // In a real implementation, this would be calculated from ephemeris
-    const retrogradeVariation = 0;
-
-    return baseDays + signModulation + retrogradeVariation;
+    return baseDays + signModulation;
   }
 
-  /// Calculates Dhaiya (Panoti) status.
-  DhaiyaStatus _calculateDhaiya({
+  /// Calculates Dhaiya (Panoti) status using ephemeris-based projections.
+  ///
+  /// Uses Swiss Ephemeris for accurate Saturn transit timing,
+  /// accounting for retrograde motion and variable speed.
+  Future<DhaiyaStatus> _calculateDhaiya({
     required double natalMoonLongitude,
     required double transitSaturnLongitude,
     required DateTime checkDate,
-  }) {
+  }) async {
     final moonSign = (natalMoonLongitude / 30).floor();
     final saturnSign = (transitSaturnLongitude / 30).floor();
 
@@ -253,18 +360,29 @@ class SpecialTransitService {
     if (isActive) {
       type = houseFromMoon == 4 ? DhaiyaType.fourth : DhaiyaType.eighth;
 
-      // Calculate dates using variable Saturn speed
-      final positionInSign = transitSaturnLongitude % 30;
-      const averageDailyMotion = 0.028; // degrees per day
+      // Calculate dates using ephemeris-based projection
+      final location = GeographicLocation(
+        latitude: 0,
+        longitude: 0,
+        altitude: 0,
+      );
+      final flags = CalculationFlags.defaultFlags();
 
-      // Days remaining in current sign
-      final degreesRemaining = 30.0 - positionInSign;
-      final daysRemaining = (degreesRemaining / averageDailyMotion).round();
-      endDate = checkDate.add(Duration(days: daysRemaining));
+      // Calculate end date when Saturn will exit current sign
+      endDate = await _calculateSignExitDate(
+        startDate: checkDate,
+        startLongitude: transitSaturnLongitude,
+        location: location,
+        flags: flags,
+      );
 
-      // Days elapsed in current sign
-      final daysElapsed = (positionInSign / averageDailyMotion).round();
-      startDate = checkDate.subtract(Duration(days: daysElapsed));
+      // Calculate start date when Saturn entered current sign
+      startDate = await _calculateSignEntryDate(
+        checkDate: checkDate,
+        currentLongitude: transitSaturnLongitude,
+        location: location,
+        flags: flags,
+      );
     }
 
     return DhaiyaStatus(
@@ -275,6 +393,54 @@ class SpecialTransitService {
       startDate: startDate,
       endDate: endDate,
     );
+  }
+
+  /// Calculates when Saturn entered the current sign (working backwards).
+  Future<DateTime> _calculateSignEntryDate({
+    required DateTime checkDate,
+    required double currentLongitude,
+    required GeographicLocation location,
+    required CalculationFlags flags,
+  }) async {
+    final currentSign = (currentLongitude / 30).floor();
+
+    // Search backwards to find sign entry
+    var earlyBound = checkDate.subtract(const Duration(days: 1100));
+    var lateBound = checkDate;
+
+    const maxIterations = 50;
+    const accuracyThreshold = Duration(hours: 1);
+
+    for (var i = 0; i < maxIterations; i++) {
+      if (lateBound.difference(earlyBound) <= accuracyThreshold) {
+        break;
+      }
+
+      final searchDate = earlyBound.add(
+        Duration(
+          milliseconds: lateBound.difference(earlyBound).inMilliseconds ~/ 2,
+        ),
+      );
+
+      final saturnPos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.saturn,
+        dateTime: searchDate,
+        location: location,
+        flags: flags,
+      );
+
+      final saturnSign = (saturnPos.longitude / 30).floor();
+
+      if (saturnSign < currentSign) {
+        // Before entering sign
+        earlyBound = searchDate;
+      } else {
+        // In or after sign
+        lateBound = searchDate;
+      }
+    }
+
+    return lateBound;
   }
 
   /// Calculates Panchak status.

@@ -381,6 +381,32 @@ class DivisionalChartService {
         final offset = part * 3;
         return (signIndex + offset) % 12;
 
+      case DivisionalChartType.d5: // Panchamsa
+        // D5 rules:
+        // For odd signs (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius):
+        //   Start from Aries (0)
+        // For even signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces):
+        //   Start from Libra (6)
+        final part = (degreeInSign / (30 / 5)).floor(); // 0-4
+        if (isOdd) {
+          // Start from Aries for odd signs
+          return (0 + part) % 12;
+        } else {
+          // Start from Libra for even signs
+          return (6 + part) % 12;
+        }
+
+      case DivisionalChartType.d6: // Shashthamsa
+        // D6 rules:
+        // For odd signs: Start from Aries (0)
+        // For even signs: Start from Libra (6)
+        final part = (degreeInSign / (30 / 6)).floor(); // 0-5
+        if (isOdd) {
+          return (0 + part) % 12;
+        } else {
+          return (6 + part) % 12;
+        }
+
       case DivisionalChartType.d7: // Saptamsa
         final part = (degreeInSign / (30 / 7)).floor(); // 0-6
         if (isOdd) {
@@ -389,6 +415,21 @@ class DivisionalChartService {
         } else {
           // Start from 7th sign
           return (signIndex + 6 + part) % 12;
+        }
+
+      case DivisionalChartType.d8: // Ashtamsa
+        // D8 rules:
+        // For movable signs (Aries, Cancer, Libra, Capricorn): Start from Aries
+        // For fixed signs (Taurus, Leo, Scorpio, Aquarius): Start from Leo
+        // For dual signs (Gemini, Virgo, Sagittarius, Pisces): Start from Sagittarius
+        final part = (degreeInSign / (30 / 8)).floor(); // 0-7
+        if (isMoveable) {
+          return (0 + part) % 12;
+        } else if (isFixed) {
+          return (4 + part) % 12;
+        } else {
+          // Dual signs
+          return (8 + part) % 12;
         }
 
       case DivisionalChartType.d9: // Navamsa
@@ -415,6 +456,21 @@ class DivisionalChartService {
         } else {
           // Start 9th
           return (signIndex + 8 + part) % 12;
+        }
+
+      case DivisionalChartType.d11: // Rudramsa
+        // D11 rules:
+        // For movable signs: Start from Aries
+        // For fixed signs: Start from Leo
+        // For dual signs: Start from Sagittarius
+        final part = (degreeInSign / (30 / 11)).floor(); // 0-10
+        if (isMoveable) {
+          return (0 + part) % 12;
+        } else if (isFixed) {
+          return (4 + part) % 12;
+        } else {
+          // Dual signs
+          return (8 + part) % 12;
         }
 
       case DivisionalChartType.d12: // Dwadasamsa
@@ -512,6 +568,20 @@ class DivisionalChartService {
           // Part 0 maps to 9th from sign, Part 1 to 8th from sign, etc.
           // Formula: (signIndex + 9 - part) % 12
           return (signIndex + 9 - part) % 12;
+        }
+
+      case DivisionalChartType.d150: // Nadi Amsa
+        // D150: 150th division for micro-level analysis
+        // Rules:
+        // For odd signs: Count forward from Aries
+        // For even signs: Count backward from Pisces
+        final part = (degreeInSign / (30 / 150)).floor(); // 0-149
+        if (isOdd) {
+          // Count forward from Aries for odd signs
+          return (0 + part) % 12;
+        } else {
+          // Count backward from Pisces for even signs
+          return (11 - part) % 12;
         }
 
       case DivisionalChartType.d249: // 249 Subdivisions (KP Micro-Analysis)

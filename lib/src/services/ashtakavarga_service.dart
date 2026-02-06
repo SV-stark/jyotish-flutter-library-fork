@@ -389,6 +389,154 @@ class AshtakavargaService {
     return pindaResults;
   }
 
+  /// Calculates Yoga Pinda (auspicious strength) from Ashtakavarga.
+  ///
+  /// Yoga Pinda represents the total benefic strength after all reductions.
+  /// It is calculated from the final reduced Ashtakavarga bindus.
+  ///
+  /// [ashtakavarga] - The Ashtakavarga after Trikona and Ekadhipati Shodhana
+  ///
+  /// Returns the Yoga Pinda for each planet
+  Map<Planet, YogaPindaResult> calculateYogaPinda(Ashtakavarga ashtakavarga) {
+    final yogaPindaResults = <Planet, YogaPindaResult>{};
+
+    for (final entry in ashtakavarga.bhinnashtakavarga.entries) {
+      final planet = entry.key;
+      final bav = entry.value;
+
+      var totalYogaPinda = 0.0;
+      final signYogaPindas = <int, double>{};
+
+      // Yoga Pinda uses different multipliers than regular Pinda
+      // Focus on positive contributions
+      for (var signIndex = 0; signIndex < 12; signIndex++) {
+        final bindus = bav.bindus[signIndex];
+        
+        // Only count positive bindus (benefic contributions)
+        if (bindus > 0) {
+          final multiplier = _yogaPindaMultipliers[signIndex];
+          final yogaPinda = bindus * multiplier;
+          
+          signYogaPindas[signIndex] = yogaPinda;
+          totalYogaPinda += yogaPinda;
+        } else {
+          signYogaPindas[signIndex] = 0.0;
+        }
+      }
+
+      yogaPindaResults[planet] = YogaPindaResult(
+        planet: planet,
+        totalYogaPinda: totalYogaPinda,
+        signYogaPindas: signYogaPindas,
+        averageYogaPinda: totalYogaPinda / 12,
+        strengthRating: _getYogaPindaRating(totalYogaPinda),
+      );
+    }
+
+    return yogaPindaResults;
+  }
+
+  /// Calculates Shodhya Pinda (reduced strength).
+  ///
+  /// Shodhya Pinda is calculated after applying:
+  /// 1. Trikona Shodhana (Trine reduction)
+  /// 2. Ekadhipati Shodhana (Reduction for same lordship)
+  ///
+  /// This represents the actual usable strength after reductions.
+  ///
+  /// [ashtakavarga] - The Ashtakavarga to calculate from
+  ///
+  /// Returns the complete Shodhya Pinda analysis
+  ShodhyaPindaResult calculateShodhyaPinda(Ashtakavarga ashtakavarga) {
+    // Step 1: Apply Trikona Shodhana
+    final trikonaReduced = applyTrikonaShodhana(ashtakavarga);
+    
+    // Step 2: Apply Ekadhipati Shodhana
+    final ekadhipatiReduced = applyEkadhipatiShodhana(trikonaReduced);
+    
+    // Step 3: Calculate Pinda from reduced Ashtakavarga
+    final reducedPinda = calculatePinda(ekadhipatiReduced);
+    
+    // Step 4: Calculate Yoga Pinda from reduced Ashtakavarga
+    final yogaPinda = calculateYogaPinda(ekadhipatiReduced);
+
+    // Calculate totals
+    var totalReducedPinda = 0.0;
+    var totalYogaPinda = 0.0;
+    
+    for (final entry in reducedPinda.entries) {
+      totalReducedPinda += entry.value.totalPinda;
+    }
+    
+    for (final entry in yogaPinda.entries) {
+      totalYogaPinda += entry.value.totalYogaPinda;
+    }
+
+    return ShodhyaPindaResult(
+      trikonaReducedAshtakavarga: trikonaReduced,
+      ekadhipatiReducedAshtakavarga: ekadhipatiReduced,
+      reducedPinda: reducedPinda,
+      yogaPinda: yogaPinda,
+      totalReducedPinda: totalReducedPinda,
+      totalYogaPinda: totalYogaPinda,
+      averageReducedPinda: totalReducedPinda / reducedPinda.length,
+      averageYogaPinda: totalYogaPinda / yogaPinda.length,
+    );
+  }
+
+  /// Calculates Ashtakavarga Pinda for a specific house.
+  ///
+  /// This calculates the strength of a specific house based on
+  /// Ashtakavarga bindus in that house across all planets.
+  ///
+  /// [ashtakavarga] - The Ashtakavarga
+  /// [houseNumber] - House number (1-12)
+  ///
+  /// Returns the house Pinda value
+  double calculateHousePinda(Ashtakavarga ashtakavarga, int houseNumber) {
+    if (houseNumber < 1 || houseNumber > 12) {
+      throw ArgumentError('House number must be between 1 and 12');
+    }
+
+    final signIndex = houseNumber - 1;
+    var housePinda = 0.0;
+
+    // Sum bindus from all planets in this house
+    for (final entry in ashtakavarga.bhinnashtakavarga.entries) {
+      final bav = entry.value;
+      final bindus = bav.bindus[signIndex];
+      final multiplier = _pindaMultipliers[signIndex];
+      housePinda += bindus * multiplier;
+    }
+
+    return housePinda;
+  }
+
+  /// Calculates Pinda strength for all 12 houses.
+  ///
+  /// [ashtakavarga] - The Ashtakavarga
+  ///
+  /// Returns a map of house numbers to their Pinda values
+  Map<int, double> calculateAllHousesPinda(Ashtakavarga ashtakavarga) {
+    final housesPinda = <int, double>{};
+
+    for (var houseNum = 1; houseNum <= 12; houseNum++) {
+      housesPinda[houseNum] = calculateHousePinda(ashtakavarga, houseNum);
+    }
+
+    return housesPinda;
+  }
+
+  /// Gets the rating for Yoga Pinda based on total value.
+  YogaPindaRating _getYogaPindaRating(double totalYogaPinda) {
+    if (totalYogaPinda >= 300) return YogaPindaRating.excellent;
+    if (totalYogaPinda >= 225) return YogaPindaRating.veryGood;
+    if (totalYogaPinda >= 150) return YogaPindaRating.good;
+    if (totalYogaPinda >= 100) return YogaPindaRating.moderate;
+    if (totalYogaPinda >= 50) return YogaPindaRating.weak;
+    return YogaPindaRating.veryWeak;
+  }
+
   // Trikona groups (trines)
   static const _trikonas = [
     [0, 4, 8],   // Aries, Leo, Sagittarius (Fire)
@@ -448,3 +596,133 @@ class PindaResult {
     return '${planet.displayName}: ${totalPinda.toStringAsFixed(1)} total, ${averagePinda.toStringAsFixed(1)} avg';
   }
 }
+
+/// Result of Yoga Pinda calculation.
+class YogaPindaResult {
+  const YogaPindaResult({
+    required this.planet,
+    required this.totalYogaPinda,
+    required this.signYogaPindas,
+    required this.averageYogaPinda,
+    required this.strengthRating,
+  });
+
+  final Planet planet;
+  final double totalYogaPinda;
+  final Map<int, double> signYogaPindas;
+  final double averageYogaPinda;
+  final YogaPindaRating strengthRating;
+
+  /// Gets Yoga Pinda for a specific sign
+  double getYogaPindaForSign(int signIndex) => signYogaPindas[signIndex] ?? 0.0;
+
+  @override
+  String toString() {
+    return '${planet.displayName}: ${totalYogaPinda.toStringAsFixed(1)} ($strengthRating)';
+  }
+}
+
+/// Yoga Pinda strength ratings
+enum YogaPindaRating {
+  excellent('Excellent', 300, double.infinity),
+  veryGood('Very Good', 225, 300),
+  good('Good', 150, 225),
+  moderate('Moderate', 100, 150),
+  weak('Weak', 50, 100),
+  veryWeak('Very Weak', 0, 50);
+
+  const YogaPindaRating(this.name, this.minValue, this.maxValue);
+
+  final String name;
+  final double minValue;
+  final double maxValue;
+
+  @override
+  String toString() => name;
+}
+
+/// Result of complete Shodhya Pinda calculation.
+class ShodhyaPindaResult {
+  const ShodhyaPindaResult({
+    required this.trikonaReducedAshtakavarga,
+    required this.ekadhipatiReducedAshtakavarga,
+    required this.reducedPinda,
+    required this.yogaPinda,
+    required this.totalReducedPinda,
+    required this.totalYogaPinda,
+    required this.averageReducedPinda,
+    required this.averageYogaPinda,
+  });
+
+  /// Ashtakavarga after Trikona Shodhana
+  final Ashtakavarga trikonaReducedAshtakavarga;
+
+  /// Ashtakavarga after Ekadhipati Shodhana (final)
+  final Ashtakavarga ekadhipatiReducedAshtakavarga;
+
+  /// Reduced Pinda for each planet
+  final Map<Planet, PindaResult> reducedPinda;
+
+  /// Yoga Pinda for each planet
+  final Map<Planet, YogaPindaResult> yogaPinda;
+
+  /// Total reduced Pinda across all planets
+  final double totalReducedPinda;
+
+  /// Total Yoga Pinda across all planets
+  final double totalYogaPinda;
+
+  /// Average reduced Pinda per planet
+  final double averageReducedPinda;
+
+  /// Average Yoga Pinda per planet
+  final double averageYogaPinda;
+
+  /// Gets Yoga Pinda for a specific planet
+  YogaPindaResult? getYogaPindaForPlanet(Planet planet) => yogaPinda[planet];
+
+  /// Gets reduced Pinda for a specific planet
+  PindaResult? getReducedPindaForPlanet(Planet planet) => reducedPinda[planet];
+
+  /// Overall strength assessment
+  ShodhyaStrength get overallStrength {
+    if (averageYogaPinda >= 25) return ShodhyaStrength.veryStrong;
+    if (averageYogaPinda >= 20) return ShodhyaStrength.strong;
+    if (averageYogaPinda >= 15) return ShodhyaStrength.moderate;
+    if (averageYogaPinda >= 10) return ShodhyaStrength.weak;
+    return ShodhyaStrength.veryWeak;
+  }
+}
+
+/// Shodhya Pinda overall strength
+enum ShodhyaStrength {
+  veryStrong('Very Strong', 'Excellent results expected'),
+  strong('Strong', 'Good results expected'),
+  moderate('Moderate', 'Average results'),
+  weak('Weak', 'Challenges expected'),
+  veryWeak('Very Weak', 'Significant difficulties');
+
+  const ShodhyaStrength(this.name, this.description);
+
+  final String name;
+  final String description;
+
+  @override
+  String toString() => name;
+}
+
+// Yoga Pinda multipliers for each sign (different from regular Pinda)
+const _yogaPindaMultipliers = [
+  1.5, // Aries - increased for leadership/drive
+  2.0, // Taurus - increased for stability
+  2.5, // Gemini - increased for communication
+  3.0, // Cancer - increased for nurturing
+  3.5, // Leo - increased for authority
+  4.0, // Virgo - increased for service
+  4.5, // Libra - increased for balance
+  5.0, // Scorpio - increased for transformation
+  5.5, // Sagittarius - increased for wisdom
+  6.0, // Capricorn - increased for achievement
+  6.5, // Aquarius - increased for innovation
+  7.0, // Pisces - increased for spirituality
+];

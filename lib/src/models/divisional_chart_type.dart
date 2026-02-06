@@ -12,8 +12,20 @@ enum DivisionalChartType {
   /// D4 - Chaturthamsa (Fortune/Assets)
   d4('D4', 'Chaturthamsa', 'Assets', 4),
 
+  /// D5 - Panchamsa (Children/Success/Authority)
+  d5('D5', 'Panchamsa', 'Children/Success', 5),
+
+  /// D6 - Shashthamsa (Health/Disease/Misery)
+  d6('D6', 'Shashthamsa', 'Health/Disease', 6),
+
   /// D7 - Saptamsa (Children/Progeny)
   d7('D7', 'Saptamsa', 'Children', 7),
+
+  /// D8 - Ashtamsa (Longevity/Death/Sudden Events)
+  d8('D8', 'Ashtamsa', 'Longevity/Death', 8),
+
+  /// D11 - Rudramsa (Gains/Challenges/Destruction)
+  d11('D11', 'Rudramsa', 'Gains/Challenges', 11),
 
   /// D9 - Navamsa (Spouse/Dharma)
   d9('D9', 'Navamsa', 'Spouse', 9),
@@ -47,6 +59,11 @@ enum DivisionalChartType {
 
   /// D60 - Shashtiamsa (Past Life/Karma)
   d60('D60', 'Shashtiamsa', 'Past Life', 60),
+
+  /// D150 - Nadi Amsa (Micro-level destiny/Past Life Karma)
+  /// The 150th division - extremely fine subdivision for detailed analysis
+  /// of past life karmas and subtle destiny patterns
+  d150('D150', 'Nadi Amsa', 'Micro Destiny', 150),
 
   /// D249 - 249 Subdivisions (Micro-Level Analysis)
   d249('D249', '249 Subdivisions', 'Micro Analysis', 249);

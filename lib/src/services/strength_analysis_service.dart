@@ -1,0 +1,514 @@
+import '../models/divisional_chart_type.dart';
+import '../models/planet.dart';
+import '../models/vedic_chart.dart';
+import 'divisional_chart_service.dart';
+
+/// Service for advanced strength and analysis calculations.
+///
+/// This service provides specialized APIs for:
+/// - Ishtaphala and Kashtaphala (auspicious/inauspicious results)
+/// - Bhava Bala (house strength calculations)
+/// - Vimshopak Bala (strength across 20 divisional charts)
+class StrengthAnalysisService {
+  final DivisionalChartService _divisionalChartService =
+      DivisionalChartService();
+
+  /// Calculates Ishtaphala (auspicious fruit) for a planet.
+  ///
+  /// Ishtaphala represents the favorable results a planet can give based on:
+  /// - Its positional strength (Shadbala)
+  /// - Its dignity in the chart
+  /// - Its relationship with the lagna lord
+  ///
+  /// [planet] - The planet to analyze
+  /// [chart] - The Vedic chart
+  /// [shadbalaStrength] - The Shadbala strength (0-600)
+  ///
+  /// Returns a value from 0.0 to 1.0 representing the auspicious potential
+  double getIshtaphala({
+    required Planet planet,
+    required VedicChart chart,
+    required double shadbalaStrength,
+  }) {
+    final planetInfo = chart.planets[planet];
+    if (planetInfo == null) return 0.0;
+
+    var ishtaphala = 0.0;
+
+    // 1. Dignity factor (0-40%)
+    final dignityScore = _getDignityScore(planetInfo.dignity);
+    ishtaphala += dignityScore * 0.4;
+
+    // 2. Shadbala factor (0-30%)
+    // Normalize Shadbala (0-600) to (0-1)
+    final shadbalaFactor = (shadbalaStrength / 600.0).clamp(0.0, 1.0);
+    ishtaphala += shadbalaFactor * 0.3;
+
+    // 3. House placement factor (0-20%)
+    final houseScore = _getHouseScore(planetInfo.house);
+    ishtaphala += houseScore * 0.2;
+
+    // 4. Relationship with lagna lord (0-10%)
+    final lagnaLord = _getLagnaLord(chart.houses.ascendant);
+    if (lagnaLord != null) {
+      final relationshipScore = _getPlanetaryRelationship(planet, lagnaLord);
+      ishtaphala += relationshipScore * 0.1;
+    }
+
+    return ishtaphala.clamp(0.0, 1.0);
+  }
+
+  /// Calculates Kashtaphala (inauspicious fruit) for a planet.
+  ///
+  /// Kashtaphala represents the unfavorable results a planet can give.
+  /// It is inversely related to Ishtaphala but considers different factors
+  /// like afflictions, combustions, and enemy placements.
+  ///
+  /// [planet] - The planet to analyze
+  /// [chart] - The Vedic chart
+  /// [shadbalaStrength] - The Shadbala strength (0-600)
+  ///
+  /// Returns a value from 0.0 to 1.0 representing the inauspicious potential
+  double getKashtaphala({
+    required Planet planet,
+    required VedicChart chart,
+    required double shadbalaStrength,
+  }) {
+    final planetInfo = chart.planets[planet];
+    if (planetInfo == null) return 0.0;
+
+    var kashtaphala = 0.0;
+
+    // 1. Debilitation/enemy sign factor (0-35%)
+    final debilitationScore = _getDebilitationScore(planetInfo.dignity);
+    kashtaphala += debilitationScore * 0.35;
+
+    // 2. Combustion factor (0-25%)
+    if (planetInfo.isCombust) {
+      kashtaphala += 0.25;
+    } else {
+      // Check proximity to Sun
+      final sunInfo = chart.planets[Planet.sun];
+      if (sunInfo != null) {
+        final distanceFromSun =
+            (planetInfo.longitude - sunInfo.longitude).abs() % 360;
+        if (distanceFromSun < 15 || distanceFromSun > 345) {
+          kashtaphala += 0.15 * (1 - distanceFromSun / 15);
+        }
+      }
+    }
+
+    // 3. Weak Shadbala factor (0-25%)
+    // Low Shadbala contributes to Kashtaphala
+    final weakShadbalaFactor = (1 - (shadbalaStrength / 300.0)).clamp(0.0, 1.0);
+    kashtaphala += weakShadbalaFactor * 0.25;
+
+    // 4. Malefic house placement (0-15%)
+    final maleficHouses = [6, 8, 12];
+    if (maleficHouses.contains(planetInfo.house)) {
+      kashtaphala += 0.15;
+    }
+
+    return kashtaphala.clamp(0.0, 1.0);
+  }
+
+  /// Calculates Bhava Bala (house strength) for all 12 houses.
+  ///
+  /// Bhava Bala measures the cumulative strength of each house based on:
+  /// - The strength of the house lord
+  /// - Planets placed in the house
+  /// - Aspects on the house
+  /// - Placement in divisional charts
+  ///
+  /// [chart] - The Vedic chart
+  /// [shadbalaResults] - Shadbala results for all planets
+  ///
+  /// Returns a map of house numbers (1-12) to their strength values (0-100)
+  Map<int, double> getBhavaBala({
+    required VedicChart chart,
+    required Map<Planet, double> shadbalaResults,
+  }) {
+    final bhavaBala = <int, double>{};
+
+    for (var houseNum = 1; houseNum <= 12; houseNum++) {
+      var strength = 0.0;
+
+      // 1. House lord strength (40%)
+      final houseLord = _getHouseLord(houseNum, chart.houses.ascendant);
+      if (houseLord != null) {
+        final lordStrength = shadbalaResults[houseLord] ?? 0.0;
+        strength += (lordStrength / 600.0) * 40.0;
+      }
+
+      // 2. Planets in house strength (35%)
+      final planetsInHouse = chart.getPlanetsInHouse(houseNum);
+      var planetsStrength = 0.0;
+      for (final planet in planetsInHouse) {
+        final planetStrength = shadbalaResults[planet.planet] ?? 0.0;
+        planetsStrength += planetStrength / 600.0;
+      }
+      // Average if multiple planets
+      if (planetsInHouse.isNotEmpty) {
+        planetsStrength /= planetsInHouse.length;
+      }
+      strength += planetsStrength * 35.0;
+
+      // 3. House nature factor (15%)
+      // Kendra (1,4,7,10) = Strongest
+      // Panapara (2,5,8,11) = Medium
+      // Apoklima (3,6,9,12) = Weakest
+      if ([1, 4, 7, 10].contains(houseNum)) {
+        strength += 15.0;
+      } else if ([2, 5, 8, 11].contains(houseNum)) {
+        strength += 10.0;
+      } else {
+        strength += 5.0;
+      }
+
+      // 4. Aspect strength (10%)
+      // Benefic aspects add strength
+      var aspectStrength = 0.0;
+      final beneficPlanets = [Planet.jupiter, Planet.venus, Planet.mercury];
+      for (final benefic in beneficPlanets) {
+        final beneficInfo = chart.planets[benefic];
+        if (beneficInfo != null) {
+          // Check if benefic aspects this house
+          if (_isPlanetAspectingHouse(beneficInfo.longitude, houseNum, chart)) {
+            aspectStrength += 3.33; // Max 10 for 3 benefics
+          }
+        }
+      }
+      strength += aspectStrength.clamp(0.0, 10.0);
+
+      bhavaBala[houseNum] = strength.clamp(0.0, 100.0);
+    }
+
+    return bhavaBala;
+  }
+
+  /// Calculates Vimshopak Bala (20-fold strength).
+  ///
+  /// Vimshopak Bala evaluates a planet's strength across 20 divisional charts:
+  /// - D1 (Rashi): 3.5 points
+  /// - D2 (Hora): 1.0 point
+  /// - D3 (Drekkana): 1.0 point
+  /// - D7 (Saptamsa): 0.5 point
+  /// - D9 (Navamsa): 3.0 points
+  /// - D10 (Dasamsa): 0.5 point
+  /// - D12 (Dwadasamsa): 0.5 point
+  /// - And 13 more divisional charts
+  ///
+  /// [chart] - The Vedic chart
+  /// [planet] - The planet to analyze
+  ///
+  /// Returns VimshopakBala result with total score (0-20)
+  VimshopakBala getVimshopakBala({
+    required VedicChart chart,
+    required Planet planet,
+  }) {
+    final divisionalScores = <DivisionalChartType, double>{};
+    var totalScore = 0.0;
+
+    // Define the 20 divisional charts with their weights
+    final vargaWeights = {
+      DivisionalChartType.d1: 3.5, // Rashi
+      DivisionalChartType.d2: 1.0, // Hora
+      DivisionalChartType.d3: 1.0, // Drekkana
+      DivisionalChartType.d4: 0.5, // Chaturthamsa
+      DivisionalChartType.d7: 0.5, // Saptamsa
+      DivisionalChartType.d9: 3.0, // Navamsa
+      DivisionalChartType.d10: 0.5, // Dasamsa
+      DivisionalChartType.d12: 0.5, // Dwadasamsa
+      DivisionalChartType.d16: 0.5, // Shodasamsa
+      DivisionalChartType.d20: 0.5, // Vimsamsa
+      DivisionalChartType.d24: 0.5, // Chaturvimshamsha
+      DivisionalChartType.d27: 0.5, // Saptavimsamsa
+      DivisionalChartType.d30: 1.0, // Trimsamsa
+      DivisionalChartType.d40: 0.5, // Khavedamsa
+      DivisionalChartType.d45: 0.5, // Akshavedamsa
+      DivisionalChartType.d60: 4.0, // Shashtiamsa
+    };
+
+    // Calculate score for each divisional chart
+    for (final entry in vargaWeights.entries) {
+      final vargaType = entry.key;
+      final weight = entry.value;
+
+      final vargaChart = _divisionalChartService.calculateDivisionalChart(
+        chart,
+        vargaType,
+      );
+
+      final planetInfo = vargaChart.planets[planet];
+      if (planetInfo != null) {
+        // Score based on dignity in the varga
+        final dignityScore = _getVargaDignityScore(planetInfo.dignity);
+        final weightedScore = dignityScore * weight;
+
+        divisionalScores[vargaType] = weightedScore;
+        totalScore += weightedScore;
+      }
+    }
+
+    return VimshopakBala(
+      planet: planet,
+      totalScore: totalScore,
+      maxPossibleScore: 20.0,
+      divisionalScores: divisionalScores,
+      strengthCategory: _getVimshopakCategory(totalScore),
+    );
+  }
+
+  /// Calculates Vimshopak Bala for all planets.
+  ///
+  /// [chart] - The Vedic chart
+  ///
+  /// Returns a map of all traditional planets to their Vimshopak Bala
+  Map<Planet, VimshopakBala> getAllPlanetsVimshopakBala(VedicChart chart) {
+    final results = <Planet, VimshopakBala>{};
+
+    for (final planet in Planet.traditionalPlanets) {
+      results[planet] = getVimshopakBala(chart: chart, planet: planet);
+    }
+
+    return results;
+  }
+
+  // Helper methods
+
+  double _getDignityScore(PlanetaryDignity dignity) {
+    return switch (dignity) {
+      PlanetaryDignity.exalted => 1.0,
+      PlanetaryDignity.moolaTrikona => 0.9,
+      PlanetaryDignity.ownSign => 0.8,
+      PlanetaryDignity.greatFriend => 0.7,
+      PlanetaryDignity.friendSign => 0.6,
+      PlanetaryDignity.neutralSign => 0.5,
+      PlanetaryDignity.enemySign => 0.3,
+      PlanetaryDignity.greatEnemy => 0.2,
+      PlanetaryDignity.debilitated => 0.0,
+    };
+  }
+
+  double _getDebilitationScore(PlanetaryDignity dignity) {
+    return switch (dignity) {
+      PlanetaryDignity.debilitated => 1.0,
+      PlanetaryDignity.greatEnemy => 0.8,
+      PlanetaryDignity.enemySign => 0.6,
+      PlanetaryDignity.neutralSign => 0.3,
+      PlanetaryDignity.friendSign => 0.2,
+      PlanetaryDignity.greatFriend => 0.1,
+      PlanetaryDignity.ownSign => 0.0,
+      PlanetaryDignity.moolaTrikona => 0.0,
+      PlanetaryDignity.exalted => 0.0,
+    };
+  }
+
+  double _getHouseScore(int house) {
+    // Kendra houses (1,4,7,10) = 1.0
+    // Trikona houses (5,9) = 0.9
+    // Upachaya (3,6,10,11) = 0.7
+    // Dusthana (6,8,12) = 0.3
+    return switch (house) {
+      1 || 4 || 7 || 10 => 1.0,
+      5 || 9 => 0.9,
+      3 || 11 => 0.7,
+      2 => 0.8,
+      6 || 8 || 12 => 0.3,
+      _ => 0.5,
+    };
+  }
+
+  Planet? _getLagnaLord(double ascendant) {
+    final signIndex = (ascendant / 30).floor() % 12;
+    const lords = {
+      0: Planet.mars, // Aries
+      1: Planet.venus, // Taurus
+      2: Planet.mercury, // Gemini
+      3: Planet.moon, // Cancer
+      4: Planet.sun, // Leo
+      5: Planet.mercury, // Virgo
+      6: Planet.venus, // Libra
+      7: Planet.mars, // Scorpio
+      8: Planet.jupiter, // Sagittarius
+      9: Planet.saturn, // Capricorn
+      10: Planet.saturn, // Aquarius
+      11: Planet.jupiter, // Pisces
+    };
+    return lords[signIndex];
+  }
+
+  Planet? _getHouseLord(int houseNumber, double ascendant) {
+    // Calculate which sign this house falls in
+    final houseSignIndex = ((ascendant / 30).floor() + houseNumber - 1) % 12;
+    return _getLagnaLord(houseSignIndex * 30.0);
+  }
+
+  double _getPlanetaryRelationship(Planet planet1, Planet planet2) {
+    // Simplified relationship check
+    // 1 = friend, 0 = neutral, -1 = enemy
+    if (planet1 == planet2) return 1.0;
+
+    final friendships = {
+      Planet.sun: {Planet.moon: 1, Planet.mars: 1, Planet.jupiter: 1},
+      Planet.moon: {Planet.sun: 0, Planet.mercury: 0},
+      Planet.mars: {Planet.sun: 1, Planet.moon: 1, Planet.jupiter: 1},
+      Planet.mercury: {Planet.sun: 1, Planet.venus: 1},
+      Planet.jupiter: {Planet.sun: 1, Planet.moon: 1, Planet.mars: 1},
+      Planet.venus: {Planet.mercury: 1, Planet.saturn: 1},
+      Planet.saturn: {Planet.mercury: 1, Planet.venus: 1},
+    };
+
+    return (friendships[planet1]?[planet2] ?? 0).toDouble();
+  }
+
+  bool _isPlanetAspectingHouse(double planetLongitude, int houseNum, VedicChart chart) {
+    // Simplified aspect check
+    // Full aspect is 180° (7th house aspect)
+    final houseCusp = chart.houses.cusps[houseNum - 1];
+    final diff = (planetLongitude - houseCusp).abs() % 360;
+    return diff > 165 && diff < 195; // Within 15° of 180°
+  }
+
+  double _getVargaDignityScore(PlanetaryDignity dignity) {
+    // Score out of 1.0 for each varga
+    return switch (dignity) {
+      PlanetaryDignity.exalted => 1.0,
+      PlanetaryDignity.moolaTrikona => 0.95,
+      PlanetaryDignity.ownSign => 0.9,
+      PlanetaryDignity.greatFriend => 0.75,
+      PlanetaryDignity.friendSign => 0.6,
+      PlanetaryDignity.neutralSign => 0.5,
+      PlanetaryDignity.enemySign => 0.3,
+      PlanetaryDignity.greatEnemy => 0.15,
+      PlanetaryDignity.debilitated => 0.0,
+    };
+  }
+
+  VimshopakStrength _getVimshopakCategory(double score) {
+    if (score >= 16) return VimshopakStrength.excellent;
+    if (score >= 12) return VimshopakStrength.good;
+    if (score >= 8) return VimshopakStrength.moderate;
+    if (score >= 4) return VimshopakStrength.weak;
+    return VimshopakStrength.veryWeak;
+  }
+}
+
+/// Represents Vimshopak Bala (20-fold strength) for a planet.
+class VimshopakBala {
+  const VimshopakBala({
+    required this.planet,
+    required this.totalScore,
+    required this.maxPossibleScore,
+    required this.divisionalScores,
+    required this.strengthCategory,
+  });
+
+  /// The planet this Vimshopak Bala belongs to
+  final Planet planet;
+
+  /// Total Vimshopak score (0-20)
+  final double totalScore;
+
+  /// Maximum possible score (20.0)
+  final double maxPossibleScore;
+
+  /// Individual scores for each divisional chart
+  final Map<DivisionalChartType, double> divisionalScores;
+
+  /// Strength category based on total score
+  final VimshopakStrength strengthCategory;
+
+  /// Percentage score (0-100)
+  double get percentage => (totalScore / maxPossibleScore) * 100;
+
+  /// Whether the planet has excellent strength
+  bool get isExcellent => strengthCategory == VimshopakStrength.excellent;
+
+  /// Whether the planet has good or better strength
+  bool get isStrong => totalScore >= 12;
+
+  @override
+  String toString() {
+    return '${planet.displayName}: ${totalScore.toStringAsFixed(1)}/$maxPossibleScore (${strengthCategory.name})';
+  }
+}
+
+/// Vimshopak strength categories
+enum VimshopakStrength {
+  excellent('Excellent', 16, 20),
+  good('Good', 12, 16),
+  moderate('Moderate', 8, 12),
+  weak('Weak', 4, 8),
+  veryWeak('Very Weak', 0, 4);
+
+  const VimshopakStrength(this.name, this.minScore, this.maxScore);
+
+  final String name;
+  final double minScore;
+  final double maxScore;
+}
+
+/// Represents Bhava Bala (house strength) result.
+class BhavaBalaResult {
+  const BhavaBalaResult({
+    required this.houseNumber,
+    required this.strength,
+    required this.category,
+  });
+
+  /// House number (1-12)
+  final int houseNumber;
+
+  /// Strength value (0-100)
+  final double strength;
+
+  /// Strength category
+  final BhavaStrengthCategory category;
+}
+
+/// Bhava strength categories
+enum BhavaStrengthCategory {
+  veryStrong(90, 100),
+  strong(70, 90),
+  moderate(50, 70),
+  weak(30, 50),
+  veryWeak(0, 30);
+
+  const BhavaStrengthCategory(this.minStrength, this.maxStrength);
+
+  final double minStrength;
+  final double maxStrength;
+}
+
+/// Represents Ishtaphala-Kashtaphala analysis for a planet.
+class IshtaKashtaResult {
+  const IshtaKashtaResult({
+    required this.planet,
+    required this.ishtaphala,
+    required this.kashtaphala,
+    required this.netResult,
+    required this.interpretation,
+  });
+
+  /// The planet analyzed
+  final Planet planet;
+
+  /// Auspicious fruit (0-1)
+  final double ishtaphala;
+
+  /// Inauspicious fruit (0-1)
+  final double kashtaphala;
+
+  /// Net result (Ishtaphala - Kashtaphala, -1 to 1)
+  final double netResult;
+
+  /// Text interpretation
+  final String interpretation;
+
+  /// Whether the planet is generally favorable
+  bool get isFavorable => netResult > 0;
+
+  /// Overall strength score (0-100)
+  double get overallScore => ((ishtaphala - kashtaphala + 1) / 2) * 100;
+}

@@ -10,7 +10,19 @@ enum DashaType {
   yogini('Yogini', 36),
 
   /// Chara Dasha - Jaimini system using signs
-  chara('Chara', 96);
+  chara('Chara', 96),
+
+  /// Narayana Dasha - Jaimini sign-based dasha
+  narayana('Narayana', 120),
+
+  /// Ashtottari Dasha - 108 year cycle
+  ashtottari('Ashtottari', 108),
+
+  /// Kalachakra Dasha - Nakshatra-based system
+  kalachakra('Kalachakra', 100),
+
+  /// Tribhagi Dasha - Fractional Vimshottari (40 year cycle)
+  tribhagi('Tribhagi', 40);
 
   const DashaType(this.displayName, this.totalYears);
 

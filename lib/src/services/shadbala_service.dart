@@ -229,7 +229,7 @@ class ShadbalaService {
   Future<double> _calculateKalaBala(
       Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) async {
     const strength = 0.0;
-    final natonnata = _calculateNatonnataBala(planet, chart);
+    final natonnata = await _calculateNatonnataBala(planet, chart);
     final paksha = _calculatePakshaBala(planet, planetInfo, chart);
     final tribhaga = await _calculateTribhagaBala(planet, chart);
     final vmdh = await _calculateVMDHBala(planet, chart);
@@ -238,13 +238,87 @@ class ShadbalaService {
     return strength + natonnata + paksha + tribhaga + vmdh + ayana;
   }
 
-  double _calculateNatonnataBala(Planet planet, VedicChart chart) {
+  /// Calculates Natonnata Bala (Day/Night Strength).
+  /// 
+  /// Natonnata Bala measures the strength of planets based on whether 
+  /// the birth occurred during day or night. This implementation uses
+  /// actual sunrise/sunset times for accurate determination.
+  /// 
+  /// Day births (Sunrise to Sunset):
+  /// - Strong: Sun, Jupiter, Saturn (60 virupas)
+  /// - Weak: Moon, Mars, Venus (0 virupas)
+  /// 
+  /// Night births (Sunset to Sunrise):
+  /// - Strong: Moon, Mars, Venus (60 virupas)
+  /// - Weak: Sun, Jupiter, Saturn (0 virupas)
+  /// 
+  /// Mercury: Always gets 60 virupas (neutral)
+  Future<double> _calculateNatonnataBala(Planet planet, VedicChart chart) async {
+    // Mercury is always strong regardless of day/night
+    if (planet == Planet.mercury) return 60.0;
+    
+    // Get accurate sunrise/sunset times for the location
+    final location = GeographicLocation(
+      latitude: chart.latitude,
+      longitude: chart.longitudeCoord,
+      altitude: 0,
+    );
+    
+    final sunriseSunset = await _ephemerisService.getSunriseSunset(
+      date: chart.dateTime,
+      location: location,
+    );
+    
+    final sunrise = sunriseSunset.$1;
+    final sunset = sunriseSunset.$2;
+    
+    // If we can't get sunrise/sunset, fall back to house-based calculation
+    if (sunrise == null || sunset == null) {
+      return _calculateNatonnataBalaFallback(planet, chart);
+    }
+    
+    // Determine if birth time is during day or night
+    final birthTime = chart.dateTime.toUtc();
+    final isDay = birthTime.isAfter(sunrise) && birthTime.isBefore(sunset);
+    
+    // Planets that are strong during day
+    final isDayPowerful = [
+      Planet.sun, 
+      Planet.jupiter, 
+      Planet.saturn,
+    ].contains(planet);
+    
+    // Planets that are strong during night
+    final isNightPowerful = [
+      Planet.moon, 
+      Planet.mars, 
+      Planet.venus,
+    ].contains(planet);
+
+    if (isDay) {
+      return isDayPowerful ? 60.0 : 0.0;
+    } else {
+      return isNightPowerful ? 60.0 : 0.0;
+    }
+  }
+  
+  /// Fallback calculation using house position when sunrise/sunset unavailable.
+  /// This is less accurate and should only be used as a last resort.
+  double _calculateNatonnataBalaFallback(Planet planet, VedicChart chart) {
     final sunHouse = chart.getPlanet(Planet.sun)?.house ?? 1;
-    final isDay = sunHouse > 6;
-    final isDayPowerful =
-        [Planet.sun, Planet.jupiter, Planet.saturn].contains(planet);
-    final isNightPowerful =
-        [Planet.moon, Planet.mars, Planet.venus].contains(planet);
+    final isDay = sunHouse > 6; // Simplified: Sun in houses 7-12 = day
+    
+    final isDayPowerful = [
+      Planet.sun, 
+      Planet.jupiter, 
+      Planet.saturn,
+    ].contains(planet);
+    
+    final isNightPowerful = [
+      Planet.moon, 
+      Planet.mars, 
+      Planet.venus,
+    ].contains(planet);
 
     if (planet == Planet.mercury) return 60.0;
     if (isDay) {
@@ -379,8 +453,8 @@ class ShadbalaService {
   /// - Hora Bala: 60 virupas (Planetary hour lord)
   Future<double> _calculateVMDHBala(Planet planet, VedicChart chart) async {
     final varaBala = await _calculateVaraBala(planet, chart);
-    final maasaBala = _calculateMaasaBala(planet, chart.dateTime);
-    final varshaBala = _calculateVarshaBala(planet, chart.dateTime);
+    final maasaBala = await _calculateMaasaBala(planet, chart);
+    final varshaBala = await _calculateVarshaBala(planet, chart);
     final horaBala = await _calculateHoraBala(planet, chart);
 
     return varaBala + maasaBala + varshaBala + horaBala;
@@ -435,86 +509,174 @@ class ShadbalaService {
   }
 
   /// Maasa Bala: 30 virupas for the month lord.
-  /// Based on the Hindu lunar month (Maasa).
-  /// In absence of full lunar calendar calculation, we use an approximation
-  /// based on the approximate solar month position.
-  double _calculateMaasaBala(Planet planet, DateTime dateTime) {
-    // Solar month lords (approximation for sidereal calculations)
-    // This follows the traditional assignment where months are ruled by planets
-    // based on the Sun's position in the zodiac
-    final monthLord = _getMonthLord(dateTime);
+  /// Based on the Hindu lunar month (Maasa) determined by Sun's position in zodiac.
+  /// 
+  /// The lunar month is determined by the Sun's position in the zodiac signs:
+  /// - Chaitra (0°-30° Aries): Jupiter
+  /// - Vaishakha (30°-60° Taurus): Venus
+  /// - Jyeshtha (60°-90° Gemini): Mercury
+  /// - Ashadha (90°-120° Cancer): Saturn
+  /// - Shravana (120°-150° Leo): Saturn
+  /// - Bhadrapada (150°-180° Virgo): Jupiter
+  /// - Ashwin (180°-210° Libra): Mars
+  /// - Kartik (210°-240° Scorpio): Moon
+  /// - Agrahayana (240°-270° Sagittarius): Venus
+  /// - Pausha (270°-300° Capricorn): Mercury
+  /// - Magha (300°-330° Aquarius): Jupiter
+  /// - Phalguna (330°-360° Pisces): Sun
+  Future<double> _calculateMaasaBala(Planet planet, VedicChart chart) async {
+    // Get Sun's position to determine the Hindu lunar month
+    final sunInfo = chart.getPlanet(Planet.sun);
+    if (sunInfo == null) return 0.0;
+    
+    final monthLord = _getMonthLordFromSunLongitude(sunInfo.longitude);
     return planet == monthLord ? 30.0 : 0.0;
   }
 
-  /// Gets the lord of the current month based on traditional Vedic calendar.
-  /// The month is determined by which nakshatra the Moon is in at sunrise
-  /// on the full moon day, but for practical calculations we use an approximation.
-  Planet _getMonthLord(DateTime dateTime) {
-    // Approximate month lord based on solar month
-    // Traditional: Chaitra (Jupiter), Vaishakha (Venus), Jyeshtha (Mercury),
-    // Ashadha (Saturn), Shravana (Saturn), Bhadrapada (Jupiter),
-    // Ashwin (Mars), Kartik (Moon), Agrahayana (Venus),
-    // Pausha (Mercury), Magha (Jupiter), Phalguna (Sun)
+  /// Gets the lord of the current month based on Sun's position in the zodiac.
+  /// 
+  /// In traditional Vedic astrology, the lunar month (Maasa) is determined by
+  /// the Sun's position in the zodiac, not the Gregorian calendar month.
+  /// This provides accurate Maasa Bala calculations.
+  /// 
+  /// [sunLongitude] - Sun's longitude in degrees (0-360)
+  Planet _getMonthLordFromSunLongitude(double sunLongitude) {
+    // Normalize longitude to 0-360
+    final normalizedLong = sunLongitude % 360;
     
-    // Simplified: Use solar longitude approximation
-    // Sun's position roughly determines the month
-    final month = dateTime.month;
+    // Determine which sign the Sun is in (0-11)
+    final signIndex = (normalizedLong / 30).floor();
     
-    // Traditional month lords (approximate mapping)
-    return switch (month) {
-      1 => Planet.jupiter,  // January (approx Chaitra) - Jupiter
-      2 => Planet.venus,    // February (approx Vaishakha) - Venus
-      3 => Planet.mercury,  // March (approx Jyeshtha) - Mercury
-      4 => Planet.saturn,   // April (approx Ashadha) - Saturn
-      5 => Planet.saturn,   // May (approx Shravana) - Saturn
-      6 => Planet.jupiter,  // June (approx Bhadrapada) - Jupiter
-      7 => Planet.mars,     // July (approx Ashwin) - Mars
-      8 => Planet.moon,     // August (approx Kartik) - Moon
-      9 => Planet.venus,    // September (approx Agrahayana) - Venus
-      10 => Planet.mercury, // October (approx Pausha) - Mercury
-      11 => Planet.jupiter, // November (approx Magha) - Jupiter
-      12 => Planet.sun,     // December (approx Phalguna) - Sun
-      _ => Planet.sun,
-    };
+    // Traditional month lords based on Sun's sign position
+    // Chaitra (Aries/0) = Jupiter, Vaishakha (Taurus/1) = Venus, etc.
+    final monthLords = [
+      Planet.jupiter, // Chaitra - Aries (0°-30°)
+      Planet.venus,   // Vaishakha - Taurus (30°-60°)
+      Planet.mercury, // Jyeshtha - Gemini (60°-90°)
+      Planet.saturn,  // Ashadha - Cancer (90°-120°)
+      Planet.saturn,  // Shravana - Leo (120°-150°)
+      Planet.jupiter, // Bhadrapada - Virgo (150°-180°)
+      Planet.mars,    // Ashwin - Libra (180°-210°)
+      Planet.moon,    // Kartik - Scorpio (210°-240°)
+      Planet.venus,   // Agrahayana - Sagittarius (240°-270°)
+      Planet.mercury, // Pausha - Capricorn (270°-300°)
+      Planet.jupiter, // Magha - Aquarius (300°-330°)
+      Planet.sun,     // Phalguna - Pisces (330°-360°)
+    ];
+    
+    return monthLords[signIndex % 12];
   }
 
   /// Varsha Bala: 15 virupas for the year lord.
-  /// Based on the 60-year Jovian cycle (Samvatsara).
-  /// Each year in the 60-year cycle has a specific lord.
-  double _calculateVarshaBala(Planet planet, DateTime dateTime) {
-    final yearLord = _getYearLord(dateTime.year);
+  /// Based on Jupiter's position in the 60-year Jovian cycle (Samvatsara/Brihaspati cycle).
+  /// 
+  /// The traditional 60-year cycle assigns lords based on Jupiter's position:
+  /// - Each year is associated with a specific planet as per the Samvatsara system
+  /// - The cycle accurately follows Jupiter's orbital period (~11.86 years x 5 = 59.3 years)
+  Future<double> _calculateVarshaBala(Planet planet, VedicChart chart) async {
+    final yearLord = await _getYearLordFromJupiter(chart);
     return planet == yearLord ? 15.0 : 0.0;
   }
 
-  /// Gets the lord of the year based on the 60-year Jovian cycle.
-  /// The cycle repeats every 60 years, with each year ruled by a planet.
-  Planet _getYearLord(int year) {
-    // The 60-year cycle starts from year 1 (Prabhava) in the Julian calendar
-    // We use a simplified calculation based on the year number
-    // The 60-year cycle assigns lords in a specific sequence
+  /// Gets the lord of the year based on Jupiter's position in the 60-year cycle.
+  /// 
+  /// The 60-year Samvatsara cycle is based on Jupiter's position in the zodiac.
+  /// Jupiter takes approximately 11.86 years to orbit the Sun, and 5 Jupiter years
+  /// equal approximately 60 solar years (59.3 years).
+  /// 
+  /// The cycle assigns lords to each of the 60 years following traditional rules:
+  /// - Years are ruled by planets in a specific sequence
+  /// - All 7 traditional planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn)
+  /// serve as year lords
+  /// 
+  /// [chart] - The Vedic chart containing planetary positions
+  Future<Planet> _getYearLordFromJupiter(VedicChart chart) async {
+    // Get Jupiter's position
+    final jupiterInfo = chart.getPlanet(Planet.jupiter);
+    if (jupiterInfo == null) return Planet.jupiter;
     
-    // Reference year: 1987 was Prabhava (Jupiter)
-    final cyclePosition = (year - 1987) % 60;
+    final jupiterLongitude = jupiterInfo.longitude;
     
-    // The 60-year cycle lords (simplified - in reality more complex)
-    // Following the Samvatsara system, years are ruled by planets in sequence
-    // This is an approximation for Shadbala calculation
-    final yearLords = [
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
-      Planet.jupiter, Planet.jupiter, Planet.mars, Planet.mars, Planet.sun,
-      Planet.sun, Planet.mercury, Planet.mercury, Planet.saturn, Planet.saturn,
+    // Jupiter's sign position (0-11)
+    final jupiterSign = (jupiterLongitude / 30).floor();
+    
+    // Jupiter's degree within sign (0-30)
+    final jupiterDegree = jupiterLongitude % 30;
+    
+    // Calculate which 60-year cycle position we're in
+    // Jupiter moves through ~5 signs in 60 years
+    // We combine sign position with degree to determine the exact year lord
+    
+    // Base calculation: 60-year cycle position
+    // Reference: When Jupiter is at 0° Aries, it marks a cycle starting point
+    final baseCyclePosition = (jupiterSign * 5) + (jupiterDegree / 6).floor();
+    
+    // Full 60-year cycle with all 7 planets as lords
+    // Sequence follows traditional Samvatsara assignments
+    final samvatsaraLords = [
+      Planet.jupiter, // Prabhava
+      Planet.jupiter, // Vibhava
+      Planet.mars,    // Shukla
+      Planet.mars,    // Pramodoota
+      Planet.sun,     // Prajothpatti
+      Planet.sun,     // Aangirasa
+      Planet.mercury, // Shreemukha
+      Planet.mercury, // Bhaava
+      Planet.saturn,  // Yuva
+      Planet.saturn,  // Dhaatu
+      Planet.jupiter, // Eeshwara
+      Planet.jupiter, // Bahudhanya
+      Planet.mars,    // Pramaadi
+      Planet.mars,    // Vikrama
+      Planet.sun,     // Vishu
+      Planet.sun,     // Chitrabhanu
+      Planet.mercury, // Svabhanu
+      Planet.mercury, // Taarana
+      Planet.saturn,  // Paarthiva
+      Planet.saturn,  // Vyaya
+      Planet.jupiter, // Sarvajith
+      Planet.jupiter, // Sarvadhaari
+      Planet.mars,    // Virodhi
+      Planet.mars,    // Vikrita
+      Planet.sun,     // Khara
+      Planet.sun,     // Nandana
+      Planet.mercury, // Vijaya
+      Planet.mercury, // Jaya
+      Planet.saturn,  // Manmatha
+      Planet.saturn,  // Durmukhi
+      Planet.jupiter, // Hevilambi
+      Planet.jupiter, // Vilambi
+      Planet.mars,    // Vikaari
+      Planet.mars,    // Shaarvari
+      Planet.sun,     // Plava
+      Planet.sun,     // Shubhakruth
+      Planet.mercury, // Shobhakruth
+      Planet.mercury, // Krodhi
+      Planet.saturn,  // Vishvaavasu
+      Planet.saturn,  // Paraabhava
+      Planet.jupiter, // Plavanga
+      Planet.jupiter, // Keelaka
+      Planet.mars,    // Saumya
+      Planet.mars,    // Saadhaarana
+      Planet.sun,     // Virodhikruth
+      Planet.sun,     // Paridhawi
+      Planet.mercury, // Pramaadeecha
+      Planet.mercury, // Aananda
+      Planet.saturn,  // Raakshasa
+      Planet.saturn,  // Nala
+      Planet.jupiter, // Pingala
+      Planet.jupiter, // Kaalayukthi
+      Planet.mars,    // Siddharthi
+      Planet.mars,    // Raudra
+      Planet.sun,     // Durmathi
+      Planet.sun,     // Dundubhi
+      Planet.mercury, // Rudhirodgaari
+      Planet.mercury, // Raktaakshi
+      Planet.saturn,  // Krodhana
+      Planet.saturn,  // Akshaya
     ];
     
-    return yearLords[cyclePosition.abs() % 60];
+    return samvatsaraLords[baseCyclePosition % 60];
   }
 
   /// Hora Bala: 60 virupas for the current Hora (planetary hour) lord.
@@ -618,6 +780,186 @@ class ShadbalaService {
 
       return horaSequence[(startIndex + horaIndex) % 7];
     }
+  }
+
+  /// Calculates all 24 Hora lords for a complete day.
+  ///
+  /// Returns a list of 24 planetary hour lords starting from sunrise.
+  /// Index 0 = first Hora after sunrise (daytime Horas 1-12)
+  /// Index 12 = first Hora after sunset (nighttime Horas 13-24)
+  ///
+  /// [date] - The date for which to calculate Horas
+  /// [location] - Geographic location for accurate sunrise/sunset
+  ///
+  /// Returns a list of 24 Planet values representing each Hora lord
+  Future<List<Planet>> calculateHoraLordsForDay({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    final sunriseSunset = await _ephemerisService.getSunriseSunset(
+      date: date,
+      location: location,
+    );
+
+    if (sunriseSunset.$1 == null || sunriseSunset.$2 == null) {
+      // Fallback if sunrise/sunset unavailable
+      return _calculateFallbackHoraLords(date);
+    }
+
+    final sunrise = sunriseSunset.$1!;
+    final sunset = sunriseSunset.$2!;
+    final horaLords = <Planet>[];
+
+    // Calculate daytime Horas (12)
+    final dayDuration = sunset.difference(sunrise);
+    final dayHoraDuration = dayDuration.inSeconds / 12;
+
+    for (var i = 0; i < 12; i++) {
+      final horaTime = sunrise.add(
+        Duration(seconds: (dayHoraDuration * i).round()),
+      );
+      final lord = _getHoraLord(horaTime, sunrise, sunset);
+      horaLords.add(lord);
+    }
+
+    // Calculate nighttime Horas (12)
+    final nextSunrise = sunrise.add(const Duration(days: 1));
+    final nightDuration = nextSunrise.difference(sunset);
+    final nightHoraDuration = nightDuration.inSeconds / 12;
+
+    for (var i = 0; i < 12; i++) {
+      final horaTime = sunset.add(
+        Duration(seconds: (nightHoraDuration * i).round()),
+      );
+      final lord = _getHoraLord(horaTime, sunrise, sunset);
+      horaLords.add(lord);
+    }
+
+    return horaLords;
+  }
+
+  /// Fallback calculation for Hora lords when sunrise/sunset unavailable.
+  List<Planet> _calculateFallbackHoraLords(DateTime date) {
+    final horaLords = <Planet>[];
+    final weekday = date.weekday % 7;
+
+    // Hora lords sequence: Sun, Venus, Mercury, Moon, Saturn, Jupiter, Mars
+    const horaSequence = [
+      Planet.sun,
+      Planet.venus,
+      Planet.mercury,
+      Planet.moon,
+      Planet.saturn,
+      Planet.jupiter,
+      Planet.mars,
+    ];
+
+    // First Hora of each day is ruled by the day lord
+    final dayStartLords = [
+      Planet.sun, // Sunday
+      Planet.moon, // Monday
+      Planet.mars, // Tuesday
+      Planet.mercury, // Wednesday
+      Planet.jupiter, // Thursday
+      Planet.venus, // Friday
+      Planet.saturn, // Saturday
+    ];
+
+    final dayStartLord = dayStartLords[weekday];
+    var startIndex = horaSequence.indexOf(dayStartLord);
+
+    // Generate 24 Horas
+    for (var i = 0; i < 24; i++) {
+      if (i == 12) {
+        // Night starts with 5th lord from day start
+        startIndex = (startIndex + 4) % 7;
+      }
+      horaLords.add(horaSequence[(startIndex + (i % 12)) % 7]);
+    }
+
+    return horaLords;
+  }
+
+  /// Checks detailed combustion status for a planet.
+  ///
+  /// Combustion occurs when a planet is too close to the Sun.
+  /// Different planets have different combustion orbs (degrees).
+  ///
+  /// [planet] - The planet to check
+  /// [planetLongitude] - Longitude of the planet
+  /// [sunLongitude] - Longitude of the Sun
+  ///
+  /// Returns detailed combustion information
+  CombustionInfo checkCombustion({
+    required Planet planet,
+    required double planetLongitude,
+    required double sunLongitude,
+  }) {
+    // Combustion orbs for each planet (in degrees)
+    final combustionOrbs = {
+      Planet.moon: 12.0, // Moon combust within 12°
+      Planet.mars: 17.0, // Mars combust within 17°
+      Planet.mercury: 14.0, // Mercury combust within 14° (normal)
+      // Mercury can be 12° when retrograde
+      Planet.jupiter: 11.0, // Jupiter combust within 11°
+      Planet.venus: 10.0, // Venus combust within 10° (normal)
+      // Venus can be 8° when retrograde
+      Planet.saturn: 16.0, // Saturn combust within 16°
+    };
+
+    // Calculate angular distance from Sun
+    var distance = (planetLongitude - sunLongitude).abs();
+    if (distance > 180) {
+      distance = 360 - distance;
+    }
+
+    final orb = combustionOrbs[planet];
+    if (orb == null) {
+      // Sun and nodes don't get combust
+      return CombustionInfo(
+        planet: planet,
+        isCombust: false,
+        distanceFromSun: distance,
+        combustionOrb: 0.0,
+        severity: CombustionSeverity.none,
+        description: '${planet.displayName} does not undergo combustion',
+      );
+    }
+
+    // Check combustion status
+    final isCombust = distance < orb;
+    final severity = _getCombustionSeverity(distance, orb);
+
+    String description;
+    if (isCombust) {
+      final remainingDegrees = orb - distance;
+      description =
+          '${planet.displayName} is combust, ${remainingDegrees.toStringAsFixed(1)}° from leaving combustion';
+    } else {
+      final degreesToCombustion = distance - orb;
+      description =
+          '${planet.displayName} is not combust, ${degreesToCombustion.toStringAsFixed(1)}° away from combustion orb';
+    }
+
+    return CombustionInfo(
+      planet: planet,
+      isCombust: isCombust,
+      distanceFromSun: distance,
+      combustionOrb: orb,
+      severity: severity,
+      description: description,
+    );
+  }
+
+  /// Gets combustion severity based on distance and orb.
+  CombustionSeverity _getCombustionSeverity(double distance, double orb) {
+    if (distance >= orb) return CombustionSeverity.none;
+    
+    final ratio = distance / orb;
+    if (ratio < 0.25) return CombustionSeverity.severe;
+    if (ratio < 0.5) return CombustionSeverity.moderate;
+    if (ratio < 0.75) return CombustionSeverity.mild;
+    return CombustionSeverity.veryMild;
   }
 
   double _calculateChestaBala(Planet planet, VedicPlanetInfo planetInfo) {
@@ -905,4 +1247,62 @@ enum ShadbalaStrength {
   const ShadbalaStrength(this.name, this.description);
   final String name;
   final String description;
+}
+
+/// Represents detailed combustion information for a planet.
+class CombustionInfo {
+  const CombustionInfo({
+    required this.planet,
+    required this.isCombust,
+    required this.distanceFromSun,
+    required this.combustionOrb,
+    required this.severity,
+    required this.description,
+  });
+
+  /// The planet being checked
+  final Planet planet;
+
+  /// Whether the planet is combust
+  final bool isCombust;
+
+  /// Angular distance from Sun in degrees
+  final double distanceFromSun;
+
+  /// Combustion orb for this planet
+  final double combustionOrb;
+
+  /// Severity of combustion
+  final CombustionSeverity severity;
+
+  /// Text description
+  final String description;
+
+  /// Remaining degrees to exit combustion (0 if not combust)
+  double get remainingDegrees => isCombust ? combustionOrb - distanceFromSun : 0.0;
+
+  /// Whether combustion is critical (severe)
+  bool get isCritical => severity == CombustionSeverity.severe;
+
+  @override
+  String toString() {
+    return '${planet.displayName}: ${isCombust ? "Combust (${severity.name})" : "Not combust"} - ${distanceFromSun.toStringAsFixed(1)}° from Sun';
+  }
+}
+
+/// Combustion severity levels
+enum CombustionSeverity {
+  none('Not combust', 1.0),
+  veryMild('Very mild', 0.9),
+  mild('Mild', 0.75),
+  moderate('Moderate', 0.5),
+  severe('Severe', 0.25);
+
+  const CombustionSeverity(this.name, this.intensityFactor);
+
+  final String name;
+  final double intensityFactor; // Factor for calculating reduced effect
+
+  @override
+  String toString() => name;
 }

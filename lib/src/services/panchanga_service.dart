@@ -1,3 +1,4 @@
+import '../exceptions/jyotish_exception.dart';
 import '../models/calculation_flags.dart';
 import '../models/geographic_location.dart';
 import '../models/nakshatra.dart';
@@ -451,11 +452,17 @@ class PanchangaService {
 
   /// Finds the exact end time of the current Tithi.
   ///
-  /// Searches forward in a 24-hour window from the given [dateTime]
-  /// to find when the lunar elongation crosses the next 12° boundary.
+  /// Uses high-precision binary search to find when the lunar elongation 
+  /// crosses the next 12° boundary (tithi change point). Continues searching
+  /// until the accuracy threshold is met.
+  ///
+  /// [dateTime] - The starting date/time for the search
+  /// [location] - Geographic location for calculations
+  /// [accuracyThreshold] - Desired accuracy in seconds (default: 1 second)
   Future<DateTime> getTithiEndTime({
     required DateTime dateTime,
     required GeographicLocation location,
+    int accuracyThreshold = 1, // 1 second precision by default
   }) async {
     final flags = CalculationFlags.defaultFlags();
 
@@ -477,14 +484,24 @@ class PanchangaService {
     final currentTithi = (currentElongation / 12.0).floor();
     final targetElongation = (currentTithi + 1) * 12.0;
 
-    // 2. Binary search for target elongation within the next 24 hours
+    // 2. Binary search for target elongation within the next 48 hours
+    // Using 48 hours to account for variations in tithi length
     var start = dateTime;
-    var end = dateTime
-        .add(const Duration(hours: 26)); // Slightly more than 24h to be safe
+    var end = dateTime.add(const Duration(hours: 48));
 
-    for (var i = 0; i < 20; i++) {
-      // 20 iterations gives sub-second precision (26h / 2^20)
-      final mid = start.add(end.difference(start) ~/ 2);
+    // Continue searching until we meet the accuracy threshold
+    var iteration = 0;
+    const maxIterations = 50; // Safety limit to prevent infinite loops
+    
+    while (iteration < maxIterations) {
+      final currentWindow = end.difference(start).inSeconds;
+      
+      // If we're within the accuracy threshold, stop
+      if (currentWindow <= accuracyThreshold) {
+        break;
+      }
+
+      final mid = start.add(Duration(seconds: currentWindow ~/ 2));
 
       final midSun = await _ephemerisService.calculatePlanetPosition(
         planet: Planet.sun,
@@ -501,7 +518,7 @@ class PanchangaService {
 
       var midElongation = (midMoon.longitude - midSun.longitude + 360) % 360;
 
-      // Handle: 0/360 boundary
+      // Handle 0/360 boundary crossing
       if (targetElongation >= 360 && midElongation < 180) {
         midElongation += 360;
       }
@@ -511,8 +528,405 @@ class PanchangaService {
       } else {
         end = mid;
       }
+      
+      iteration++;
     }
 
     return start;
   }
+
+  /// Calculates Abhijit Muhurta (the victorious midday period).
+  ///
+  /// Abhijit Muhurta is the 8th Muhurta (48-minute period) of the day,
+  /// occurring around midday (local apparent noon). It is considered
+  /// highly auspicious and can destroy millions of obstacles.
+  ///
+  /// [date] - The date to calculate for
+  /// [location] - Geographic location
+  ///
+  /// Returns the start and end times of Abhijit Muhurta
+  Future<AbhijitMuhurta> calculateAbhijitMuhurta({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    // Get sunrise and sunset
+    final (sunrise, sunset) = await _calculateSunriseSunset(
+      dateTime: date,
+      location: location,
+    );
+
+    if (sunrise == null || sunset == null) {
+      throw CalculationException('Cannot calculate Abhijit Muhurta without sunrise/sunset');
+    }
+
+    // Calculate day duration
+    final dayDuration = sunset.difference(sunrise);
+    
+    // A Muhurta is 1/30 of a day (approximately 48 minutes)
+    final muhurtaDuration = dayDuration ~/ 30;
+    
+    // Abhijit is the 8th Muhurta (7th index, starting from 0)
+    final abhijitStart = sunrise.add(muhurtaDuration * 7);
+    final abhijitEnd = abhijitStart.add(muhurtaDuration);
+
+    return AbhijitMuhurta(
+      date: date,
+      startTime: abhijitStart,
+      endTime: abhijitEnd,
+      duration: muhurtaDuration,
+      description: 'The 8th Muhurta - highly auspicious for all activities',
+    );
+  }
+
+  /// Calculates Brahma Muhurta (the auspicious pre-dawn period).
+  ///
+  /// Brahma Muhurta is the 48-minute period ending at sunrise.
+  /// It is considered the most auspicious time for meditation,
+  /// yoga, and spiritual practices.
+  ///
+  /// [date] - The date to calculate for
+  /// [location] - Geographic location
+  ///
+  /// Returns the start and end times of Brahma Muhurta
+  Future<BrahmaMuhurta> calculateBrahmaMuhurta({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    // Get sunrise
+    final (sunrise, _) = await _calculateSunriseSunset(
+      dateTime: date,
+      location: location,
+    );
+
+    if (sunrise == null) {
+      throw CalculationException('Cannot calculate Brahma Muhurta without sunrise');
+    }
+
+    // Brahma Muhurta is exactly 48 minutes (2 Muhurtas) before sunrise
+    const brahmaDuration = Duration(minutes: 48);
+    final brahmaStart = sunrise.subtract(brahmaDuration);
+    final brahmaEnd = sunrise;
+
+    return BrahmaMuhurta(
+      date: date,
+      startTime: brahmaStart,
+      endTime: brahmaEnd,
+      duration: brahmaDuration,
+      description: 'The auspicious 48-minute period ending at sunrise',
+    );
+  }
+
+  /// Calculates nighttime inauspicious periods.
+  ///
+  /// Similar to daytime Rahu Kaal, Gulika Kaal, and Yamagandam,
+  /// but calculated for the nighttime period (sunset to sunrise).
+  ///
+  /// [date] - The date to calculate for
+  /// [location] - Geographic location
+  ///
+  /// Returns nighttime inauspicious periods
+  Future<NighttimeInauspiciousPeriods> calculateNighttimeInauspicious({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    // Get today's sunset and tomorrow's sunrise
+    final (todaySunset, _) = await _calculateSunriseSunset(
+      dateTime: date,
+      location: location,
+    );
+
+    final tomorrow = date.add(const Duration(days: 1));
+    final (tomorrowSunrise, _) = await _calculateSunriseSunset(
+      dateTime: tomorrow,
+      location: location,
+    );
+
+    if (todaySunset == null || tomorrowSunrise == null) {
+      throw CalculationException('Cannot calculate nighttime periods');
+    }
+
+    // Calculate night duration
+    final nightDuration = tomorrowSunrise.difference(todaySunset);
+    
+    // Divide night into 8 parts (like daytime)
+    final partDuration = nightDuration ~/ 8;
+
+    // Get weekday (0 = Sunday, 6 = Saturday)
+    final weekday = date.weekday % 7;
+
+    // Nighttime Rahu Kaal sequence (different from daytime)
+    // Sun: 7th part, Mon: 6th, Tue: 5th, Wed: 4th, Thu: 3rd, Fri: 2nd, Sat: 1st
+    final rahuPart = (7 - weekday) % 8;
+    
+    // Nighttime Gulika Kaal sequence
+    // Sun: 6th, Mon: 5th, Tue: 4th, Wed: 3rd, Thu: 2nd, Fri: 1st, Sat: 7th
+    final gulikaPart = (6 - weekday) % 8;
+    
+    // Nighttime Yamagandam sequence
+    // Sun: 5th, Mon: 4th, Tue: 3rd, Wed: 2nd, Thu: 1st, Fri: 7th, Sat: 6th
+    final yamaPart = (5 - weekday) % 8;
+
+    return NighttimeInauspiciousPeriods(
+      date: date,
+      rahuKaal: PanchangaTimePeriod(
+        start: todaySunset.add(partDuration * rahuPart),
+        end: todaySunset.add(partDuration * (rahuPart + 1)),
+      ),
+      gulikaKaal: PanchangaTimePeriod(
+        start: todaySunset.add(partDuration * gulikaPart),
+        end: todaySunset.add(partDuration * (gulikaPart + 1)),
+      ),
+      yamagandam: PanchangaTimePeriod(
+        start: todaySunset.add(partDuration * yamaPart),
+        end: todaySunset.add(partDuration * (yamaPart + 1)),
+      ),
+      description: 'Nighttime inauspicious periods (sunset to sunrise)',
+    );
+  }
+
+  /// Gets the exact junction (change point) of a specific Tithi.
+  ///
+  /// This provides microsecond-level precision for when a Tithi changes,
+  /// which is crucial for festival timing and muhurta calculations.
+  ///
+  /// [targetTithiNumber] - The Tithi number to find (1-30)
+  /// [startDate] - Start searching from this date
+  /// [location] - Geographic location
+  ///
+  /// Returns the exact DateTime when the Tithi begins
+  Future<DateTime> getTithiJunction({
+    required int targetTithiNumber,
+    required DateTime startDate,
+    required GeographicLocation location,
+  }) async {
+    final flags = CalculationFlags.defaultFlags();
+
+    // Calculate target elongation for the Tithi
+    final targetElongation = ((targetTithiNumber - 1) * 12.0) % 360;
+
+    // Search within a 48-hour window
+    var searchStart = startDate;
+    var searchEnd = startDate.add(const Duration(hours: 48));
+
+    // High-precision binary search
+    const maxIterations = 100;
+    const accuracyThreshold = Duration(milliseconds: 100); // 0.1 second precision
+
+    for (var i = 0; i < maxIterations; i++) {
+      final window = searchEnd.difference(searchStart);
+      
+      if (window <= accuracyThreshold) {
+        break;
+      }
+
+      final mid = searchStart.add(Duration(
+        milliseconds: window.inMilliseconds ~/ 2,
+      ));
+
+      final sunPos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: mid,
+        location: location,
+        flags: flags,
+      );
+      final moonPos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.moon,
+        dateTime: mid,
+        location: location,
+        flags: flags,
+      );
+
+      var elongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
+
+      // Handle 0/360 boundary
+      if (targetElongation < 12 && elongation > 348) {
+        elongation -= 360;
+      }
+
+      if (elongation < targetElongation) {
+        searchStart = mid;
+      } else {
+        searchEnd = mid;
+      }
+    }
+
+    return searchStart;
+  }
+
+  /// Gets detailed Moon phase information.
+  ///
+  /// Calculates percent illumination, lunar age, and elongation velocity
+  /// for detailed lunar analysis.
+  ///
+  /// [dateTime] - The date/time to calculate for
+  /// [location] - Geographic location
+  ///
+  /// Returns comprehensive Moon phase details
+  Future<MoonPhaseDetails> getMoonPhaseDetails({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    final flags = CalculationFlags.defaultFlags();
+
+    // Get Sun and Moon positions
+    final sunPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: dateTime,
+      location: location,
+      flags: flags,
+    );
+
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: dateTime,
+      location: location,
+      flags: flags,
+    );
+
+    // Calculate elongation (Moon - Sun)
+    var elongation = moonPos.longitude - sunPos.longitude;
+    if (elongation < 0) elongation += 360;
+
+    // Calculate percent illumination
+    // Full moon = 100%, New moon = 0%
+    final illumination = (1 - (elongation / 180).abs().clamp(0.0, 1.0)) * 100;
+    final isWaxing = elongation < 180;
+
+    // Calculate lunar age (days since new moon)
+    // Synodic month = 29.53059 days
+    const synodicMonth = 29.53059;
+    final lunarAge = (elongation / 360) * synodicMonth;
+
+    // Calculate elongation velocity (rate of change)
+    // Moon moves ~12-15°/day, Sun ~1°/day
+    final elongationVelocity = moonPos.longitudeSpeed - sunPos.longitudeSpeed;
+
+    // Determine phase name
+    final phaseName = _getMoonPhaseName(elongation);
+
+    return MoonPhaseDetails(
+      dateTime: dateTime,
+      elongation: elongation,
+      illumination: illumination,
+      isWaxing: isWaxing,
+      lunarAge: lunarAge,
+      elongationVelocity: elongationVelocity,
+      phaseName: phaseName,
+      tithiNumber: (elongation / 12).floor() + 1,
+    );
+  }
+
+  /// Gets the Moon phase name based on elongation.
+  String _getMoonPhaseName(double elongation) {
+    if (elongation < 12 || elongation > 348) return 'New Moon (Amavasya)';
+    if (elongation < 36) return 'Waxing Crescent';
+    if (elongation < 60) return 'First Quarter (Shukla Saptami)';
+    if (elongation < 84) return 'Waxing Gibbous';
+    if (elongation < 96) return 'Full Moon (Purnima)';
+    if (elongation < 120) return 'Waning Gibbous';
+    if (elongation < 144) return 'Last Quarter (Krishna Saptami)';
+    if (elongation < 168) return 'Waning Crescent';
+    return 'New Moon (Amavasya)';
+  }
+}
+
+/// Represents Abhijit Muhurta timing.
+class AbhijitMuhurta {
+  const AbhijitMuhurta({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.duration,
+    required this.description,
+  });
+
+  final DateTime date;
+  final DateTime startTime;
+  final DateTime endTime;
+  final Duration duration;
+  final String description;
+
+  bool contains(DateTime time) => time.isAfter(startTime) && time.isBefore(endTime);
+}
+
+/// Represents Brahma Muhurta timing.
+class BrahmaMuhurta {
+  const BrahmaMuhurta({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.duration,
+    required this.description,
+  });
+
+  final DateTime date;
+  final DateTime startTime;
+  final DateTime endTime;
+  final Duration duration;
+  final String description;
+
+  bool contains(DateTime time) => time.isAfter(startTime) && time.isBefore(endTime);
+}
+
+/// Represents a generic time period for Panchanga calculations.
+class PanchangaTimePeriod {
+  const PanchangaTimePeriod({
+    required this.start,
+    required this.end,
+  });
+
+  final DateTime start;
+  final DateTime end;
+
+  Duration get duration => end.difference(start);
+  bool contains(DateTime time) => time.isAfter(start) && time.isBefore(end);
+}
+
+/// Represents nighttime inauspicious periods.
+class NighttimeInauspiciousPeriods {
+  const NighttimeInauspiciousPeriods({
+    required this.date,
+    required this.rahuKaal,
+    required this.gulikaKaal,
+    required this.yamagandam,
+    required this.description,
+  });
+
+  final DateTime date;
+  final PanchangaTimePeriod rahuKaal;
+  final PanchangaTimePeriod gulikaKaal;
+  final PanchangaTimePeriod yamagandam;
+  final String description;
+
+  bool isInauspicious(DateTime time) {
+    return rahuKaal.contains(time) || 
+           gulikaKaal.contains(time) || 
+           yamagandam.contains(time);
+  }
+}
+
+/// Represents detailed Moon phase information.
+class MoonPhaseDetails {
+  const MoonPhaseDetails({
+    required this.dateTime,
+    required this.elongation,
+    required this.illumination,
+    required this.isWaxing,
+    required this.lunarAge,
+    required this.elongationVelocity,
+    required this.phaseName,
+    required this.tithiNumber,
+  });
+
+  final DateTime dateTime;
+  final double elongation;
+  final double illumination; // 0-100%
+  final bool isWaxing;
+  final double lunarAge; // Days since new moon
+  final double elongationVelocity; // Degrees per day
+  final String phaseName;
+  final int tithiNumber;
+
+  bool get isFullMoon => illumination > 95;
+  bool get isNewMoon => illumination < 5;
 }

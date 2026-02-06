@@ -262,4 +262,55 @@ class MasaService {
 
     return masaList;
   }
+
+  /// Gets the Hindu season (Ritu) based on the lunar month.
+  ///
+  /// In Vedic tradition, the year is divided into six seasons (Ritus),
+  /// each associated with specific lunar months:
+  /// - Vasanta (Spring): Chaitra, Vaishakha
+  /// - Grishma (Summer): Jyeshtha, Ashadha
+  /// - Varsha (Monsoon): Shravana, Bhadrapada
+  /// - Sharad (Autumn): Ashwin, Kartika
+  /// - Hemanta (Pre-winter): Margashirsha, Pausha
+  /// - Shishira (Winter): Magha, Phalguna
+  ///
+  /// [masaInfo] - The MasaInfo containing the lunar month
+  ///
+  /// Returns the corresponding Ritu
+  Ritu getRitu(MasaInfo masaInfo) {
+    return switch (masaInfo.month) {
+      LunarMonth.chaitra || LunarMonth.vaishakha => Ritu.vasanta,
+      LunarMonth.jyeshtha || LunarMonth.ashadha => Ritu.grishma,
+      LunarMonth.shravana || LunarMonth.bhadrapada => Ritu.varsha,
+      LunarMonth.ashwin || LunarMonth.kartika => Ritu.sharad,
+      LunarMonth.margashirsha || LunarMonth.pausha => Ritu.hemanta,
+      LunarMonth.magha || LunarMonth.phalguna => Ritu.shishira,
+    };
+  }
+
+  /// Gets Ritu details for a specific date.
+  ///
+  /// [dateTime] - The date to check
+  /// [location] - Geographic location
+  ///
+  /// Returns detailed Ritu information
+  Future<RituInfo> getRituDetails({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    final masa = await calculateMasa(
+      dateTime: dateTime,
+      location: location,
+    );
+
+    final ritu = getRitu(masa);
+
+    return RituInfo(
+      ritu: ritu,
+      masa: masa,
+      description: ritu.description,
+      characteristics: ritu.characteristics,
+      governingElement: ritu.governingElement,
+    );
+  }
 }

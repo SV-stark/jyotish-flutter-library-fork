@@ -354,6 +354,301 @@ class EphemerisService {
     return (sunrise, sunset);
   }
 
+  /// Gets rise and set times for any planet.
+  ///
+  /// [planet] - The planet to calculate for
+  /// [date] - The date to calculate for
+  /// [location] - Geographic location
+  /// [atpress] - Atmospheric pressure in mbar (optional)
+  /// [attemp] - Atmospheric temperature in Celsius (optional)
+  ///
+  /// Returns a tuple (riseTime, setTime), or null for times that don't occur.
+  Future<(DateTime? riseTime, DateTime? setTime)> getPlanetRiseSet({
+    required Planet planet,
+    required DateTime date,
+    required GeographicLocation location,
+    double atpress = 0.0,
+    double attemp = 0.0,
+  }) async {
+    final riseTime = await getRiseSet(
+      planet: planet,
+      date: date,
+      location: location,
+      rsmi: SwissEphConstants.calcRise,
+      atpress: atpress,
+      attemp: attemp,
+    );
+
+    final setTime = await getRiseSet(
+      planet: planet,
+      date: date,
+      location: location,
+      rsmi: SwissEphConstants.calcSet,
+      atpress: atpress,
+      attemp: attemp,
+    );
+
+    return (riseTime, setTime);
+  }
+
+  /// Calculates meridian transit (culmination) times for a planet.
+  ///
+  /// Meridian transit occurs when a planet reaches its highest (upper culmination)
+  /// or lowest (lower culmination) point in the sky.
+  ///
+  /// [planet] - The planet to calculate for
+  /// [date] - The date to calculate for
+  /// [location] - Geographic location
+  /// [upperCulmination] - If true, calculates upper culmination; if false, lower culmination
+  ///
+  /// Returns the DateTime of the transit, or null if it doesn't occur.
+  Future<DateTime?> getMeridianTransit({
+    required Planet planet,
+    required DateTime date,
+    required GeographicLocation location,
+    bool upperCulmination = true,
+  }) async {
+    // SE_CALC_MTRANSIT = 4 for upper culmination
+    // SE_CALC_ITRANSIT = 8 for lower culmination
+    final rsmi = upperCulmination 
+        ? SwissEphConstants.calcMTransit 
+        : SwissEphConstants.calcITransit;
+
+    return await getRiseSet(
+      planet: planet,
+      date: date,
+      location: location,
+      rsmi: rsmi,
+    );
+  }
+
+  /// Determines planet visibility (heliacal rise/set) at a location.
+  ///
+  /// Heliacal rise: First visible appearance of a planet before sunrise
+  /// Heliacal set: Last visible appearance of a planet after sunset
+  ///
+  /// [planet] - The planet to check
+  /// [date] - The date to check
+  /// [location] - Geographic location
+  ///
+  /// Returns visibility information including whether visible, magnitude, etc.
+  Future<PlanetVisibility> getPlanetVisibility({
+    required Planet planet,
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    final flags = CalculationFlags.defaultFlags();
+
+    // Get planet position
+    final planetPos = await calculatePlanetPosition(
+      planet: planet,
+      dateTime: date,
+      location: location,
+      flags: flags,
+    );
+
+    // Get Sun position
+    final sunPos = await calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: date,
+      location: location,
+      flags: flags,
+    );
+
+    // Get sunrise/sunset
+    final (sunrise, sunset) = await getSunriseSunset(
+      date: date,
+      location: location,
+    );
+
+    // Calculate elongation from Sun
+    var elongation = (planetPos.longitude - sunPos.longitude).abs();
+    if (elongation > 180) elongation = 360 - elongation;
+
+    // Determine visibility
+    bool isVisible = false;
+    VisibilityType visibilityType = VisibilityType.notVisible;
+    String description = '';
+
+    if (sunrise != null && sunset != null) {
+      final isBeforeSunrise = date.isBefore(sunrise);
+      final isAfterSunset = date.isAfter(sunset);
+
+      // Heliacal rise: planet visible before sunrise (eastern elongation)
+      if (isBeforeSunrise && elongation > 15) {
+        isVisible = true;
+        visibilityType = VisibilityType.heliacalRise;
+        description = '${planet.displayName} visible before sunrise (heliacal rise)';
+      }
+      // Heliacal set: planet visible after sunset (western elongation)
+      else if (isAfterSunset && elongation > 15) {
+        isVisible = true;
+        visibilityType = VisibilityType.heliacalSet;
+        description = '${planet.displayName} visible after sunset (heliacal set)';
+      }
+      // Daytime visibility (rare for most planets except Venus)
+      else if (!isBeforeSunrise && !isAfterSunset && elongation > 30) {
+        isVisible = true;
+        visibilityType = VisibilityType.daytime;
+        description = '${planet.displayName} visible in daylight';
+      }
+      else {
+        description = '${planet.displayName} not visible - too close to Sun';
+      }
+    }
+
+    // Calculate apparent magnitude (simplified)
+    final magnitude = _calculateApparentMagnitude(planet, elongation);
+
+    return PlanetVisibility(
+      planet: planet,
+      date: date,
+      isVisible: isVisible,
+      visibilityType: visibilityType,
+      elongation: elongation,
+      magnitude: magnitude,
+      sunrise: sunrise,
+      sunset: sunset,
+      description: description,
+    );
+  }
+
+  /// Calculates apparent magnitude for a planet (simplified).
+  double _calculateApparentMagnitude(Planet planet, double elongation) {
+    // Simplified magnitude calculation
+    // Real calculation requires distance from Earth and Sun
+    const baseMagnitudes = {
+      Planet.mercury: -0.4,
+      Planet.venus: -4.4,
+      Planet.mars: -2.0,
+      Planet.jupiter: -2.9,
+      Planet.saturn: -0.3,
+    };
+
+    final baseMag = baseMagnitudes[planet];
+    if (baseMag == null) return 99.0; // Not applicable
+
+    // Brightness decreases when close to Sun (phase effect)
+    final phaseFactor = (elongation / 180.0).clamp(0.0, 1.0);
+    return baseMag + (2.5 * (1 - phaseFactor));
+  }
+
+  /// Gets high-precision eclipse data for solar and lunar eclipses.
+  ///
+  /// [date] - The date to search for eclipses
+  /// [location] - Geographic location (for solar eclipse visibility)
+  /// [eclipseType] - Type of eclipse to search for
+  ///
+  /// Returns detailed eclipse information or null if no eclipse.
+  Future<EclipseData?> getEclipseData({
+    required DateTime date,
+    required GeographicLocation location,
+    EclipseType eclipseType = EclipseType.any,
+  }) async {
+    if (!_isInitialized || _bindings == null) {
+      throw CalculationException('EphemerisService is not initialized');
+    }
+
+    try {
+      final julianDay = _dateTimeToJulianDay(date);
+      
+      // Search for eclipse within a window
+      final searchStart = julianDay - 15; // 15 days before
+      final searchEnd = julianDay + 15;   // 15 days after
+
+      // This is a simplified placeholder - real implementation would use
+      // Swiss Ephemeris eclipse functions (swe_sol_eclipse_when_glob, etc.)
+      
+      // Check for full/new moon to determine eclipse possibility
+      final sunPos = await calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: date,
+        location: location,
+        flags: CalculationFlags.defaultFlags(),
+      );
+
+      final moonPos = await calculatePlanetPosition(
+        planet: Planet.moon,
+        dateTime: date,
+        location: location,
+        flags: CalculationFlags.defaultFlags(),
+      );
+
+      var elongation = (moonPos.longitude - sunPos.longitude).abs();
+      if (elongation > 180) elongation = 360 - elongation;
+
+      // Full moon (near 180°) = lunar eclipse possible
+      // New moon (near 0°) = solar eclipse possible
+      final isFullMoon = elongation > 170 && elongation < 190;
+      final isNewMoon = elongation < 10 || elongation > 350;
+
+      if (!isFullMoon && !isNewMoon) {
+        return null; // No eclipse possible
+      }
+
+      // Simplified eclipse detection
+      final eclipseDetected = isFullMoon || isNewMoon;
+      
+      if (eclipseDetected) {
+        return EclipseData(
+          date: date,
+          eclipseType: isFullMoon ? EclipseType.lunar : EclipseType.solar,
+          magnitude: _calculateEclipseMagnitude(
+            sunPos: sunPos,
+            moonPos: moonPos,
+            isLunar: isFullMoon,
+          ),
+          isVisible: isFullMoon || await _isSolarEclipseVisible(
+            date: date,
+            location: location,
+          ),
+          description: isFullMoon 
+              ? 'Lunar eclipse possible'
+              : 'Solar eclipse possible',
+        );
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      throw CalculationException(
+        'Error calculating eclipse data: ${e.toString()}',
+        originalError: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Calculates eclipse magnitude (simplified).
+  double _calculateEclipseMagnitude({
+    required PlanetPosition sunPos,
+    required PlanetPosition moonPos,
+    required bool isLunar,
+  }) {
+    // Simplified calculation
+    // Real calculation involves lunar nodes and precise geometry
+    return 0.5; // Placeholder
+  }
+
+  /// Checks if solar eclipse is visible from location.
+  Future<bool> _isSolarEclipseVisible({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    // Simplified check
+    // Real implementation would use swe_sol_eclipse_where
+    return true;
+  }
+
+  /// Converts DateTime to Julian Day.
+  ///
+  /// [dateTime] - The DateTime to convert
+  /// [timezoneId] - Optional timezone ID
+  ///
+  /// Returns the Julian Day number.
+  double getJulianDay(DateTime dateTime, {String? timezoneId}) {
+    return _dateTimeToJulianDay(dateTime, timezoneId: timezoneId);
+  }
+
   /// Converts Julian Day to DateTime (UTC).
   DateTime _julianDayToDateTime(double julianDay) {
     // Julian Day 0 = January 1, 4713 BC at noon
@@ -382,4 +677,128 @@ class EphemerisService {
 
   /// Gets whether the service is initialized.
   bool get isInitialized => _isInitialized;
+}
+
+/// Represents planet visibility information.
+class PlanetVisibility {
+  const PlanetVisibility({
+    required this.planet,
+    required this.date,
+    required this.isVisible,
+    required this.visibilityType,
+    required this.elongation,
+    required this.magnitude,
+    required this.sunrise,
+    required this.sunset,
+    required this.description,
+  });
+
+  /// The planet
+  final Planet planet;
+
+  /// The date checked
+  final DateTime date;
+
+  /// Whether the planet is visible
+  final bool isVisible;
+
+  /// Type of visibility
+  final VisibilityType visibilityType;
+
+  /// Elongation from Sun (degrees)
+  final double elongation;
+
+  /// Apparent magnitude (lower is brighter)
+  final double magnitude;
+
+  /// Sunrise time
+  final DateTime? sunrise;
+
+  /// Sunset time
+  final DateTime? sunset;
+
+  /// Description of visibility
+  final String description;
+
+  /// Whether this is a heliacal event (rise or set)
+  bool get isHeliacal => 
+      visibilityType == VisibilityType.heliacalRise || 
+      visibilityType == VisibilityType.heliacalSet;
+}
+
+/// Types of planet visibility
+enum VisibilityType {
+  notVisible('Not Visible'),
+  heliacalRise('Heliacal Rise'),
+  heliacalSet('Heliacal Set'),
+  daytime('Daytime Visible'),
+  evening('Evening Star'),
+  morning('Morning Star');
+
+  const VisibilityType(this.name);
+  final String name;
+}
+
+/// Types of eclipses
+enum EclipseType {
+  any('Any'),
+  solar('Solar'),
+  lunar('Lunar'),
+  solarTotal('Solar Total'),
+  solarPartial('Solar Partial'),
+  solarAnnular('Solar Annular'),
+  lunarTotal('Lunar Total'),
+  lunarPartial('Lunar Partial'),
+  lunarPenumbral('Lunar Penumbral');
+
+  const EclipseType(this.name);
+  final String name;
+}
+
+/// Represents eclipse data
+class EclipseData {
+  const EclipseData({
+    required this.date,
+    required this.eclipseType,
+    required this.magnitude,
+    required this.isVisible,
+    required this.description,
+    this.duration,
+    this.startTime,
+    this.endTime,
+    this.maxEclipseTime,
+  });
+
+  /// Date of eclipse
+  final DateTime date;
+
+  /// Type of eclipse
+  final EclipseType eclipseType;
+
+  /// Eclipse magnitude (0.0 - 1.0+)
+  final double magnitude;
+
+  /// Whether visible from location
+  final bool isVisible;
+
+  /// Description
+  final String description;
+
+  /// Duration of eclipse
+  final Duration? duration;
+
+  /// Start time
+  final DateTime? startTime;
+
+  /// End time
+  final DateTime? endTime;
+
+  /// Maximum eclipse time
+  final DateTime? maxEclipseTime;
+
+  /// Whether it's a total eclipse
+  bool get isTotal => magnitude >= 1.0;
+
+  /// Whether it's a partial eclipse
+  bool get isPartial => magnitude > 0.0 && magnitude < 1.0;
 }

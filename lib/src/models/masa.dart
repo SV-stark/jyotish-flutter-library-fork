@@ -105,6 +105,112 @@ class MasaInfo {
   }
 }
 
+/// Hindu seasons (Ritu) - Six-fold division of the year.
+enum Ritu {
+  /// Vasanta (Spring) - Chaitra, Vaishakha
+  vasanta(
+    'Vasanta',
+    'Spring',
+    'Flowering season, new beginnings',
+    ['Growth', 'Renewal', 'Beauty'],
+    'Earth',
+  ),
+
+  /// Grishma (Summer) - Jyeshtha, Ashadha
+  grishma(
+    'Grishma',
+    'Summer',
+    'Hot season, peak energy',
+    ['Heat', 'Intensity', 'Power'],
+    'Fire',
+  ),
+
+  /// Varsha (Monsoon) - Shravana, Bhadrapada
+  varsha(
+    'Varsha',
+    'Monsoon',
+    'Rainy season, nourishment',
+    ['Nourishment', 'Cooling', 'Flow'],
+    'Water',
+  ),
+
+  /// Sharad (Autumn) - Ashwin, Kartika
+  sharad(
+    'Sharad',
+    'Autumn',
+    'Harvest season, maturity',
+    ['Harvest', 'Gratitude', 'Balance'],
+    'Air',
+  ),
+
+  /// Hemanta (Pre-winter) - Margashirsha, Pausha
+  hemanta(
+    'Hemanta',
+    'Pre-winter',
+    'Cooling down, preparation',
+    ['Preparation', 'Conservation', 'Rest'],
+    'Space',
+  ),
+
+  /// Shishira (Winter) - Magha, Phalguna
+  shishira(
+    'Shishira',
+    'Winter',
+    'Cold season, introspection',
+    ['Introspection', 'Wisdom', 'Endings'],
+    'Earth',
+  );
+
+  const Ritu(
+    this.sanskrit,
+    this.english,
+    this.description,
+    this.characteristics,
+    this.governingElement,
+  );
+
+  final String sanskrit;
+  final String english;
+  final String description;
+  final List<String> characteristics;
+  final String governingElement;
+
+  @override
+  String toString() => '$sanskrit ($english)';
+}
+
+/// Ritu information with details.
+class RituInfo {
+  const RituInfo({
+    required this.ritu,
+    required this.masa,
+    required this.description,
+    required this.characteristics,
+    required this.governingElement,
+  });
+
+  /// The season
+  final Ritu ritu;
+
+  /// The lunar month
+  final MasaInfo masa;
+
+  /// Detailed description
+  final String description;
+
+  /// Seasonal characteristics
+  final List<String> characteristics;
+
+  /// Governing element (Panchabhuta)
+  final String governingElement;
+
+  /// Formatted display string
+  String get displayString => '${ritu.sanskrit} Ritu - ${masa.displayName}';
+
+  @override
+  String toString() => displayString;
+}
+
 class Samvatsara {
   const Samvatsara({
     required this.name,
