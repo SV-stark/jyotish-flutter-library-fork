@@ -247,6 +247,7 @@ class DashaService {
 
         mahadashas.add(DashaPeriod(
           lord: yogini.planet,
+          lordName: yogini.name,
           startDate: currentDate,
           endDate: endDate,
           duration: Duration(days: durationDays.round()),

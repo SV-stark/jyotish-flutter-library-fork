@@ -20,31 +20,51 @@ class KPService {
   /// [useNewAyanamsa] - Whether to use KP New VP291 (true) or old KP ayanamsa (false)
   ///
   /// Returns [KPCalculations] with Sub-Lords and significators.
+  ///
+  /// **Important**: The natal chart is typically calculated with Lahiri ayanamsa.
+  /// This method adjusts house cusps and planet positions to use the correct
+  /// KP ayanamsa (VP291 or old KP) before calculating sub-lords.
   Future<KPCalculations> calculateKPData(
     VedicChart natalChart, {
     bool useNewAyanamsa = true,
   }) async {
     // Calculate KP ayanamsa using precise time-varying formula from Swiss Ephemeris
-    final ayanamsa = await _calculateKPAyanamsa(
+    final kpAyanamsa = await _calculateKPAyanamsa(
       natalChart.dateTime,
       useNewAyanamsa: useNewAyanamsa,
     );
 
-    // Calculate Sub-Lords for planets
+    // Get the Lahiri ayanamsa (default used in chart calculation)
+    final lahiriAyanamsa = await _ephemerisService.getAyanamsa(
+      dateTime: natalChart.dateTime,
+      mode: SiderealMode.lahiri,
+    );
+
+    // Calculate the difference to adjust positions
+    // Positive diff means KP ayanamsa is larger, so we need to subtract more from tropical
+    // Since chart is already in Lahiri sidereal, we subtract the difference
+    final ayanamsaDiff = kpAyanamsa - lahiriAyanamsa;
+
+    // Calculate Sub-Lords for planets with adjusted positions
     final planetDivisions = <Planet, KPDivision>{};
     for (final entry in natalChart.planets.entries) {
+      // Adjust planet longitude from Lahiri to KP ayanamsa
+      final adjustedLongitude =
+          (entry.value.position.longitude - ayanamsaDiff + 360) % 360;
       planetDivisions[entry.key] = _calculateKPDivision(
-        entry.value.position.longitude,
+        adjustedLongitude,
         entry.key,
       );
     }
 
-    // Calculate Sub-Lords for house cusps
+    // Calculate Sub-Lords for house cusps with adjusted positions
     final houseDivisions = <int, KPDivision>{};
     for (var house = 1; house <= 12; house++) {
-      final cuspLongitude = natalChart.houses.cusps[house - 1];
+      // Adjust cusp longitude from Lahiri to KP ayanamsa
+      final adjustedCusp =
+          (natalChart.houses.cusps[house - 1] - ayanamsaDiff + 360) % 360;
       houseDivisions[house] = _calculateKPDivision(
-        cuspLongitude,
+        adjustedCusp,
         null,
       );
     }
@@ -60,7 +80,7 @@ class KPService {
     }
 
     return KPCalculations(
-      ayanamsa: ayanamsa,
+      ayanamsa: kpAyanamsa,
       planetDivisions: planetDivisions,
       houseDivisions: houseDivisions,
       planetSignificators: planetSignificators,
