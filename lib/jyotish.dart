@@ -51,5 +51,8 @@ export 'src/services/panchanga_service.dart';
 export 'src/services/shadbala_service.dart';
 export 'src/services/strength_analysis_service.dart';
 export 'src/services/special_transit_service.dart';
+export 'src/services/sudarshan_chakra_service.dart';
 export 'src/services/transit_service.dart';
 export 'src/services/vedic_chart_service.dart';
+// Sudarshan Chakra
+export 'src/models/sudarshan_chakra.dart';

@@ -35,6 +35,7 @@ This fork significantly extends the original library with high-level astrologica
 - **🎯 KP System**: Significators, Sub-Lord, and Sub-Sub-Lord logic with precise KP-specific ayanamsa calculation.
 - **🪐 Special Transits**: Automated analysis for Sade Sati, Dhaiya, and Panchak.
 - **📅 Muhurta**: Auspicious timings via Hora, Choghadiya, and Kalam analysis.
+- **🎡 Sudarshan Chakra**: Triple-perspective strength analysis from Lagna, Moon, and Sun.
 
 ✨ **New Vedic Modules**:
 
@@ -43,6 +44,7 @@ This fork significantly extends the original library with high-level astrologica
 - **KP System (Krishnamurti Paddhati)**: Significators, Sub-Lord, and Sub-Sub-Lord calculations
 - **Special Transits**: Sade Sati, Dhaiya (Panoti), and Panchak analysis
 - **Muhurta**: Hora, Choghadiya, and Inauspicious periods (Rahukalam, Gulikalam, Yamagandam)
+- **Sudarshan Chakra**: Strength analysis from Lagna, Moon, and Sun perspectives.
 
 🎯 **Easy to Use**: Simple, intuitive API designed for Vedic astrology
 
@@ -491,6 +493,26 @@ if (muhurta.isCurrentlyInauspicious) {
 
 // Find best Muhurta for an activity
 final bestTimes = jyotish.findBestMuhurta(muhurta: muhurta, activity: 'marriage');
+```
+
+### Sudarshan Chakra Strength Analysis
+
+```dart
+// Calculate Sudarshan Chakra (Triple-perspective analysis)
+final sudarshan = jyotish.calculateSudarshanChakra(d1Chart);
+
+print('Overall Chart Strength: ${sudarshan.overallStrength.toStringAsFixed(1)}%');
+print('Strong Houses: ${sudarshan.strongHouses}'); // Houses strong in all 3 views
+print('Weak Houses: ${sudarshan.weakHouses}');
+
+// Check specific house strength
+final house10 = sudarshan.houseStrengths[10];
+print('House 10 Combined Score: ${house10?.combinedScore}%');
+print('House 10 Category: ${house10?.category.name}');
+
+// Check planet placements
+final jupiterStrength = sudarshan.planetStrengths[Planet.jupiter];
+print('Jupiter status: ${jupiterStrength?.category.name}');
 ```
 
 ### Abhijit Nakshatra Support

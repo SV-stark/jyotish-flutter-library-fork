@@ -16,6 +16,7 @@ import 'models/planet_position.dart';
 import 'models/relationship.dart';
 import 'models/special_transits.dart';
 import 'models/transit.dart';
+import 'models/sudarshan_chakra.dart';
 import 'models/vedic_chart.dart';
 
 import 'services/aspect_service.dart';
@@ -31,6 +32,7 @@ import 'services/panchanga_service.dart';
 import 'services/shadbala_service.dart';
 import 'services/special_transit_service.dart';
 import 'services/transit_service.dart';
+import 'services/sudarshan_chakra_service.dart';
 import 'services/vedic_chart_service.dart';
 
 /// The main entry point for the Jyotish library.
@@ -80,6 +82,7 @@ class Jyotish {
   MuhurtaService? _muhurtaService;
   ShadbalaService? _shadbalaService;
   MasaService? _masaService;
+  SudarshanChakraService? _sudarshanChakraService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -110,6 +113,7 @@ class Jyotish {
       _muhurtaService = MuhurtaService();
       _shadbalaService = ShadbalaService(_ephemerisService!);
       _masaService = MasaService(_ephemerisService!);
+      _sudarshanChakraService = SudarshanChakraService();
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -1541,5 +1545,44 @@ class Jyotish {
   PanchangaService get panchangaService {
     _ensureInitialized();
     return _panchangaService!;
+  }
+
+  // ============================================================
+  // SUDARSHAN CHAKRA ANALYSIS
+  // ============================================================
+
+  /// Calculates Sudarshan Chakra strength analysis.
+  ///
+  /// Sudarshan Chakra evaluates houses and planets from three perspectives:
+  /// 1. Lagna (Ascendant) - The rising sign at birth
+  /// 2. Chandra (Moon) - The Moon's sign position
+  /// 3. Surya (Sun) - The Sun's sign position
+  ///
+  /// A house or planet is considered strong if it holds favorable positions
+  /// across all three reference points.
+  ///
+  /// [chart] - A pre-calculated Vedic birth chart
+  ///
+  /// Returns a [SudarshanChakraResult] containing strength analysis
+  /// for all 12 houses and all planets.
+  ///
+  /// Example:
+  /// ```dart
+  /// final chart = await jyotish.calculateVedicChart(
+  ///   dateTime: DateTime(1990, 5, 15, 14, 30),
+  ///   location: location,
+  /// );
+  ///
+  /// final sudarshan = jyotish.calculateSudarshanChakra(chart);
+  /// print('Overall Strength: ${sudarshan.overallStrength}%');
+  /// print('Strong Houses: ${sudarshan.strongHouses}');
+  ///
+  /// for (final entry in sudarshan.planetStrengths.entries) {
+  ///   print('${entry.key.displayName}: ${entry.value.category.name}');
+  /// }
+  /// ```
+  SudarshanChakraResult calculateSudarshanChakra(VedicChart chart) {
+    _ensureInitialized();
+    return _sudarshanChakraService!.calculateSudarshanChakra(chart);
   }
 }

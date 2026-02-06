@@ -25,9 +25,11 @@ A comprehensive API reference for the Jyotish Flutter library - production-ready
   - [KPService](#kpservice)
   - [MuhurtaService](#muhurtaservice)
   - [MasaService](#masaservice)
+  - [SudarshanChakraService](#sudarshanchakraservice)
   - [StrengthAnalysisService](#strengthanalysisservice)
   - [GocharaVedhaService](#gocharavedhaservice)
 - [Models](#models)
+  - [SudarshanChakraResult](#sudarshanchakraresult)
 - [Enums](#enums)
 
 ---
@@ -176,6 +178,12 @@ await jyotish.initialize({String? ephemerisPath});
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `calculateShadbala(chart)` | `Map<Planet, ShadbalaResult>` | Six-fold planetary strength |
+
+#### Sudarshan Chakra Analysis
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `calculateSudarshanChakra(chart)` | `SudarshanChakraResult` | Triple-perspective strength analysis |
 
 #### Cleanup
 
@@ -540,6 +548,20 @@ final service = MasaService(ephemerisService);
 | `getMasaListForYear({year, location, type?})` | `Future<List<MasaInfo>>` | All months in year |
 | `getRitu(masaInfo)` | `Ritu` | Hindu season |
 | `getRituDetails({dateTime, location})` | `Future<RituDetails>` | Season details |
+
+---
+
+### SudarshanChakraService
+
+Service for calculating Sudarshan Chakra strength from Lagna, Moon, and Sun perspectives.
+
+```dart
+final service = SudarshanChakraService();
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `calculateSudarshanChakra(chart)` | `SudarshanChakraResult` | Calculate triple-perspective strength |
 
 ---
 
