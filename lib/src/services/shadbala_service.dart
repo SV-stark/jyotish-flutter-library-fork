@@ -1,7 +1,7 @@
 import '../models/divisional_chart_type.dart';
+import '../models/geographic_location.dart';
 import '../models/planet.dart';
 import '../models/vedic_chart.dart';
-import '../models/geographic_location.dart';
 import 'divisional_chart_service.dart';
 import 'ephemeris_service.dart';
 
@@ -228,14 +228,14 @@ class ShadbalaService {
 
   Future<double> _calculateKalaBala(
       Planet planet, VedicPlanetInfo planetInfo, VedicChart chart) async {
-    var strength = 0.0;
-    strength += _calculateNatonnataBala(planet, chart);
-    strength += _calculatePakshaBala(planet, planetInfo, chart);
-    strength += await _calculateTribhagaBala(planet, chart);
-    strength += await _calculateVMDHBala(planet, chart);
-    strength += _calculateAyanaBala(
+    const strength = 0.0;
+    final natonnata = _calculateNatonnataBala(planet, chart);
+    final paksha = _calculatePakshaBala(planet, planetInfo, chart);
+    final tribhaga = await _calculateTribhagaBala(planet, chart);
+    final vmdh = await _calculateVMDHBala(planet, chart);
+    final ayana = _calculateAyanaBala(
         planet, planetInfo.position.longitude, planetInfo.position.declination);
-    return strength;
+    return strength + natonnata + paksha + tribhaga + vmdh + ayana;
   }
 
   double _calculateNatonnataBala(Planet planet, VedicChart chart) {
@@ -260,10 +260,10 @@ class ShadbalaService {
     final moonInfo = chart.getPlanet(Planet.moon);
     if (sunInfo == null || moonInfo == null) return 0.0;
 
-    var elongation = (moonInfo.longitude - sunInfo.longitude + 360) % 360;
+    final elongation = (moonInfo.longitude - sunInfo.longitude + 360) % 360;
 
     if (planet == Planet.moon) {
-      var pakshaStrength = elongation > 180 ? (360 - elongation) : elongation;
+      final pakshaStrength = elongation > 180 ? (360 - elongation) : elongation;
       return (pakshaStrength / 180.0) * 60.0;
     }
 
@@ -349,53 +349,77 @@ class ShadbalaService {
   }
 
   double _calculateAyanaBala(Planet planet, double longitude, double decl) {
-    // Ayana Bala = 60 * (24 +/- Declination) / 48
-    // For Sun, Mars, Jupiter, Venus: + for North (positive), - for South (negative)
-    // For Moon, Saturn: - for North, + for South
-    // For Mercury: Always plus (absolute)
-
-    final absDecl = decl.abs();
+    // Ayana Bala = 60 * (23°27' ± Kranti) / 46°54'
+    // Where Kranti = declination of the planet
+    // Correct formula from Parashara Hora Shastra:
+    // ayanabala = 60 * (23°27' ± kranti) / 46°54' = (23°27' ± kranti) * 1.2793
+    
+    const obliquityOfEcliptic = 23.45;
+    const denominator = 46.90; // 46°54' = 46.90 degrees
 
     if ([Planet.sun, Planet.mars, Planet.jupiter, Planet.venus]
         .contains(planet)) {
-      return (24 + decl) / 48 * 60;
+      // Sun, Mars, Jupiter, Venus: + for Northern declination, - for Southern
+      return (obliquityOfEcliptic + decl) / denominator * 60;
     } else if ([Planet.moon, Planet.saturn].contains(planet)) {
-      return (24 - decl) / 48 * 60;
+      // Moon, Saturn: - for Northern declination, + for Southern
+      return (obliquityOfEcliptic - decl) / denominator * 60;
     } else {
-      // Mercury
-      return (24 + absDecl) / 48 * 60;
+      // Mercury: Always plus (absolute declination)
+      return (obliquityOfEcliptic + decl.abs()) / denominator * 60;
     }
   }
 
   /// Calculates VMDH Bala (Vara-Maasa-Varsha-Hora Bala).
-  /// 
+  ///
   /// Total: 150 virupas (60 Rupas)
   /// - Vara Bala: 45 virupas (Weekday lord)
   /// - Maasa Bala: 30 virupas (Month lord)
   /// - Varsha Bala: 15 virupas (Year lord)
   /// - Hora Bala: 60 virupas (Planetary hour lord)
   Future<double> _calculateVMDHBala(Planet planet, VedicChart chart) async {
-    var totalStrength = 0.0;
-    
-    // 1. Vara Bala (45 virupas) - Weekday lord
-    totalStrength += _calculateVaraBala(planet, chart.dateTime);
-    
-    // 2. Maasa Bala (30 virupas) - Month lord
-    totalStrength += _calculateMaasaBala(planet, chart.dateTime);
-    
-    // 3. Varsha Bala (15 virupas) - Year lord
-    totalStrength += _calculateVarshaBala(planet, chart.dateTime);
-    
-    // 4. Hora Bala (60 virupas) - Planetary hour lord
-    totalStrength += await _calculateHoraBala(planet, chart);
-    
-    return totalStrength;
+    final varaBala = await _calculateVaraBala(planet, chart);
+    final maasaBala = _calculateMaasaBala(planet, chart.dateTime);
+    final varshaBala = _calculateVarshaBala(planet, chart.dateTime);
+    final horaBala = await _calculateHoraBala(planet, chart);
+
+    return varaBala + maasaBala + varshaBala + horaBala;
   }
 
   /// Vara Bala: 45 virupas for the weekday lord.
   /// Weekday: Sun (1), Mon (2), Tue (3), Wed (4), Thu (5), Fri (6), Sat (7)
-  double _calculateVaraBala(Planet planet, DateTime dateTime) {
-    final weekday = dateTime.weekday; // 1 (Mon) - 7 (Sun)
+  /// 
+  /// IMPORTANT: In Vedic astrology, the weekday changes at sunrise, not at midnight.
+  /// If the birth time is before sunrise, it belongs to the previous weekday.
+  Future<double> _calculateVaraBala(Planet planet, VedicChart chart) async {
+    final dateTime = chart.dateTime;
+    
+    // Get sunrise time for the location
+    final location = GeographicLocation(
+      latitude: chart.latitude,
+      longitude: chart.longitudeCoord,
+      altitude: 0,
+    );
+    
+    final sunriseSunset = await _ephemerisService.getSunriseSunset(
+      date: dateTime,
+      location: location,
+    );
+    
+    final sunrise = sunriseSunset.$1;
+    
+    // Determine the effective weekday
+    // In Vedic astrology, day changes at sunrise, not at midnight
+    int weekday;
+    if (sunrise != null && dateTime.isBefore(sunrise)) {
+      // Before sunrise - use previous day
+      final previousDay = dateTime.subtract(const Duration(days: 1));
+      weekday = previousDay.weekday;
+    } else {
+      // After sunrise - use current day
+      weekday = dateTime.weekday;
+    }
+    
     final varaLord = switch (weekday) {
       7 => Planet.sun,    // Sunday
       1 => Planet.moon,   // Monday
@@ -601,7 +625,7 @@ class ShadbalaService {
     final speed = planetInfo.position.longitudeSpeed;
     if (speed < 0) return 60.0;
     final avgSpeed = _averageSpeeds[planet] ?? 1.0;
-    var ratio = (speed / avgSpeed).clamp(0.0, 1.0);
+    final ratio = (speed / avgSpeed).clamp(0.0, 1.0);
     return ratio * 60.0;
   }
 
@@ -796,13 +820,13 @@ class ShadbalaService {
     x = x % (2 * 3.14159265358979323846);
     double result = 1.0;
     double term = 1.0;
-    double x2 = x * x;
-    
+    final x2 = x * x;
+
     for (int i = 1; i <= 10; i++) {
       term *= -x2 / ((2 * i - 1) * (2 * i));
       result += term;
     }
-    
+
     return result;
   }
 

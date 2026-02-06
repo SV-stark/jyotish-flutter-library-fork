@@ -1,12 +1,14 @@
 import '../models/planet.dart';
+import '../models/nakshatra.dart';
 
 /// Represents the five limbs (Panchanga) of a day in Vedic astrology.
-/// Panchanga consists of Tithi, Yoga, Karana, Vara (weekday), and Nakshatra.
+/// Panchanga consists of Tithi, Nakshatra, Yoga, Karana, and Vara (weekday).
 class Panchanga {
   const Panchanga({
     required this.dateTime,
     required this.location,
     required this.tithi,
+    required this.nakshatra,
     required this.yoga,
     required this.karana,
     required this.vara,
@@ -22,6 +24,9 @@ class Panchanga {
 
   /// Tithi (lunar phase)
   final TithiInfo tithi;
+
+  /// Nakshatra (Moon's lunar mansion)
+  final NakshatraInfo nakshatra;
 
   /// Yoga (27 lunar-solar combinations)
   final YogaInfo yoga;
@@ -54,6 +59,7 @@ class Panchanga {
   String toString() {
     return 'Panchanga(${dateTime.toIso8601String()}): '
         '${tithi.name} (${tithi.paksha}), '
+        '${nakshatra.name} (Pada ${nakshatra.pada}), '
         '${yoga.name}, ${karana.name}, ${vara.name}';
   }
 }

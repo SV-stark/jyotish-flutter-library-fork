@@ -125,7 +125,6 @@ class RelationshipCalculator {
   ///
   /// Planets in 2nd, 3rd, 4th, 10th, 11th, and 12th houses from a planet are friends.
   static RelationshipType calculateTemporary(int house1, int house2) {
-    final diff = (house2 - house1 + 12) % 12;
     // House indices are 0-11 in this logic or 1-12.
     // Let's assume 1-based house numbers as in VedicChart.
     final relativeHouse = (house2 - house1 + 12) % 12;

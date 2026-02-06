@@ -169,6 +169,37 @@ class MasaService {
     return _calculateNakshatraWithAbhijit(moonPos.longitude);
   }
 
+  /// Calculates nakshatra information from a longitude value.
+  /// 
+  /// This is the core calculation used by other methods. It determines
+  /// which of the 27 nakshatras a given longitude falls into.
+  /// 
+  /// [longitude] - The longitude in degrees (0-360)
+  /// 
+  /// Returns [NakshatraInfo] without Abhijit calculation (standard 27 nakshatras)
+  NakshatraInfo calculateNakshatraFromLongitude(double longitude) {
+    var normalizedLongitude = longitude % 360;
+    if (normalizedLongitude < 0) normalizedLongitude += 360;
+
+    const nakshatraWidth = 360.0 / 27;
+    final nakshatraNumber = (normalizedLongitude / nakshatraWidth).floor() + 1;
+    final name = NakshatraInfo.nakshatraNames[nakshatraNumber - 1];
+    final rulingPlanet = NakshatraInfo.nakshatraLords[nakshatraNumber - 1];
+
+    final positionInNakshatra = normalizedLongitude % nakshatraWidth;
+    final pada = (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1;
+
+    return NakshatraInfo(
+      number: nakshatraNumber,
+      name: name,
+      rulingPlanet: rulingPlanet,
+      longitude: normalizedLongitude,
+      pada: pada,
+      isAbhijit: false,
+      abhijitPortion: 0.0,
+    );
+  }
+
   NakshatraInfo _calculateNakshatraWithAbhijit(double longitude) {
     var normalizedLongitude = longitude % 360;
     if (normalizedLongitude < 0) normalizedLongitude += 360;

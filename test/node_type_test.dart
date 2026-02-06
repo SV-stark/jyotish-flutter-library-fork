@@ -28,7 +28,9 @@ void main() {
     });
 
     test('Can create CalculationFlags with True Node', () {
-      final flags = CalculationFlags.withNodeType(NodeType.trueNode);
+      final flags = const CalculationFlags(
+        nodeType: NodeType.trueNode,
+      );
       expect(flags.nodeType, NodeType.trueNode);
       expect(flags.nodeType.planet, Planet.trueNode);
     });
@@ -37,7 +39,13 @@ void main() {
       final flags = CalculationFlags(
         nodeType: NodeType.trueNode,
       );
-      expect(flags.nodeType, NodeType.trueNode);
+
+      final updatedFlags = flags.copyWith(nodeType: NodeType.trueNode);
+      expect(updatedFlags.nodeType, NodeType.trueNode);
+      expect(updatedFlags.nodeType.planet, Planet.trueNode);
+      expect(updatedFlags.siderealMode, flags.siderealMode);
+      expect(updatedFlags.useTopocentric, true);
+      expect(updatedFlags.useSwissEphemeris, true);
     });
 
     test('copyWith can change nodeType', () {

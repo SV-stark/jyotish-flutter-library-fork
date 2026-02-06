@@ -189,7 +189,6 @@ void main() {
       );
 
       expect(masaList.length, greaterThanOrEqualTo(1));
-      expect(masaList.every((m) => m.month is LunarMonth), true);
     });
 
     test('Amanta and Purnimanta produce different months sometimes', () async {

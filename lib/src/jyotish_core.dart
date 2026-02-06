@@ -1,6 +1,7 @@
 import 'exceptions/jyotish_exception.dart';
-import 'models/ashtakavarga.dart';
+
 import 'models/aspect.dart';
+import 'models/ashtakavarga.dart';
 import 'models/calculation_flags.dart';
 import 'models/dasha.dart';
 import 'models/divisional_chart_type.dart';
@@ -16,9 +17,10 @@ import 'models/relationship.dart';
 import 'models/special_transits.dart';
 import 'models/transit.dart';
 import 'models/vedic_chart.dart';
-import 'services/astrology_time_service.dart';
-import 'services/ashtakavarga_service.dart';
+
 import 'services/aspect_service.dart';
+import 'services/ashtakavarga_service.dart';
+import 'services/astrology_time_service.dart';
 import 'services/dasha_service.dart';
 import 'services/divisional_chart_service.dart';
 import 'services/ephemeris_service.dart';
@@ -679,6 +681,46 @@ class Jyotish {
     }
   }
 
+  /// Gets only the Nakshatra for a specific date.
+  ///
+  /// The Nakshatra is determined by the Moon's position and is one of the
+  /// five limbs of the Panchanga. There are 27 nakshatras, each spanning
+  /// 13°20' of the zodiac.
+  ///
+  /// [dateTime] - The date and time for calculation
+  /// [location] - The geographic location
+  ///
+  /// Returns [NakshatraInfo] with name, number (1-27), ruling planet, and pada.
+  ///
+  /// Example:
+  /// ```dart
+  /// final nakshatra = await jyotish.getNakshatra(
+  ///   dateTime: DateTime.now(),
+  ///   location: location,
+  /// );
+  /// print('Nakshatra: ${nakshatra.name}');
+  /// print('Ruler: ${nakshatra.rulingPlanet}');
+  /// print('Pada: ${nakshatra.pada}');
+  /// ```
+  Future<NakshatraInfo> getNakshatra({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _panchangaService!.getNakshatra(
+        dateTime: dateTime,
+        location: location,
+      );
+    } catch (e) {
+      throw JyotishException(
+        'Failed to get Nakshatra: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
   /// Gets only the Yoga for a specific date.
   Future<YogaInfo> getYoga({
     required DateTime dateTime,
@@ -1107,13 +1149,36 @@ class Jyotish {
 
   /// Calculates Chara Dasha from a birth chart.
   ///
-  /// Chara Dasha is a Jaimini-style sign-based dasha system.
+  /// Chara Dasha is a Jaimini-style sign-based dasha system where signs (rashis)
+  /// become the dasha lords instead of planets. The sequence and duration depend
+  /// on the Lagna (Ascendant) and the positions of the sign lords.
+  ///
+  /// This implementation includes:
+  /// - Multi-level sub-periods (antardasha, pratyantardasha)
+  /// - Advanced sign-lord logic for dual-owned signs (Scorpio/Aquarius)
+  /// - Proper odd/even sign sequence handling
   ///
   /// [natalChart] - The birth chart to use
-  /// [levels] - Number of dasha levels (currently supports 1 level)
+  /// [levels] - Number of dasha levels (1 = mahadasha only, 2 = + antardasha,
+  ///            3 = + pratyantardasha, etc.). Default is 3.
+  ///
+  /// Example:
+  /// ```dart
+  /// final charaDasha = await jyotish.getCharaDasha(
+  ///   natalChart: chart,
+  ///   levels: 3, // Get mahadasha, antardasha, and pratyantardasha
+  /// );
+  ///
+  /// for (final mahadasha in charaDasha.allMahadashas) {
+  ///   print('${mahadasha.rashi?.name}: ${mahadasha.startDate} - ${mahadasha.endDate}');
+  ///   for (final antardasha in mahadasha.subPeriods) {
+  ///     print('  ${antardasha.rashi?.name}: ${antardasha.startDate} - ${antardasha.endDate}');
+  ///   }
+  /// }
+  /// ```
   Future<DashaResult> getCharaDasha({
     required VedicChart natalChart,
-    int levels = 1,
+    int levels = 3,
   }) async {
     _ensureInitialized();
     return _dashaService!.calculateCharaDasha(natalChart, levels: levels);
@@ -1401,6 +1466,54 @@ class Jyotish {
   /// Returns a tuple with (startLongitude, endLongitude) in degrees.
   (double start, double end) getAbhijitBoundaries() {
     return (NakshatraInfo.abhijitStart, NakshatraInfo.abhijitEnd);
+  }
+
+  /// Calculates Nakshatra information for any planet at a given date/time.
+  ///
+  /// This is a general method that can calculate nakshatra for any planet,
+  /// not just the Moon. Useful for analyzing planetary positions in nakshatras.
+  ///
+  /// [planet] - The planet to calculate nakshatra for
+  /// [dateTime] - The date and time for calculation
+  /// [location] - Geographic location
+  ///
+  /// Returns [NakshatraInfo] with:
+  /// - Nakshatra name and number (1-27)
+  /// - Ruling planet (deity)
+  /// - Pada (quarter, 1-4)
+  /// - Longitude within nakshatra
+  ///
+  /// Example:
+  /// ```dart
+  /// final sunNakshatra = await jyotish.getNakshatraForPlanet(
+  ///   planet: Planet.sun,
+  ///   dateTime: DateTime.now(),
+  ///   location: location,
+  /// );
+  /// print('Sun in ${sunNakshatra.name}, Pada ${sunNakshatra.pada}');
+  /// ```
+  Future<NakshatraInfo> getNakshatraForPlanet({
+    required Planet planet,
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      final position = await _ephemerisService!.calculatePlanetPosition(
+        planet: planet,
+        dateTime: dateTime,
+        location: location,
+        flags: CalculationFlags.defaultFlags(),
+      );
+
+      return _masaService!.calculateNakshatraFromLongitude(position.longitude);
+    } catch (e) {
+      throw JyotishException(
+        'Failed to get Nakshatra for ${planet.displayName}: ${e.toString()}',
+        originalError: e,
+      );
+    }
   }
 
   /// Gets whether library has been initialized.

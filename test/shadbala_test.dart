@@ -46,8 +46,6 @@ void main() {
 
     test('Chesta Bala for retrograde planets', () async {
       final results = await shadbalaService.calculateShadbala(mockChart);
-      final rahuResult =
-          results[Planet.meanNode]; // Rahu is always retrograde (-0.05 speed)
 
       // Chesta Bala is 0 for Sun/Moon, but let's check Mars if we made it retrograde
       // In our mock, Mars is at 0.524 (direct)

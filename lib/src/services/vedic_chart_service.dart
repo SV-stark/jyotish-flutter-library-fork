@@ -130,7 +130,7 @@ class VedicChartService {
     final houseData = await _ephemerisService.calculateHouses(
       dateTime: dateTime,
       location: location,
-      houseSystem: 'P', // Placidus system
+      houseSystem: houseSystem,
     );
 
     // Get ayanamsa for sidereal correction
@@ -153,11 +153,33 @@ class VedicChartService {
         tropicalCusps.map((cusp) => (cusp - ayanamsa + 360) % 360).toList();
 
     return HouseSystem(
-      system: 'Placidus',
+      system: _getHouseSystemName(houseSystem),
       cusps: cusps,
       ascendant: ascendant,
       midheaven: midheaven,
     );
+  }
+
+  /// Gets the display name for a house system code.
+  String _getHouseSystemName(String code) {
+    return switch (code) {
+      'W' => 'Whole Sign',
+      'P' => 'Placidus',
+      'K' => 'Koch',
+      'O' => 'Porphyry',
+      'R' => 'Regiomontanus',
+      'C' => 'Campanus',
+      'E' => 'Equal',
+      'V' => 'Vehlow',
+      'X' => 'Axial Rotation',
+      'H' => 'Horizontal',
+      'T' => 'Polich/Page',
+      'B' => 'Alcabitus',
+      'M' => 'Morinus',
+      'U' => 'Krusinski-Pisa-Goelzer',
+      'G' => 'Gauquelin sectors',
+      _ => code,
+    };
   }
 
   /// Calculates planetary dignity based on sign placement.

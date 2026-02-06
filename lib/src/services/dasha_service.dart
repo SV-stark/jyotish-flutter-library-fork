@@ -499,9 +499,15 @@ class DashaService {
 
   /// Calculates Chara Dasha from a Rashi chart.
   ///
-  /// Chara Dasha is a sign-based dasha system where the sequence and duration
-  /// depend on the Lagna (Ascendant) and the positions of signs and their lords.
-  DashaResult calculateCharaDasha(VedicChart rashiChart, {int levels = 1}) {
+  /// Chara Dasha is a sign-based dasha system (Jaimini system) where the 
+  /// sequence and duration depend on the Lagna (Ascendant) and the positions 
+  /// of signs and their lords.
+  ///
+  /// This implementation includes:
+  /// - Multi-level sub-periods (antardasha, pratyantardasha)
+  /// - Advanced sign-lord logic for Scorpio/Aquarius
+  /// - Proper handling of odd/even sign sequences
+  DashaResult calculateCharaDasha(VedicChart rashiChart, {int levels = 3}) {
     final ascendantSign = Rashi.fromLongitude(rashiChart.houses.ascendant);
     final isDirect = ascendantSign.isOdd;
 
@@ -524,13 +530,24 @@ class DashaService {
       final durationDays = years * 365.25;
       final endDate = currentDate.add(Duration(days: durationDays.round()));
 
+      // Calculate sub-periods (antardashas)
+      final subPeriods = _calculateCharaSubPeriods(
+        sign,
+        sequence,
+        currentDate,
+        endDate,
+        years,
+        rashiChart,
+        levels: levels - 1,
+      );
+
       final mahadasha = DashaPeriod(
         rashi: sign,
         startDate: currentDate,
         endDate: endDate,
         duration: Duration(days: durationDays.round()),
         level: 0,
-        subPeriods: const [], // Sub-periods for Chara Dasha can be implemented later if needed
+        subPeriods: subPeriods,
       );
 
       mahadashas.add(mahadasha);
@@ -549,9 +566,87 @@ class DashaService {
     );
   }
 
+  /// Calculates sub-periods (antardashas) for Chara Dasha.
+  ///
+  /// [mahadashaSign] - The sign of the current mahadasha
+  /// [sequence] - The full 12-sign sequence
+  /// [startDate] - Start date of the mahadasha
+  /// [endDate] - End date of the mahadasha
+  /// [totalYears] - Total years of the mahadasha
+  /// [chart] - The birth chart
+  /// [levels] - How many levels of sub-periods to calculate
+  List<DashaPeriod> _calculateCharaSubPeriods(
+    Rashi mahadashaSign,
+    List<Rashi> sequence,
+    DateTime startDate,
+    DateTime endDate,
+    int totalYears,
+    VedicChart chart, {
+    required int levels,
+  }) {
+    if (levels <= 0) return <DashaPeriod>[];
+
+    final subPeriods = <DashaPeriod>[];
+    final totalDuration = endDate.difference(startDate);
+    var currentDate = startDate;
+
+    // Sub-periods follow the same sequence as mahadashas
+    for (final sign in sequence) {
+      final signYears = _calculateCharaDashaYears(sign, chart);
+      
+      // Calculate proportional duration
+      final proportion = signYears / 12; // 12 is the maximum years
+      final durationMs = totalDuration.inMilliseconds * proportion;
+      final duration = Duration(milliseconds: durationMs.round());
+      
+      final subEndDate = currentDate.add(duration);
+      
+      // Ensure we don't exceed the mahadasha end date
+      if (subEndDate.isAfter(endDate)) {
+        break;
+      }
+
+      // Calculate deeper sub-periods if needed
+      final List<DashaPeriod> deeperSubPeriods = levels > 1
+          ? _calculateCharaSubPeriods(
+              sign,
+              sequence,
+              currentDate,
+              subEndDate,
+              signYears,
+              chart,
+              levels: levels - 1,
+            )
+          : <DashaPeriod>[];
+
+      subPeriods.add(DashaPeriod(
+        rashi: sign,
+        startDate: currentDate,
+        endDate: subEndDate,
+        duration: duration,
+        level: 3 - levels, // 1 for antardasha, 2 for pratyantardasha
+        subPeriods: deeperSubPeriods,
+      ));
+
+      currentDate = subEndDate;
+      
+      // Stop if we've reached the end
+      if (currentDate.isAfter(endDate) || currentDate == endDate) {
+        break;
+      }
+    }
+
+    return subPeriods;
+  }
+
   /// Internal: Calculate years for a sign in Chara Dasha.
+  ///
+  /// The years are determined by the distance from the sign to its lord's sign.
+  /// - For odd signs: count forward to the lord's sign
+  /// - For even signs: count backward to the lord's sign
+  /// - If lord is in the same sign: 12 years
   int _calculateCharaDashaYears(Rashi sign, VedicChart chart) {
-    final lord = _getSignLord(sign, chart);
+    final lord = _getSignLordAdvanced(sign, chart);
     final lordPos = chart.getPlanet(lord)?.position;
     if (lordPos == null) return 0;
 
@@ -559,48 +654,63 @@ class DashaService {
 
     int diff;
     if (sign.isOdd) {
-      // Direct distance
+      // Direct distance (forward)
       diff = (lordSign.number - sign.number + 12) % 12;
     } else {
-      // Indirect distance
+      // Indirect distance (backward)
       diff = (sign.number - lordSign.number + 12) % 12;
     }
 
     return diff == 0 ? 12 : diff;
   }
 
-  /// Internal: Get the primary lord of a sign (handling Scorpio/Aquarius).
-  Planet _getSignLord(Rashi sign, VedicChart chart) {
+  /// Advanced sign-lord determination with proper handling of dual-owned signs.
+  ///
+  /// Scorpio: Mars (primary) or Ketu (co-lord)
+  /// Aquarius: Saturn (primary) or Rahu (co-lord)
+  ///
+  /// Logic:
+  /// 1. Check if the co-lord planet (Ketu for Scorpio, Rahu for Aquarius) is in the sign
+  /// 2. If yes, use the co-lord
+  /// 3. Otherwise, use the primary lord
+  Planet _getSignLordAdvanced(Rashi sign, VedicChart chart) {
     switch (sign) {
       case Rashi.aries:
-      case Rashi.scorpio:
-        if (sign == Rashi.scorpio) {
-          // Scorpio has two lords: Mars and Ketu.
-          // Simplified: Use the one that is stronger or just Mars for now.
-          // Most implementations default to Mars if No planet is in Scorpio.
-          return Planet.mars;
-        }
         return Planet.mars;
       case Rashi.taurus:
-      case Rashi.libra:
         return Planet.venus;
       case Rashi.gemini:
-      case Rashi.virgo:
         return Planet.mercury;
       case Rashi.cancer:
         return Planet.moon;
       case Rashi.leo:
         return Planet.sun;
+      case Rashi.virgo:
+        return Planet.mercury;
+      case Rashi.libra:
+        return Planet.venus;
+      case Rashi.scorpio:
+        // Scorpio has two lords: Mars (primary) and Ketu (co-lord)
+        // Check if Ketu is in Scorpio
+        final ketuSign = Rashi.fromLongitude(chart.rahu.position.longitude + 180 % 360);
+        if (ketuSign == Rashi.scorpio) {
+          return Planet.ketu;
+        }
+        return Planet.mars;
       case Rashi.sagittarius:
-      case Rashi.pisces:
         return Planet.jupiter;
       case Rashi.capricorn:
+        return Planet.saturn;
       case Rashi.aquarius:
-        if (sign == Rashi.aquarius) {
-          // Aquarius has two lords: Saturn and Rahu.
-          return Planet.saturn;
+        // Aquarius has two lords: Saturn (primary) and Rahu (co-lord)
+        // Check if Rahu is in Aquarius
+        final rahuSign = Rashi.fromLongitude(chart.rahu.position.longitude);
+        if (rahuSign == Rashi.aquarius) {
+          return Planet.meanNode; // Rahu
         }
         return Planet.saturn;
+      case Rashi.pisces:
+        return Planet.jupiter;
     }
   }
 

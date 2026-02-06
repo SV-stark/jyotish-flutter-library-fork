@@ -1,5 +1,6 @@
 import '../models/calculation_flags.dart';
 import '../models/geographic_location.dart';
+import '../models/nakshatra.dart';
 import '../models/panchanga.dart';
 import '../models/planet.dart';
 import '../models/planet_position.dart';
@@ -52,6 +53,9 @@ class PanchangaService {
     // Calculate Tithi
     final tithi = _calculateTithi(sunPos, moonPos);
 
+    // Calculate Nakshatra from Moon's position
+    final nakshatra = _calculateNakshatra(moonPos);
+
     // Calculate Yoga
     final yoga = _calculateYoga(sunPos, moonPos);
 
@@ -65,6 +69,7 @@ class PanchangaService {
       dateTime: dateTime,
       location: '${location.latitude}, ${location.longitude}',
       tithi: tithi,
+      nakshatra: nakshatra,
       yoga: yoga,
       karana: karana,
       vara: vara,
@@ -101,6 +106,33 @@ class PanchangaService {
       name: name,
       paksha: paksha,
       elapsed: elapsed,
+    );
+  }
+
+  /// Calculates the Nakshatra from Moon's longitude.
+  ///
+  /// The Moon's position determines the Nakshatra (lunar mansion).
+  /// Each nakshatra is 13°20' (13.333... degrees) and the Moon
+  /// travels through approximately one nakshatra per day.
+  NakshatraInfo _calculateNakshatra(PlanetPosition moonPos) {
+    const nakshatraWidth = 360.0 / 27; // 13°20' per nakshatra
+    final longitude = moonPos.longitude % 360;
+    
+    // Calculate nakshatra number (1-27)
+    final nakshatraNumber = (longitude / nakshatraWidth).floor() + 1;
+    final name = NakshatraInfo.nakshatraNames[nakshatraNumber - 1];
+    final rulingPlanet = NakshatraInfo.nakshatraLords[nakshatraNumber - 1];
+    
+    // Calculate position within nakshatra and pada (quarter)
+    final positionInNakshatra = longitude % nakshatraWidth;
+    final pada = (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1;
+
+    return NakshatraInfo(
+      number: nakshatraNumber,
+      name: name,
+      rulingPlanet: rulingPlanet,
+      longitude: longitude,
+      pada: pada,
     );
   }
 
@@ -397,6 +429,26 @@ class PanchangaService {
     return _calculateVara(dateTime, sunrise);
   }
 
+  /// Gets the Nakshatra for a specific date/location.
+  ///
+  /// Calculates the Moon's nakshatra at the given date/time.
+  /// This is one of the five limbs of the Panchanga.
+  Future<NakshatraInfo> getNakshatra({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    final flags = CalculationFlags.defaultFlags();
+
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: dateTime,
+      location: location,
+      flags: flags,
+    );
+
+    return _calculateNakshatra(moonPos);
+  }
+
   /// Finds the exact end time of the current Tithi.
   ///
   /// Searches forward in a 24-hour window from the given [dateTime]
@@ -421,7 +473,7 @@ class PanchangaService {
       flags: flags,
     );
 
-    var currentElongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
+    final currentElongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
     final currentTithi = (currentElongation / 12.0).floor();
     final targetElongation = (currentTithi + 1) * 12.0;
 
@@ -449,7 +501,7 @@ class PanchangaService {
 
       var midElongation = (midMoon.longitude - midSun.longitude + 360) % 360;
 
-      // Handle the 0/360 boundary
+      // Handle: 0/360 boundary
       if (targetElongation >= 360 && midElongation < 180) {
         midElongation += 360;
       }

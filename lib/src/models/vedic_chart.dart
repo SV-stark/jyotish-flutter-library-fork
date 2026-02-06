@@ -208,6 +208,8 @@ class VedicPlanetInfo {
     this.isCombust = false,
     this.exaltationDegree,
     this.debilitationDegree,
+    this.positionInSign,
+    this.subSpan,
   });
 
   /// The base planet position
@@ -227,6 +229,12 @@ class VedicPlanetInfo {
 
   /// Debilitation degree
   final double? debilitationDegree;
+
+  /// Position within sign (0-30), useful for KP and D249
+  final double? positionInSign;
+
+  /// Span of the subdivision, useful for D249
+  final double? subSpan;
 
   /// Gets the planet
   Planet get planet => position.planet;

@@ -52,21 +52,6 @@ void main() {
   group('Planetary Relationships', () {
     test('getPlanetaryRelationships calculates Tatkalika Friendship correctly',
         () {
-      final jyotish = Jyotish();
-      // We don't need to initialize for this synchronous call if we mock the chart
-      // Actually Jyotish class requires initialization for getPlanetaryRelationships because it checks _isInitialized.
-      // We'll skip initialization by calling the RelationshipCalculator directly for unit testing,
-      // or we can try to initialize if SwissEph is available.
-
-      final chart = _createMockChart(
-        planetPositions: {
-          Planet.sun: 10.0, // 1st House
-          Planet.moon: 40.0, // 2nd House from Sun (Friend)
-          Planet.mars: 190.0, // 7th House from Sun (Enemy)
-        },
-        houses: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330],
-      );
-
       // Testing RelationshipCalculator.calculateTemporary
       expect(RelationshipCalculator.calculateTemporary(1, 2),
           RelationshipType.friend);
