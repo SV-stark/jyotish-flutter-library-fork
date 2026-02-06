@@ -129,6 +129,14 @@ class EphemerisService {
         // Convert tropical to sidereal by subtracting ayanamsa
         results[0] = (results[0] - ayanamsa + 360) % 360;
 
+        // Adjust longitudeSpeed for sidereal frame:
+        // In the sidereal frame, speeds are slightly lower due to precession.
+        // The precession rate is ~50.3"/year = ~0.000137°/day.
+        // This adjustment is negligible for most practical purposes (~0.01%),
+        // but included for professional-grade precision in Chesta Bala.
+        const double precessionRatePerDay = 50.3 / 3600.0 / 365.25; // deg/day
+        results[3] = results[3] - precessionRatePerDay;
+
         return PlanetPosition.fromSwissEph(
           planet: planet,
           dateTime: dateTime,
@@ -410,8 +418,8 @@ class EphemerisService {
   }) async {
     // SE_CALC_MTRANSIT = 4 for upper culmination
     // SE_CALC_ITRANSIT = 8 for lower culmination
-    final rsmi = upperCulmination 
-        ? SwissEphConstants.calcMTransit 
+    final rsmi = upperCulmination
+        ? SwissEphConstants.calcMTransit
         : SwissEphConstants.calcITransit;
 
     return await getRiseSet(
@@ -478,21 +486,22 @@ class EphemerisService {
       if (isBeforeSunrise && elongation > 15) {
         isVisible = true;
         visibilityType = VisibilityType.heliacalRise;
-        description = '${planet.displayName} visible before sunrise (heliacal rise)';
+        description =
+            '${planet.displayName} visible before sunrise (heliacal rise)';
       }
       // Heliacal set: planet visible after sunset (western elongation)
       else if (isAfterSunset && elongation > 15) {
         isVisible = true;
         visibilityType = VisibilityType.heliacalSet;
-        description = '${planet.displayName} visible after sunset (heliacal set)';
+        description =
+            '${planet.displayName} visible after sunset (heliacal set)';
       }
       // Daytime visibility (rare for most planets except Venus)
       else if (!isBeforeSunrise && !isAfterSunset && elongation > 30) {
         isVisible = true;
         visibilityType = VisibilityType.daytime;
         description = '${planet.displayName} visible in daylight';
-      }
-      else {
+      } else {
         description = '${planet.displayName} not visible - too close to Sun';
       }
     }
@@ -551,14 +560,14 @@ class EphemerisService {
 
     try {
       final julianDay = _dateTimeToJulianDay(date);
-      
+
       // Search for eclipse within a window
       final searchStart = julianDay - 15; // 15 days before
-      final searchEnd = julianDay + 15;   // 15 days after
+      final searchEnd = julianDay + 15; // 15 days after
 
       // This is a simplified placeholder - real implementation would use
       // Swiss Ephemeris eclipse functions (swe_sol_eclipse_when_glob, etc.)
-      
+
       // Check for full/new moon to determine eclipse possibility
       final sunPos = await calculatePlanetPosition(
         planet: Planet.sun,
@@ -588,7 +597,7 @@ class EphemerisService {
 
       // Simplified eclipse detection
       final eclipseDetected = isFullMoon || isNewMoon;
-      
+
       if (eclipseDetected) {
         return EclipseData(
           date: date,
@@ -598,13 +607,13 @@ class EphemerisService {
             moonPos: moonPos,
             isLunar: isFullMoon,
           ),
-          isVisible: isFullMoon || await _isSolarEclipseVisible(
-            date: date,
-            location: location,
-          ),
-          description: isFullMoon 
-              ? 'Lunar eclipse possible'
-              : 'Solar eclipse possible',
+          isVisible: isFullMoon ||
+              await _isSolarEclipseVisible(
+                date: date,
+                location: location,
+              ),
+          description:
+              isFullMoon ? 'Lunar eclipse possible' : 'Solar eclipse possible',
         );
       }
 
@@ -721,8 +730,8 @@ class PlanetVisibility {
   final String description;
 
   /// Whether this is a heliacal event (rise or set)
-  bool get isHeliacal => 
-      visibilityType == VisibilityType.heliacalRise || 
+  bool get isHeliacal =>
+      visibilityType == VisibilityType.heliacalRise ||
       visibilityType == VisibilityType.heliacalSet;
 }
 
