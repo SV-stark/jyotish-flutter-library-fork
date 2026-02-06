@@ -1518,4 +1518,28 @@ class Jyotish {
 
   /// Gets whether library has been initialized.
   bool get isInitialized => _isInitialized;
+
+  /// Gets the PanchangaService for advanced Panchanga calculations.
+  ///
+  /// Use this to access advanced Panchanga methods like:
+  /// - calculateAbhijitMuhurta()
+  /// - calculateBrahmaMuhurta()
+  /// - calculateNighttimeInauspicious()
+  /// - getTithiJunction()
+  /// - getMoonPhaseDetails()
+  ///
+  /// Example:
+  /// ```dart
+  /// final jyotish = Jyotish();
+  /// await jyotish.initialize();
+  ///
+  /// final abhijit = await jyotish.panchangaService.calculateAbhijitMuhurta(
+  ///   date: DateTime.now(),
+  ///   location: location,
+  /// );
+  /// ```
+  PanchangaService get panchangaService {
+    _ensureInitialized();
+    return _panchangaService!;
+  }
 }
