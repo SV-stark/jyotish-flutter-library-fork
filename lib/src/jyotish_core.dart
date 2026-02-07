@@ -49,6 +49,8 @@ import 'services/special_transit_service.dart';
 import 'services/transit_service.dart';
 import 'services/sudarshan_chakra_service.dart';
 import 'services/vedic_chart_service.dart';
+import 'services/gochara_vedha_service.dart';
+import 'services/strength_analysis_service.dart';
 
 /// The main entry point for the Jyotish library.
 ///
@@ -106,6 +108,8 @@ class Jyotish {
   BhavaBalaService? _bhavaBalaService;
   JaiminiService? _jaiminiService;
   PrashnaService? _prashnaService;
+  GocharaVedhaService? _gocharaVedhaService;
+  StrengthAnalysisService? _strengthAnalysisService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -145,6 +149,8 @@ class Jyotish {
       _bhavaBalaService = BhavaBalaService(_shadbalaService!);
       _jaiminiService = JaiminiService();
       _prashnaService = PrashnaService(_ephemerisService!);
+      _gocharaVedhaService = GocharaVedhaService();
+      _strengthAnalysisService = StrengthAnalysisService();
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -652,6 +658,36 @@ class Jyotish {
     }
   }
 
+  /// Calculates Ashtottari Dasha.
+  ///
+  /// Ashtottari Dasha is a 108-year cycle system used in specific conditions.
+  ///
+  /// [natalChart] - The Vedic birth chart
+  /// [scheme] - Calculation scheme (Ardra-adi or Krittika-adi)
+  ///
+  /// Returns [DashaResult] with Ashtottari periods.
+  Future<DashaResult> getAshtottariDasha({
+    required VedicChart natalChart,
+    AshtottariScheme scheme = AshtottariScheme.ardraAdi,
+  }) async {
+    _ensureInitialized();
+    return _dashaService!.getAshtottariDasha(natalChart, scheme: scheme);
+  }
+
+  /// Calculates Kalachakra Dasha.
+  ///
+  /// Kalachakra Dasha is known as the "Wheel of Time" dasha.
+  ///
+  /// [natalChart] - The Vedic birth chart
+  ///
+  /// Returns [DashaResult] with Kalachakra periods.
+  Future<DashaResult> getKalachakraDasha({
+    required VedicChart natalChart,
+  }) async {
+    _ensureInitialized();
+    return _dashaService!.getKalachakraDasha(natalChart);
+  }
+
   // ============================================================
   // PANCHANGA CALCULATIONS
   // ============================================================
@@ -861,8 +897,32 @@ class Jyotish {
   }
 
   // ============================================================
-  // JAIMINI ASTROLOGY (Arudha, Argala, etc.)
+  // JAIMINI ASTROLOGY (Arudha, Argala, Karakamsa, Drishti)
   // ============================================================
+
+  /// Gets the Atmakaraka (planet with highest degree).
+  Planet getAtmakaraka(VedicChart chart) {
+    _ensureInitialized();
+    return _jaiminiService!.getAtmakaraka(chart);
+  }
+
+  /// Gets Karakamsa (Atmakaraka in Navamsa).
+  KarakamsaInfo getKarakamsa({
+    required VedicChart rashiChart,
+    required VedicChart navamsaChart,
+  }) {
+    _ensureInitialized();
+    return _jaiminiService!.getKarakamsa(
+      rashiChart: rashiChart,
+      navamsaChart: navamsaChart,
+    );
+  }
+
+  /// Calculates Jaimini Rashi Drishti (Sign Aspects).
+  List<RashiDrishtiInfo> getRashiDrishti(VedicChart chart) {
+    _ensureInitialized();
+    return _jaiminiService!.calculateRashiDrishti(chart);
+  }
 
   /// Calculates Arudha Padas for a given chart.
   ArudhaPadaResult getArudhaPadas(VedicChart chart) {
@@ -894,52 +954,10 @@ class Jyotish {
     return _argalaService!.calculateArgalaForHouse(chart, house);
   }
 
-  /// Gets the Atmakaraka (planet with highest degree).
-  Planet getAtmakaraka(VedicChart chart) {
-    _ensureInitialized();
-    return _jaiminiService!.getAtmakaraka(chart);
-  }
-
-  /// Gets Karakamsa information.
-  KarakamsaInfo getKarakamsa({
-    required VedicChart rashiChart,
-    required VedicChart navamsaChart,
-  }) {
-    _ensureInitialized();
-    return _jaiminiService!.getKarakamsa(
-      rashiChart: rashiChart,
-      navamsaChart: navamsaChart,
-    );
-  }
-
-  /// Calculates Rashi Drishti (Jaimini sign aspects).
-  List<RashiDrishtiInfo> getRashiDrishti(VedicChart chart) {
-    _ensureInitialized();
-    return _jaiminiService!.calculateRashiDrishti(chart);
-  }
-
   /// Calculates only active Rashi Drishti (from occupied signs).
   List<RashiDrishtiInfo> getActiveRashiDrishti(VedicChart chart) {
     _ensureInitialized();
     return _jaiminiService!.calculateActiveRashiDrishti(chart);
-  }
-
-  /// Calculates Bhava Bala (House Strength) for all houses.
-  Future<Map<int, BhavaBalaResult>> getBhavaBala(VedicChart chart) {
-    _ensureInitialized();
-    return _bhavaBalaService!.calculateBhavaBala(chart);
-  }
-
-  /// Calculates Arudha Lagna for Prashna based on a seed number.
-  Rashi getPrashnaArudha(int seed) {
-    _ensureInitialized();
-    return _prashnaService!.calculatePrashnaArudha(seed);
-  }
-
-  /// Calculates special Sphutas for Prashna.
-  Future<PrashnaSphutas> getPrashnaSphutas(VedicChart chart) {
-    _ensureInitialized();
-    return _prashnaService!.calculateSphutas(chart);
   }
 
   /// Calculates high-precision sunrise and sunset times.
@@ -1344,6 +1362,18 @@ class Jyotish {
     return _dashaService!.calculateCharaDasha(natalChart, levels: levels);
   }
 
+  /// Calculates Narayana Dasha (Jaimini Rashi Dasha).
+  ///
+  /// [chart] - The Vedic chart
+  /// [levels] - Number of dasha levels
+  Future<DashaResult> getNarayanaDasha({
+    required VedicChart chart,
+    int levels = 3,
+  }) async {
+    _ensureInitialized();
+    return _dashaService!.getNarayanaDasha(chart, levels: levels);
+  }
+
   /// Calculates complete planetary relationships (Panchadha Maitri).
   ///
   /// Includes Natural (Naisargika) and Temporary (Tatkalika) relationships.
@@ -1499,6 +1529,143 @@ class Jyotish {
   }) async {
     return getMasa(
         dateTime: dateTime, location: location, type: MasaType.purnimanta);
+  }
+
+  /// Gets Sudarshan Chakra strength.
+  ///
+  /// [chart] - The calculated Vedic birth chart
+  ///
+  /// Returns [SudarshanChakraResult] with strength analysis.
+  SudarshanChakraResult getSudarshanChakra(VedicChart chart) {
+    _ensureInitialized();
+    return _sudarshanChakraService!.calculateSudarshanChakra(chart);
+  }
+
+  // ============================================================
+  // STRENGTH CALCULATIONS (SHADBALA, BHAVA BALA, ETC.)
+  // ============================================================
+
+  /// Calculates Bhava Bala (House Strength).
+  ///
+  /// [chart] - The Vedic birth chart
+  ///
+  /// Returns map of house number (1-12) to [BhavaBalaResult].
+  Future<Map<int, BhavaBalaResult>> getBhavaBala(VedicChart chart) async {
+    _ensureInitialized();
+    return await _bhavaBalaService!.calculateBhavaBala(chart);
+  }
+
+  /// Calculates Vimshopak Bala (20-fold strength) for a planet.
+  ///
+  /// [planet] - Planet to calculate strength for
+  /// [chart] - Vedic chart
+  ///
+  /// Returns strength score (0-20).
+  double getVimshopakBala(Planet planet, VedicChart chart) {
+    _ensureInitialized();
+    final planetInfo = chart.planets[planet];
+    if (planetInfo == null) return 0.0;
+
+    return _shadbalaService!.calculateVimshopakaBala(
+      planet,
+      chart,
+    );
+  }
+
+  /// Calculates Ishtaphala (auspicious potential) for a planet.
+  ///
+  /// [planet] - Planet to calculate
+  /// [chart] - Vedic chart
+  /// [shadbala] - Pre-calculated Shadbala result for the planet
+  ///
+  /// Returns score (0.0-60.0).
+  double getIshtaphala(
+    Planet planet,
+    VedicChart chart,
+    ShadbalaResult shadbala,
+  ) {
+    _ensureInitialized();
+    final planetInfo = chart.planets[planet];
+    if (planetInfo == null) return 0.0;
+
+    return _strengthAnalysisService!.getIshtaphala(
+      planet: planet,
+      chart: chart,
+      shadbalaStrength: shadbala.totalBala,
+    );
+  }
+
+  /// Calculates Bhava Bala (House Strength).
+  ///
+  /// [chart] - The Vedic birth chart
+  ///
+  /// Returns map of house number (1-12) to [BhavaBalaResult].
+
+  /// Calculates Kashtaphala (inauspicious potential) for a planet.
+  ///
+  /// [planet] - Planet to calculate
+  /// [chart] - Vedic chart
+  /// [shadbala] - Pre-calculated Shadbala result
+  ///
+  /// Returns score (0.0-60.0).
+  double getKashtaphala(
+    Planet planet,
+    VedicChart chart,
+    ShadbalaResult shadbala,
+  ) {
+    _ensureInitialized();
+    final planetInfo = chart.planets[planet];
+    if (planetInfo == null) return 0.0;
+
+    return _strengthAnalysisService!.getKashtaphala(
+      planet: planet,
+      chart: chart,
+      shadbalaStrength: shadbala.totalBala,
+    );
+  }
+
+  // ============================================================
+  // GOCHARA VEDHA (TRANSIT OBSTRUCTION)
+  // ============================================================
+
+  /// Calculates Gochara Vedha for a specific transit planet.
+  ///
+  /// [transitPlanet] - The planet in transit
+  /// [houseFromMoon] - House position from natal Moon (1-12)
+  /// [moonNakshatra] - Current Moon's nakshatra (1-27)
+  /// [otherTransits] - Map of other planets to their house from Moon
+  ///
+  /// Returns [VedhaResult] with obstruction details.
+  VedhaResult calculateGocharaVedha({
+    required Planet transitPlanet,
+    required int houseFromMoon,
+    required int moonNakshatra,
+    required Map<Planet, int> otherTransits,
+  }) {
+    _ensureInitialized();
+    return _gocharaVedhaService!.calculateVedha(
+      transitPlanet: transitPlanet,
+      houseFromMoon: houseFromMoon,
+      moonNakshatra: moonNakshatra,
+      otherTransits: otherTransits,
+    );
+  }
+
+  /// Calculates Gochara Vedha for multiple planets needed for a chart.
+  ///
+  /// [transits] - Map of planets to their house positions from Moon
+  /// [moonNakshatra] - Current Moon's nakshatra
+  ///
+  /// Returns list of [VedhaResult].
+  List<VedhaResult> calculateMultipleGocharaVedha({
+    required Map<Planet, int> transits,
+    required int moonNakshatra,
+  }) {
+    _ensureInitialized();
+    return _gocharaVedhaService!.calculateMultipleVedha(
+      transits: transits,
+      moonNakshatra: moonNakshatra,
+    );
   }
 
   /// Gets the Samvatsara (60-year Jupiter cycle) name for a given year.
@@ -1740,5 +1907,26 @@ class Jyotish {
   SudarshanChakraResult calculateSudarshanChakra(VedicChart chart) {
     _ensureInitialized();
     return _sudarshanChakraService!.calculateSudarshanChakra(chart);
+  }
+  // ============================================================
+  // PRASHNA (HORARY) ASTROLOGY
+  // ============================================================
+
+  /// Calculates Arudha Lagna for Prashna based on seed.
+  Rashi calculatePrashnaArudha(int seed) {
+    _ensureInitialized();
+    return _prashnaService!.calculatePrashnaArudha(seed);
+  }
+
+  /// Calculates special Prashna Sphutas (Trisphuta, etc.).
+  Future<PrashnaSphutas> calculatePrashnaSphutas(VedicChart chart) async {
+    _ensureInitialized();
+    return await _prashnaService!.calculateSphutas(chart);
+  }
+
+  /// Calculates Gulika Sphuta for Prashna.
+  Future<double> calculateGulikaSphuta(VedicChart chart) async {
+    _ensureInitialized();
+    return await _prashnaService!.calculateGulikaSphuta(chart);
   }
 }

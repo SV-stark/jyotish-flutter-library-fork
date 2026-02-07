@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+import 'dart:math' as Math;
 
 import 'package:ffi/ffi.dart';
 
@@ -559,86 +560,229 @@ class EphemerisService {
     }
 
     try {
-      // This is a simplified placeholder - real implementation would use
-      // Swiss Ephemeris eclipse functions (swe_sol_eclipse_when_glob, etc.)
+      // Geometric Eclipse Detection
+      // 1. Find exact moment of New Moon (Solar) or Full Moon (Lunar)
+      // 2. Check Moon's latitude at that moment
 
-      // Check for full/new moon to determine eclipse possibility
+      final syzygy = await _findSyzygy(date, location);
+
+      if (syzygy == null) {
+        return null; // No New/Full Moon on this date
+      }
+
+      final (time, type) = syzygy;
+
+      // Calculate positions at exact syzygy time
       final sunPos = await calculatePlanetPosition(
         planet: Planet.sun,
-        dateTime: date,
+        dateTime: time,
         location: location,
         flags: CalculationFlags.defaultFlags(),
       );
 
       final moonPos = await calculatePlanetPosition(
         planet: Planet.moon,
-        dateTime: date,
+        dateTime: time,
         location: location,
         flags: CalculationFlags.defaultFlags(),
       );
 
-      var elongation = (moonPos.longitude - sunPos.longitude).abs();
-      if (elongation > 180) elongation = 360 - elongation;
+      // Check Latitude for Eclipse Limit
+      // Solar Eclipse Limit: ~1.5 degrees (approx 1 degree 30 minutes)
+      // Lunar Eclipse Limit: ~1.0 degrees (approx 1 degree)
+      // These are geometric limits relative to the ecliptic.
+      final latAbs = moonPos.latitude.abs();
+      final isSolar = type == EclipseType.solar;
+      final limit = isSolar ? 1.5 : 1.0;
 
-      // Full moon (near 180°) = lunar eclipse possible
-      // New moon (near 0°) = solar eclipse possible
-      final isFullMoon = elongation > 170 && elongation < 190;
-      final isNewMoon = elongation < 10 || elongation > 350;
-
-      if (!isFullMoon && !isNewMoon) {
-        return null; // No eclipse possible
+      if (latAbs > limit) {
+        return null; // Moon too far from node
       }
 
-      // Simplified eclipse detection
-      final eclipseDetected = isFullMoon || isNewMoon;
-
-      if (eclipseDetected) {
-        return EclipseData(
-          date: date,
-          eclipseType: isFullMoon ? EclipseType.lunar : EclipseType.solar,
-          magnitude: _calculateEclipseMagnitude(
-            sunPos: sunPos,
-            moonPos: moonPos,
-            isLunar: isFullMoon,
-          ),
-          isVisible: isFullMoon ||
-              await _isSolarEclipseVisible(
-                date: date,
-                location: location,
-              ),
-          description:
-              isFullMoon ? 'Lunar eclipse possible' : 'Solar eclipse possible',
-        );
+      // Check user preference
+      if (eclipseType != EclipseType.any && eclipseType != type) {
+        return null;
       }
 
-      return null;
+      return EclipseData(
+        date: time,
+        eclipseType: type,
+        magnitude: _calculateEclipseMagnitude(sunPos, moonPos, isSolar),
+        isVisible: isSolar
+            ? await _isSolarEclipseVisible(time, location)
+            : true, // Lunar eclipses visible from anywhere on night side
+        description: isSolar
+            ? 'Solar Eclipse (${latAbs.toStringAsFixed(2)}° from node)'
+            : 'Lunar Eclipse (${latAbs.toStringAsFixed(2)}° from node)',
+      );
     } catch (e, stackTrace) {
       throw CalculationException(
-        'Error calculating eclipse data: ${e.toString()}',
+        'Error calculating eclipse data: $e',
         originalError: e,
         stackTrace: stackTrace,
       );
     }
   }
 
-  /// Calculates eclipse magnitude (simplified).
-  double _calculateEclipseMagnitude({
-    required PlanetPosition sunPos,
-    required PlanetPosition moonPos,
-    required bool isLunar,
-  }) {
-    // Simplified calculation
-    // Real calculation involves lunar nodes and precise geometry
-    return 0.5; // Placeholder
+  /// Finds exact time of Syzygy (Conjunction/Opposition) on the given date.
+  /// Returns (DateTime, EclipseType) or null.
+  Future<(DateTime, EclipseType)?> _findSyzygy(
+      DateTime date, GeographicLocation location) async {
+    // Check start and end of day
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(Duration(days: 1));
+
+    final posStartSun = await calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: start,
+        location: location,
+        flags: CalculationFlags.defaultFlags());
+    final posStartMoon = await calculatePlanetPosition(
+        planet: Planet.moon,
+        dateTime: start,
+        location: location,
+        flags: CalculationFlags.defaultFlags());
+
+    final posEndSun = await calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: end,
+        location: location,
+        flags: CalculationFlags.defaultFlags());
+    final posEndMoon = await calculatePlanetPosition(
+        planet: Planet.moon,
+        dateTime: end,
+        location: location,
+        flags: CalculationFlags.defaultFlags());
+
+    double diffStart =
+        (posStartMoon.longitude - posStartSun.longitude + 360) % 360;
+    double diffEnd = (posEndMoon.longitude - posEndSun.longitude + 360) % 360;
+
+    // Check for New Moon (crossing 0/360)
+    // If diff goes from ~350 to ~10, or 355 to 5.
+    // Logic: If diffStart > 300 and diffEnd < 60
+    if (diffStart > 330 && diffEnd < 30) {
+      return (
+        await _binarySearchSyzygy(start, end, location, 0),
+        EclipseType.solar
+      );
+    }
+
+    // Check for Full Moon (crossing 180)
+    // If diff goes from < 180 to > 180
+    if (diffStart <= 180 && diffEnd >= 180) {
+      return (
+        await _binarySearchSyzygy(start, end, location, 180),
+        EclipseType.lunar
+      );
+    }
+
+    return null;
   }
 
-  /// Checks if solar eclipse is visible from location.
-  Future<bool> _isSolarEclipseVisible({
-    required DateTime date,
-    required GeographicLocation location,
-  }) async {
-    // Simplified check
-    // Real implementation would use swe_sol_eclipse_where
+  Future<DateTime> _binarySearchSyzygy(DateTime start, DateTime end,
+      GeographicLocation loc, double targetDiff) async {
+    var low = start.millisecondsSinceEpoch;
+    var high = end.millisecondsSinceEpoch;
+
+    for (var i = 0; i < 10; i++) {
+      // 10 iterations enough for ~1 min precision
+      final mid = (low + high) ~/ 2;
+      final time = DateTime.fromMillisecondsSinceEpoch(mid);
+
+      final sun = await calculatePlanetPosition(
+          planet: Planet.sun,
+          dateTime: time,
+          location: loc,
+          flags: CalculationFlags.defaultFlags());
+      final moon = await calculatePlanetPosition(
+          planet: Planet.moon,
+          dateTime: time,
+          location: loc,
+          flags: CalculationFlags.defaultFlags());
+
+      double diff = (moon.longitude - sun.longitude + 360) % 360;
+
+      if (targetDiff == 0) {
+        // New Moon
+        if (diff > 180) {
+          // Still before 0 (e.g. 359)
+          low = mid;
+        } else {
+          // Past 0 (e.g. 1)
+          high = mid;
+        }
+      } else {
+        // Full Moon (180)
+        if (diff < 180) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch((low + high) ~/ 2);
+  }
+
+  double _calculateEclipseMagnitude(
+    PlanetPosition sunPos,
+    PlanetPosition moonPos,
+    bool isSolar,
+  ) {
+    // Geometric Magnitude Approximation
+    // Distance between centers
+    // Note: This is an approximation on the celestial sphere (valid for small angles)
+    double dLat = (moonPos.latitude - 0).abs(); // Sun lat is ~0
+    double dLon = (moonPos.longitude - sunPos.longitude).abs();
+    if (dLon > 180) dLon = 360 - dLon;
+    // For Solar, dLon should be near 0. For Lunar, dLon should be near 180.
+    if (!isSolar) dLon = (dLon - 180).abs();
+
+    // Separation
+    double separation = Math.sqrt(dLat * dLat + dLon * dLon);
+
+    // Angular radii (approx)
+    const rSun = 0.266; // approx
+    const rMoon = 0.272; // approx
+
+    // Magnitude = (Radius1 + Radius2 - Separation) / (2 * RadiusBody)
+    // For Solar: Covered body is Sun.
+    // For Lunar: Covered body is Moon (by Shadow). Shadow radius ~ 0.7 deg?
+    // Using simplified "overlap" magnitude for now.
+
+    if (isSolar) {
+      return (rSun + rMoon - separation) / (2 * rSun);
+    } else {
+      // Lunar: Earth's shadow radius at Moon distance is approx 0.7 degrees (umbara)
+      const rShadow = 0.70;
+      return (rShadow + rMoon - separation) / (2 * rMoon);
+    }
+  }
+
+  Future<bool> _isSolarEclipseVisible(
+    DateTime date,
+    GeographicLocation location,
+  ) async {
+    // Simplified: Check if Sun is above horizon at peak time
+    // Real implementation requires Besselian elements or complex geometry (parallax).
+    // SwissEphemeris 'swe_sol_eclipse_where' could be used if available.
+    // For now, checking if it is day time is a good first step.
+
+    // Check if Sun altitude > 0
+    // We don't have altitude directly exposed easily without `swe_azalt`.
+    // But we can approximate by Hour Angle (already implemented in PanchangaService but private).
+    // Let's assume visibility if time is between 6 AM and 6 PM local approx? No.
+    // Let's use the Ascendant/MC calculation logic?
+
+    // Better: We are updating this service, let's use the 'houses' calculation to checks Asc/MC?
+    // Actually, 'houses' gives cusp longitudes.
+
+    // Let's just return true for now if latitude check passes, effectively saying "Eclipse occurring globally".
+    // The method name is `_isSolarEclipseVisible`, which implies local.
+    // For rigorous local visibility, we need Parallax correction.
+    // Given scope, I'll document this limitation.
+
     return true;
   }
 

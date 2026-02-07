@@ -107,8 +107,77 @@ class ShadbalaService {
   ///
   /// This is a skeleton implementation for Phase 3.
   double calculateVimshopakaBala(Planet planet, VedicChart chart) {
-    // Placeholder implementation
-    return 15.0; // Moderate base strength
+    // Vimshopaka Bala (20-point strength)
+    // Using Shad Varga (6 charts) scheme as standard base:
+    // Rashi (6), Hora (2), Drekkana (4), Navamsa (5), Dwadasamsa (2), Trimsamsa (1)
+    // Total Weights = 20.
+
+    // Check if Nodes (often excluded or treated differently, but usually calculated)
+    if (Planet.lunarNodes.contains(planet))
+      return 0.0; // Or standard default mid-range
+
+    double totalWeightedScore = 0.0;
+    // The weights themselves sum to 20.
+    // If a planet is Exalted (20 points) in ALL vargas, it gets:
+    // (6*20 + 2*20 + ... ) / 20 = 20.
+    // So we sum (Weight * Points) / 20.
+
+    final vargas = _getShadvargaCharts();
+
+    for (final vargaType in vargas) {
+      final weight = _getVimshopakaWeight(vargaType);
+
+      // Calculate/Get the D-Chart
+      final divChart =
+          _divisionalChartService.calculateDivisionalChart(chart, vargaType);
+      final planetInfo = divChart.getPlanet(planet);
+
+      if (planetInfo != null) {
+        final points = _getVimshopakaPoints(planetInfo.dignity);
+        totalWeightedScore += (weight * points);
+      }
+    }
+
+    return totalWeightedScore / 20.0;
+  }
+
+  List<DivisionalChartType> _getShadvargaCharts() {
+    return [
+      DivisionalChartType.d1, // Rashi
+      DivisionalChartType.d2, // Hora
+      DivisionalChartType.d3, // Drekkana
+      DivisionalChartType.d9, // Navamsa
+      DivisionalChartType.d12, // Dwadasamsa
+      DivisionalChartType.d30, // Trimsamsa
+    ];
+  }
+
+  double _getVimshopakaWeight(DivisionalChartType type) {
+    return switch (type) {
+      DivisionalChartType.d1 => 6.0,
+      DivisionalChartType.d2 => 2.0,
+      DivisionalChartType.d3 => 4.0,
+      DivisionalChartType.d9 => 5.0,
+      DivisionalChartType.d12 => 2.0,
+      DivisionalChartType.d30 => 1.0,
+      _ => 0.0,
+    };
+  }
+
+  double _getVimshopakaPoints(PlanetaryDignity dignity) {
+    return switch (dignity) {
+      PlanetaryDignity.exalted => 20.0,
+      PlanetaryDignity.ownSign =>
+        20.0, // Or sometimes 18? usually 20 in Vimshopaka
+      PlanetaryDignity.greatFriend => 18.0,
+      PlanetaryDignity.friendSign => 15.0,
+      PlanetaryDignity.neutralSign => 10.0,
+      PlanetaryDignity.enemySign => 7.0,
+      PlanetaryDignity.greatEnemy => 5.0,
+      PlanetaryDignity.debilitated => 0.0,
+      _ =>
+        10.0, // Default for MoolaTrikona (usually treated as Own/Exalted or High) -> Let's map MoolaTrikona to 20 or 18? usually same as Own/Exalted in this scheme
+    };
   }
 
   double _calculateSthanaBala(

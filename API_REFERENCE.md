@@ -114,7 +114,10 @@ await jyotish.initialize({String? ephemerisPath});
 | `getVimshottariDasha({natalChart, levels?})` | `Future<DashaResult>` | Vimshottari Dasha (120-year) |
 | `getYoginiDasha({natalChart, levels?})` | `Future<DashaResult>` | Yogini Dasha (36-year) |
 | `getCharaDasha({natalChart, levels?})` | `Future<CharaDashaResult>` | Chara Dasha (Jaimini) |
-| `getCurrentPeriods({dashaResult, date})` | `List<DashaPeriod>` | Current active periods |
+| `getNarayanaDasha({chart, levels?})` | `Future<NarayanaDashaResult>` | Narayana Dasha (Jaimini) |
+| `getAshtottariDasha({natalChart, scheme?})` | `Future<AshtottariDashaResult>` | Ashtottari Dasha (108-year) |
+| `getKalachakraDasha({natalChart})` | `Future<KalachakraDashaResult>` | Kalachakra Dasha |
+| `getCurrentDasha({natalChart, targetDate, type?})` | `DashaPeriod` | Current active period |
 
 #### Transit Methods
 
@@ -143,6 +146,7 @@ await jyotish.initialize({String? ephemerisPath});
 |--------|---------|-------------|
 | `calculateAshtakavarga(natalChart)` | `Ashtakavarga` | Complete Ashtakavarga |
 | `analyzeAshtakavargaTransit({ashtakavarga, transitPlanet, transitSign})` | `TransitAnalysis` | Transit strength analysis |
+| `getAshtakavargaReductions(ashtakavarga, {trikonaReduction?, ekadhipatiReduction?})` | `Ashtakavarga` | Reduced Ashtakavarga |
 
 #### KP System Methods
 
@@ -158,9 +162,13 @@ await jyotish.initialize({String? ephemerisPath});
 |--------|---------|-------------|
 | `calculateMuhurta({date, location})` | `Future<Muhurta>` | Complete Muhurta |
 | `getHoraPeriods({date, sunrise, sunset})` | `List<HoraPeriod>` | Planetary hours |
+| `getCurrentHora({dateTime, location})` | `Future<HoraPeriod>` | Current planetary hour |
+| `getHorasForDay({date, location})` | `Future<List<HoraPeriod>>` | All Horas for a day |
 | `getChoghadiya({date, sunrise, sunset})` | `List<ChoghadiyaPeriod>` | Choghadiya periods |
+| `getCurrentChoghadiya({dateTime, location})` | `Future<ChoghadiyaPeriod>` | Current Choghadiya |
 | `getInauspiciousPeriods({date, sunrise, sunset})` | `InauspiciousPeriods` | Rahukalam, Gulikalam, Yamagandam |
 | `findBestMuhurta({muhurta, activity})` | `List<TimePeriod>` | Best times for activity |
+| `getCurrentGowriPanchangam({dateTime, location})` | `Future<GowriPeriod>` | Current Gowri Panchangam |
 
 #### Masa Methods
 
@@ -177,13 +185,41 @@ await jyotish.initialize({String? ephemerisPath});
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `calculateShadbala(chart)` | `Map<Planet, ShadbalaResult>` | Six-fold planetary strength |
+| `getShadbala(chart)` | `Map<Planet, ShadbalaResult>` | Six-fold planetary strength |
 
 #### Sudarshan Chakra Analysis
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `calculateSudarshanChakra(chart)` | `SudarshanChakraResult` | Triple-perspective strength analysis |
+| `getBhavaBala(chart)` | `Future<Map<int, BhavaBalaResult>>` | House Strength (Bhava Bala) |
+
+#### Jaimini Astrology Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getAtmakaraka(chart)` | `Planet` | Uses 7 or 8 karaka scheme |
+| `getKarakamsa({rashiChart, navamsaChart})` | `KarakamsaInfo` | Soul planet in Navamsa |
+| `getRashiDrishti(chart)` | `List<RashiDrishtiInfo>` | Sign-based aspects |
+| `getActiveRashiDrishti(chart)` | `List<RashiDrishtiInfo>` | Aspects from occupied signs |
+| `getArudhaPadas(chart)` | `Map<int, ArudhaPada>` | Arudha Padas for all houses |
+| `getArudhaLagna(chart)` | `Rashi` | Arudha Lagna (AL) |
+| `getUpapada(chart)` | `Rashi` | Upapada Lagna (UL) |
+| `getAllArgalas(chart)` | `Map<int, List<ArgalaInfo>>` | Argalas for all houses |
+
+#### Prashna (Horary) Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `calculatePrashnaArudha(seed)` | `Rashi` | Arudha based on seed (1-249) |
+| `calculatePrashnaSphutas(chart)` | `Future<PrashnaSphutas>` | Trisphuta, Chatursphuta, etc. |
+| `calculateGulikaSphuta(chart)` | `Future<double>` | Gulika position |
+
+#### Compatibility Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getPlanetaryRelationships({natalChart})` | `Map<Planet, Map<Planet, RelationshipInfo>>` | Panchadha Maitri |
 
 #### Cleanup
 
@@ -347,13 +383,9 @@ final service = DashaService();
 | `calculateVimshottariDasha({moonLongitude, birthDateTime, levels?, birthTimeUncertainty?})` | `DashaResult` | Vimshottari (120-year) dasha |
 | `calculateYoginiDasha({moonLongitude, birthDateTime, levels?, birthTimeUncertainty?})` | `DashaResult` | Yogini (36-year) dasha |
 | `calculateCharaDasha(rashiChart, {levels?})` | `CharaDashaResult` | Chara (Jaimini) dasha |
-| `getSookshmaDasha({pratyantardasha, startingLordIndex})` | `List<DashaPeriod>` | Level 4 dasha |
-| `getPranaDasha({sookshmaDasha, startingLordIndex})` | `List<DashaPeriod>` | Level 5 dasha |
 | `getNarayanaDasha(rashiChart, {levels?})` | `NarayanaDashaResult` | Jaimini sign-based dasha |
-| `getAshtottariDasha({moonLongitude, birthDateTime})` | `AshtottariDashaResult` | 108-year cycle dasha |
-| `getKalachakraDasha({moonLongitude, birthDateTime})` | `KalachakraDashaResult` | Nakshatra-based dasha |
-| `getTribhagiDasha({moonLongitude, birthDateTime})` | `TribhagiDashaResult` | Fractional Vimshottari |
-| `getCurrentPeriods(dashaResult, targetDate)` | `List<DashaPeriod>` | Active periods at date |
+| `getAshtottariDasha(chart, {scheme?})` | `AshtottariDashaResult` | 108-year cycle dasha |
+| `getKalachakraDasha(chart)` | `KalachakraDashaResult` | Nakshatra-based dasha |
 
 ---
 

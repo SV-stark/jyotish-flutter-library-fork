@@ -27,15 +27,17 @@ A production-ready Flutter library for advanced Vedic astrology calculations usi
 This fork significantly extends the original library with high-level astrological services:
 
 - **🔮 Varga Charts**: Support for all 16 major divisional charts (D1 to D60) plus D249 (249 subdivisions) for ultra-precise micro-level analysis.
-- **⏳ Dasha Systems**: Comprehensive Vimshottari (120y) and Yogini (36y) calculations with Rahu/Ketu sub-period refinements.
+- **⏳ Dasha Systems**: Vimshottari (120y), Yogini (36y), Ashtottari (108y), Kalachakra, Chara, and Narayana Dasha support.
 - **✨ Panchanga**: Tithi, Yoga, Karana, Vara, and precise Sunrise/Sunset modules.
 - **📊 Ashtakavarga**: Full BAV/SAV point system, Trikona Shodhana (reduction), and transit strength analysis.
-- **⚖️ Shadbala**: Complete 6-fold planetary strength calculation including Sthana, Dig, Kala, Chesta, Naisargika, and Drik Bala.
+- **⚖️ Shadbala & Bhava Bala**: Complete 6-fold planetary strength calculation and House Strength (Bhava Bala).
 - **🤝 Planetary Friendship**: Logic for temporary (Tatkalika) and permanent (Naisargika) friendship status.
 - **🎯 KP System**: Significators, Sub-Lord, and Sub-Sub-Lord logic with precise KP-specific ayanamsa calculation.
 - **🪐 Special Transits**: Automated analysis for Sade Sati, Dhaiya, and Panchak.
 - **📅 Muhurta**: Auspicious timings via Hora, Choghadiya, and Kalam analysis.
 - **🎡 Sudarshan Chakra**: Triple-perspective strength analysis from Lagna, Moon, and Sun.
+- **🧘 Jaimini Astrology**: Atmakaraka, Karakamsa, Arudha Lagna (AL), Upapada (UL), and Chara/Narayana Dashas.
+- **❓ Prashna (Horary)**: Arudha calculation (1-249), Sphutas, and Gulika.
 
 ✨ **New Vedic Modules**:
 
@@ -45,6 +47,8 @@ This fork significantly extends the original library with high-level astrologica
 - **Special Transits**: Sade Sati, Dhaiya (Panoti), and Panchak analysis
 - **Muhurta**: Hora, Choghadiya, and Inauspicious periods (Rahukalam, Gulikalam, Yamagandam)
 - **Sudarshan Chakra**: Strength analysis from Lagna, Moon, and Sun perspectives.
+- **Jaimini**: Karakas, Arudhas, and Rashi Drishti.
+- **Prashna**: Horary astrology calculations.
 
 🎯 **Easy to Use**: Simple, intuitive API designed for Vedic astrology
 
@@ -353,18 +357,32 @@ final vimshottari = await jyotish.getVimshottariDasha(
 
 // Get current period
 final now = DateTime.now();
-final currentPeriods = vimshottari.getActivePeriodsAt(now);
+final currentPeriod = vimshottari.getCurrentDasha(date: now);
 
 print('Current Dasha Period:');
-print('MD: ${currentPeriods[0].lord.displayName}'); // Mahadasha
-print('AD: ${currentPeriods[1].lord.displayName}'); // Antardasha
-print('PD: ${currentPeriods[2].lord.displayName}'); // Pratyantardasha
+print('MD: ${currentPeriod.lord.displayName}'); // Mahadasha
 
 // Calculate Yogini Dasha
 final yogini = await jyotish.getYoginiDasha(
   natalChart: d1Chart,
   levels: 2,
 );
+
+// Calculate Ashtottari Dasha (108 years)
+final ashtottari = await jyotish.getAshtottariDasha(
+  natalChart: d1Chart,
+);
+
+// Calculate Kalachakra Dasha
+final kalachakra = await jyotish.getKalachakraDasha(
+  natalChart: d1Chart,
+);
+
+// Calculate Narayana Dasha (Jaimini)
+final narayana = await jyotish.getNarayanaDasha(
+  chart: d1Chart,
+);
+
 ```
 
 ### Transit Calculations
@@ -503,16 +521,11 @@ final sudarshan = jyotish.calculateSudarshanChakra(d1Chart);
 
 print('Overall Chart Strength: ${sudarshan.overallStrength.toStringAsFixed(1)}%');
 print('Strong Houses: ${sudarshan.strongHouses}'); // Houses strong in all 3 views
-print('Weak Houses: ${sudarshan.weakHouses}');
 
-// Check specific house strength
-final house10 = sudarshan.houseStrengths[10];
-print('House 10 Combined Score: ${house10?.combinedScore}%');
-print('House 10 Category: ${house10?.category.name}');
+// Calculate Bhava Bala (House Strength)
+final bhavaBala = await jyotish.getBhavaBala(d1Chart);
+print('10th House Strength: ${bhavaBala[10]?.totalStrength}');
 
-// Check planet placements
-final jupiterStrength = sudarshan.planetStrengths[Planet.jupiter];
-print('Jupiter status: ${jupiterStrength?.category.name}');
 ```
 
 ### Abhijit Nakshatra Support
@@ -586,6 +599,38 @@ final months = await jyotish.getMasaListForYear(
 for (final masa in months) {
   print('${masa.month.sanskrit}: ${masa.displayName}');
 }
+```
+
+### Jaimini Astrology
+
+```dart
+// Get Atmakaraka (Soul Planet)
+final ak = jyotish.getAtmakaraka(d1Chart);
+print('Atmakaraka: ${ak.displayName}');
+
+// Get Arudha Lagna (AL)
+final al = jyotish.getArudhaLagna(d1Chart);
+print('Arudha Lagna: ${al.name}');
+
+// Get Karakamsa (Soul Planet in Navamsa)
+final karakamsa = jyotish.getKarakamsa(
+    rashiChart: d1Chart, 
+    navamsaChart: navamsa
+);
+print('Karakamsa: ${karakamsa.sign.name}');
+```
+
+### Prashna (Horary) Astrology
+
+```dart
+// Calculate Arudha for a seed number (1-249)
+final arudha = jyotish.calculatePrashnaArudha(108);
+print('Prashna Arudha: ${arudha.name}');
+
+// Calculate Sphutas
+final sphutas = await jyotish.calculatePrashnaSphutas(d1Chart);
+print('Trisphuta: ${sphutas.trisphuta.toStringAsFixed(2)}');
+```
 ```
 
 **Vedic Features:**

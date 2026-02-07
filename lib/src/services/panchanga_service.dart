@@ -1,3 +1,4 @@
+import 'dart:math' as Math;
 import '../models/calculation_flags.dart';
 import '../models/geographic_location.dart';
 import '../models/nakshatra.dart';
@@ -287,62 +288,147 @@ class PanchangaService {
   }) async {
     final baseDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
-    // Approximate sunrise/sunset based on latitude
-    final latitudeAbs = location.latitude.abs();
+    // NOAA Solar Calculation Algorithm
+    // Source: https://gml.noaa.gov/grad/solcalc/solareq.html
 
-    // Base sunrise/sunset times (approximate for equator)
-    var sunriseHour = 6.0;
-    var sunsetHour = 18.0;
+    final latitude = location.latitude;
+    final longitude = location.longitude;
 
-    // Adjust for latitude (rough approximation)
-    if (latitudeAbs > 23.5) {
-      final season = _getSeason(dateTime, location.latitude);
-      if (season > 0) {
-        // Summer
-        sunriseHour -= 1.0;
-        sunsetHour += 1.0;
-      } else {
-        // Winter
-        sunriseHour += 1.0;
-        sunsetHour -= 1.0;
-      }
+    // Convert date to Julian Day (at noon)
+    final jd = _dateToJulianDay(baseDate.year, baseDate.month, baseDate.day);
+    final julianCentury = (jd - 2451545.0) / 36525.0;
+
+    // Geometric Mean Longitude Sun (deg)
+    var geomMeanLongSun = (280.46646 +
+            julianCentury * (36000.76983 + julianCentury * 0.0003032)) %
+        360;
+
+    // Geometric Mean Anomaly Sun (deg)
+    final geomMeanAnomSun =
+        357.52911 + julianCentury * (35999.05029 - 0.0001537 * julianCentury);
+
+    // Eccentricity of Earth's Orbit
+    final eccentEarthOrbit = 0.016708634 -
+        julianCentury * (0.000042037 + 0.0000001267 * julianCentury);
+
+    // Sun Equation of Center
+    final sunEqOfCtr = Math.sin(_degToRad(geomMeanAnomSun)) *
+            (1.914602 - julianCentury * (0.004817 + 0.000014 * julianCentury)) +
+        Math.sin(_degToRad(2 * geomMeanAnomSun)) *
+            (0.019993 - 0.000101 * julianCentury) +
+        Math.sin(_degToRad(3 * geomMeanAnomSun)) * 0.000289;
+
+    // Sun True Longitude (deg)
+    final sunTrueLong = geomMeanLongSun + sunEqOfCtr;
+
+    // Sun Apparent Longitude (deg)
+    final sunAppLong = sunTrueLong -
+        0.00569 -
+        0.00478 * Math.sin(_degToRad(125.04 - 1934.136 * julianCentury));
+
+    // Mean Obliquity of Ecliptic (deg)
+    final meanObliqEcliptic = 23 +
+        (26 +
+                ((21.448 -
+                        julianCentury *
+                            (46.815 +
+                                julianCentury *
+                                    (0.00059 - julianCentury * 0.001813)))) /
+                    60) /
+            60;
+
+    // Obliquity Correction (deg)
+    final obliqCorr = meanObliqEcliptic +
+        0.00256 * Math.cos(_degToRad(125.04 - 1934.136 * julianCentury));
+
+    // Sun Declination (deg)
+    final sunDeclin = _radToDeg(Math.asin(
+        Math.sin(_degToRad(obliqCorr)) * Math.sin(_degToRad(sunAppLong))));
+
+    // Equation of Time (minutes)
+    final varY =
+        Math.tan(_degToRad(obliqCorr / 2)) * Math.tan(_degToRad(obliqCorr / 2));
+    final eqOfTime = 4 *
+        _radToDeg(varY * Math.sin(2 * _degToRad(geomMeanLongSun)) -
+            2 * eccentEarthOrbit * Math.sin(_degToRad(geomMeanAnomSun)) +
+            4 *
+                eccentEarthOrbit *
+                varY *
+                Math.sin(_degToRad(geomMeanAnomSun)) *
+                Math.cos(2 * _degToRad(geomMeanLongSun)) -
+            0.5 * varY * varY * Math.sin(4 * _degToRad(geomMeanLongSun)) -
+            1.25 *
+                eccentEarthOrbit *
+                eccentEarthOrbit *
+                Math.sin(2 * _degToRad(geomMeanAnomSun)));
+
+    // Hour Angle Calculation (deg)
+    // Zenith for sunrise/sunset is 90.833 degrees (90 + 50' refraction/sun size)
+    const zenith = 90.833;
+    final haArg = (Math.cos(_degToRad(zenith)) /
+            (Math.cos(_degToRad(latitude)) * Math.cos(_degToRad(sunDeclin)))) -
+        (Math.tan(_degToRad(latitude)) * Math.tan(_degToRad(sunDeclin)));
+
+    // Check for polar day/night
+    if (haArg > 1.0 || haArg < -1.0) {
+      // Fallback to coarse approximation if NOAA calc fails (extreme latitudes)
+      var sunriseHour = 6.0;
+      var sunsetHour = 18.0;
+
+      final sunrise = baseDate.add(Duration(hours: sunriseHour.toInt()));
+      final sunset = baseDate.add(Duration(hours: sunsetHour.toInt()));
+      return (sunrise, sunset);
     }
 
-    // Adjust for longitude (timezone offset approximation)
-    final timezoneOffset = dateTime.timeZoneOffset.inHours;
-    final longitudeOffset = location.longitude / 15.0;
-    final localTimeCorrection = longitudeOffset - timezoneOffset;
+    final ha = _radToDeg(Math.acos(haArg));
 
-    sunriseHour += localTimeCorrection;
-    sunsetHour += localTimeCorrection;
+    // Sunrise/Sunset Time (UTC minutes from midnight)
+    final sunriseTimeUTC = 720 - 4 * (longitude + ha) - eqOfTime;
+    final sunsetTimeUTC = 720 - 4 * (longitude - ha) - eqOfTime;
 
-    final sunrise = baseDate.add(Duration(
-      hours: sunriseHour.floor(),
-      minutes: ((sunriseHour % 1) * 60).round(),
-    ));
-
-    final sunset = baseDate.add(Duration(
-      hours: sunsetHour.floor(),
-      minutes: ((sunsetHour % 1) * 60).round(),
-    ));
+    final sunrise = _minutesToDateTime(baseDate, sunriseTimeUTC);
+    final sunset = _minutesToDateTime(baseDate, sunsetTimeUTC);
 
     return (sunrise, sunset);
   }
 
-  /// Determines season (-1 = winter, 0 = spring/fall, 1 = summer)
-  int _getSeason(DateTime date, double latitude) {
-    final month = date.month;
-    final isNorthernHemisphere = latitude >= 0;
-
-    if (month >= 3 && month <= 5) {
-      return isNorthernHemisphere ? 0 : 0; // Spring
-    } else if (month >= 6 && month <= 8) {
-      return isNorthernHemisphere ? 1 : -1; // Summer
-    } else if (month >= 9 && month <= 11) {
-      return isNorthernHemisphere ? 0 : 0; // Fall
-    } else {
-      return isNorthernHemisphere ? -1 : 1; // Winter
+  double _dateToJulianDay(int year, int month, int day) {
+    if (month <= 2) {
+      year -= 1;
+      month += 12;
     }
+    final a = (year / 100).floor();
+    final b = 2 - a + (a / 4).floor();
+    return (365.25 * (year + 4716)).floor() +
+        (30.6001 * (month + 1)).floor() +
+        day +
+        b -
+        1524.5;
+  }
+
+  double _degToRad(double deg) => deg * Math.pi / 180.0;
+  double _radToDeg(double rad) => rad * 180.0 / Math.pi;
+
+  DateTime _minutesToDateTime(DateTime date, double minutesUtc) {
+    var mins = minutesUtc;
+    // Handle day wrap around
+    int dayOffset = 0;
+    while (mins < 0) {
+      mins += 1440;
+      dayOffset--;
+    }
+    while (mins >= 1440) {
+      mins -= 1440;
+      dayOffset++;
+    }
+
+    final hour = mins ~/ 60;
+    final minute = (mins % 60).floor();
+    final second = ((mins - (hour * 60 + minute)) * 60).round();
+
+    return DateTime.utc(date.year, date.month, date.day, hour, minute, second)
+        .add(Duration(days: dayOffset))
+        .toLocal();
   }
 
   /// Gets the Tithi for a specific date.

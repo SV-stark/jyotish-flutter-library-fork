@@ -51,7 +51,8 @@ class StrengthAnalysisService {
     // 4. Relationship with lagna lord (0-10%)
     final lagnaLord = _getLagnaLord(chart.houses.ascendant);
     if (lagnaLord != null) {
-      final relationshipScore = _getPlanetaryRelationship(planet, lagnaLord);
+      final relationshipScore =
+          _getPlanetaryRelationship(planet, lagnaLord, chart);
       ishtaphala += relationshipScore * 0.1;
     }
 
@@ -173,7 +174,8 @@ class StrengthAnalysisService {
         final beneficInfo = chart.planets[benefic];
         if (beneficInfo != null) {
           // Check if benefic aspects this house
-          if (_isPlanetAspectingHouse(beneficInfo.longitude, houseNum, chart)) {
+          if (_isPlanetAspectingHouse(
+              beneficInfo.longitude, houseNum, chart, benefic)) {
             aspectStrength += 3.33; // Max 10 for 3 benefics
           }
         }
@@ -344,31 +346,109 @@ class StrengthAnalysisService {
     return _getLagnaLord(houseSignIndex * 30.0);
   }
 
-  double _getPlanetaryRelationship(Planet planet1, Planet planet2) {
-    // Simplified relationship check
-    // 1 = friend, 0 = neutral, -1 = enemy
+  double _getPlanetaryRelationship(
+      Planet planet1, Planet planet2, VedicChart chart) {
     if (planet1 == planet2) return 1.0;
 
-    final friendships = {
-      Planet.sun: {Planet.moon: 1, Planet.mars: 1, Planet.jupiter: 1},
-      Planet.moon: {Planet.sun: 0, Planet.mercury: 0},
-      Planet.mars: {Planet.sun: 1, Planet.moon: 1, Planet.jupiter: 1},
-      Planet.mercury: {Planet.sun: 1, Planet.venus: 1},
-      Planet.jupiter: {Planet.sun: 1, Planet.moon: 1, Planet.mars: 1},
-      Planet.venus: {Planet.mercury: 1, Planet.saturn: 1},
-      Planet.saturn: {Planet.mercury: 1, Planet.venus: 1},
+    // 1. Natural Relationship (Naisargika Maitri)
+    // 1 = friend, 0 = neutral, -1 = enemy
+    final naturalRel = _getNaturalRelationship(planet1, planet2);
+
+    // 2. Temporal Relationship (Tatkalika Maitri)
+    // Planets in 2, 3, 4, 10, 11, 12 from each other are friends.
+    // Others (1, 5, 6, 7, 8, 9) are enemies.
+    final p1Info = chart.planets[planet1];
+    final p2Info = chart.planets[planet2];
+
+    var temporalRel = -1; // Default enemy
+
+    if (p1Info != null && p2Info != null) {
+      final sign1 = (p1Info.longitude / 30).floor();
+      final sign2 = (p2Info.longitude / 30).floor();
+
+      // Count from P1 to P2
+      final diff = (sign2 - sign1 + 12) % 12;
+      // 2nd (1), 3rd (2), 4th (3), 10th (9), 11th (10), 12th (11) -> Friend
+      if ([1, 2, 3, 9, 10, 11].contains(diff)) {
+        temporalRel = 1;
+      }
+    }
+
+    // 3. Pancha-Da Maitri (Compound Relationship)
+    final total = naturalRel + temporalRel;
+
+    if (total == 2) return 1.0; // Great Friend
+    if (total == 1) return 0.75; // Friend (Effective)
+    if (total == 0) return 0.5; // Neutral
+    if (total == -1) return 0.25; // Enemy
+    if (total == -2) return 0.0; // Great Enemy
+
+    return 0.5; // Fallback
+  }
+
+  int _getNaturalRelationship(Planet p1, Planet p2) {
+    final friends = {
+      Planet.sun: [Planet.moon, Planet.mars, Planet.jupiter],
+      Planet.moon: [Planet.sun, Planet.mercury],
+      Planet.mars: [Planet.sun, Planet.moon, Planet.jupiter],
+      Planet.mercury: [Planet.sun, Planet.venus],
+      Planet.jupiter: [Planet.sun, Planet.moon, Planet.mars],
+      Planet.venus: [Planet.mercury, Planet.saturn],
+      Planet.saturn: [Planet.mercury, Planet.venus],
+      Planet.meanNode: [Planet.venus, Planet.saturn],
+      Planet.ketu: [Planet.mars, Planet.venus],
     };
 
-    return (friendships[planet1]?[planet2] ?? 0).toDouble();
+    final enemies = {
+      Planet.sun: [Planet.venus, Planet.saturn],
+      Planet.moon: [],
+      Planet.mars: [Planet.mercury],
+      Planet.mercury: [Planet.moon],
+      Planet.jupiter: [Planet.mercury, Planet.venus],
+      Planet.venus: [Planet.sun, Planet.moon],
+      Planet.saturn: [Planet.sun, Planet.moon, Planet.mars],
+      Planet.meanNode: [Planet.sun, Planet.moon, Planet.mars],
+      Planet.ketu: [Planet.sun, Planet.moon],
+    };
+
+    if (friends[p1]?.contains(p2) ?? false) return 1;
+    if (enemies[p1]?.contains(p2) ?? false) return -1;
+    return 0; // Neutral
   }
 
   bool _isPlanetAspectingHouse(
-      double planetLongitude, int houseNum, VedicChart chart) {
-    // Simplified aspect check
-    // Full aspect is 180° (7th house aspect)
-    final houseCusp = chart.houses.cusps[houseNum - 1];
-    final diff = (planetLongitude - houseCusp).abs() % 360;
-    return diff > 165 && diff < 195; // Within 15° of 180°
+      double planetLongitude, int houseNum, VedicChart chart, Planet planet) {
+    // Calculate Ascendant Sign
+    final ascSignIndex = (chart.houses.ascendant / 30).floor();
+
+    // Calculate House Sign Index (1-based houseNum)
+    final houseSignIndex = (ascSignIndex + houseNum - 1) % 12;
+
+    // Calculate Planet Sign Index
+    final planetSignIndex = (planetLongitude / 30).floor();
+
+    // Count from Planet to House
+    final diff = (houseSignIndex - planetSignIndex + 12) % 12;
+
+    // Standard Aspects:
+    // All planets aspect 7th (index diff 6)
+    if (diff == 6) return true;
+
+    // Special Aspects:
+    // Mars: 4th (3), 8th (7)
+    if (planet == Planet.mars && (diff == 3 || diff == 7)) return true;
+
+    // Jupiter: 5th (4), 9th (8)
+    if (planet == Planet.jupiter && (diff == 4 || diff == 8)) return true;
+
+    // Saturn: 3rd (2), 10th (9)
+    if (planet == Planet.saturn && (diff == 2 || diff == 9)) return true;
+
+    // Rahu/Ketu: 5th, 9th
+    if ((planet == Planet.meanNode || planet == Planet.ketu) &&
+        (diff == 4 || diff == 8)) return true;
+
+    return false;
   }
 
   double _getVargaDignityScore(PlanetaryDignity dignity) {

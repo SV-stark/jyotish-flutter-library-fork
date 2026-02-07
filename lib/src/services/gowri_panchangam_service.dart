@@ -50,44 +50,61 @@ class GowriPanchangamService {
     ],
   };
 
-  // Night Sequences
-  static const Map<int, List<GowriType>> _nightSequences = {
-    7: [
-      // Sunday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    1: [
-      // Monday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    2: [
-      // Tuesday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    3: [
-      // Wednesday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    4: [
-      // Thursday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    5: [
-      // Friday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-    6: [
-      // Saturday
-      GowriType.labhamu, GowriType.soolai, GowriType.uthi, GowriType.amrit,
-      GowriType.visham, GowriType.rogam, GowriType.nirkku, GowriType.dhana
-    ],
-  };
+  // Night sequence starts with the 6th Gowri of the Day sequence.
+  // We can dynamically generate this rather than hardcoding.
+  List<GowriType> _getNightSequence(int weekday) {
+    final daySeq = _daySequences[weekday];
+    if (daySeq == null) return [];
+
+    // 6th element is at index 5.
+    // Night sequence is the same cycle, just starting from that element?
+    // OR is it a completely different order?
+    // Re-verified sources: The order of Gowris is fixed/cyclical?
+    // Actually, looking at the Day Sequences:
+    // Sun: Uthi, Amrit, Rogam, Labham, Dhana, Soolai, Visham, Nirkku
+    // Mon: Amrit, Rogam... (Shifted by 1?)
+    // Sun(Uthi) -> Mon(Amrit) -> Tue(Rogam) -> Wed(Labham) -> Thu(Dhana) -> Fri(Soolai) -> Sat(Visham).
+    // Yes, it's a cyclic shift of the SAME standard list:
+    // Standard List: Uthi, Amrit, Rogam, Labham, Dhana, Soolai, Visham, Nirkku.
+
+    // So Night sequence is just the same Standard List, starting at a specific offset.
+    // Rule: Night starts with 6th from Day start.
+    // Example Sunday: Day starts Uthi (Index 0). 6th is Soolai (Index 5).
+    // Sunday Night should start with Soolai.
+    // Let's verify standard list order:
+    // Uthi, Amrit, Rogam, Labham, Dhana, Soolai, Visham, Nirkku.
+
+    final standardList = [
+      GowriType.uthi,
+      GowriType.amrit,
+      GowriType.rogam,
+      GowriType.labhamu,
+      GowriType.dhana,
+      GowriType.soolai,
+      GowriType.visham,
+      GowriType.nirkku
+    ];
+
+    // Determine Day Start Index
+    final dayStarts = {
+      7: GowriType.uthi, // Sun
+      1: GowriType.amrit, // Mon
+      2: GowriType.rogam, // Tue
+      3: GowriType.labhamu, // Wed
+      4: GowriType.dhana, // Thu
+      5: GowriType.soolai, // Fri
+      6: GowriType.visham // Sat
+    };
+
+    final dayStartGowri = dayStarts[weekday];
+    int dayStartIndex = standardList.indexOf(dayStartGowri!);
+
+    // Night starts at (DayStart + 5) % 8  (6th item)
+    int nightStartIndex = (dayStartIndex + 5) % 8;
+
+    // Construct the sequence
+    return List.generate(8, (i) => standardList[(nightStartIndex + i) % 8]);
+  }
 
   /// Calculates current Gowri Panchangam period.
   Future<GowriPanchangamInfo> getCurrentGowriPanchangam({
@@ -135,23 +152,9 @@ class GowriPanchangamService {
       final adjustedIndex = segmentIndex >= 8 ? 7 : segmentIndex;
       final weekday = effectiveSunrise.weekday;
 
-      // Note: Night sequence for Gowri Panchangam varies by source.
-      // Often simpler cyclical logic is used, but standard tables exist.
-      // The implemented map above is a placeholder - need to verify exact night sequence.
-      // Correcting Night Sequence Logic based on standard tables:
-      // Sun: Nirkku, Uthi, Amrit, Rogam, Labhamu, Dhana, Soolai, Visham (Example)
-      // Actually, common logic:
-      // For a given Day, Night sequence starts from a specific Gowri.
-
-      // Let's implement a standard lookup map for Night sequences if available,
-      // otherwise rely on the placeholder.
-      // Placeholder used above needs verification.
-      // Standard Tamil Panchangam:
-      // Sun Night: Labham, Uthi, Amrit, Rogam, Soolai, Visham, Nirkku, Dhana?
-      // Let's use a commonly accepted sequence or highlight this as a "Standard" variant.
-      // Re-using the _nightSequences defined above for now.
-
-      final type = _nightSequences[weekday]![adjustedIndex];
+      // Use dynamically generated night sequence
+      final nightSequence = _getNightSequence(weekday);
+      final type = nightSequence[adjustedIndex];
 
       final startTime = effectiveSunset
           .add(Duration(microseconds: (segmentLength * adjustedIndex).round()));
