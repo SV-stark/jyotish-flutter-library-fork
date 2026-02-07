@@ -532,7 +532,6 @@ class DivisionalChartService {
         };
         return (startMap[element]! + part) % 12;
 
-      // TODO: D30 requires special handling (degree ranges not equal)
       case DivisionalChartType.d30:
         return _calculateD30Sign(signIndex, degreeInSign);
 

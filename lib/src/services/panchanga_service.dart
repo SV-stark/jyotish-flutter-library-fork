@@ -1,4 +1,3 @@
-import '../exceptions/jyotish_exception.dart';
 import '../models/calculation_flags.dart';
 import '../models/geographic_location.dart';
 import '../models/nakshatra.dart';
@@ -118,12 +117,12 @@ class PanchangaService {
   NakshatraInfo _calculateNakshatra(PlanetPosition moonPos) {
     const nakshatraWidth = 360.0 / 27; // 13°20' per nakshatra
     final longitude = moonPos.longitude % 360;
-    
+
     // Calculate nakshatra number (1-27)
     final nakshatraNumber = (longitude / nakshatraWidth).floor() + 1;
     final name = NakshatraInfo.nakshatraNames[nakshatraNumber - 1];
     final rulingPlanet = NakshatraInfo.nakshatraLords[nakshatraNumber - 1];
-    
+
     // Calculate position within nakshatra and pada (quarter)
     final positionInNakshatra = longitude % nakshatraWidth;
     final pada = (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1;
@@ -452,7 +451,7 @@ class PanchangaService {
 
   /// Finds the exact end time of the current Tithi.
   ///
-  /// Uses high-precision binary search to find when the lunar elongation 
+  /// Uses high-precision binary search to find when the lunar elongation
   /// crosses the next 12° boundary (tithi change point). Continues searching
   /// until the accuracy threshold is met.
   ///
@@ -480,7 +479,8 @@ class PanchangaService {
       flags: flags,
     );
 
-    final currentElongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
+    final currentElongation =
+        (moonPos.longitude - sunPos.longitude + 360) % 360;
     final currentTithi = (currentElongation / 12.0).floor();
     final targetElongation = (currentTithi + 1) * 12.0;
 
@@ -492,10 +492,10 @@ class PanchangaService {
     // Continue searching until we meet the accuracy threshold
     var iteration = 0;
     const maxIterations = 50; // Safety limit to prevent infinite loops
-    
+
     while (iteration < maxIterations) {
       final currentWindow = end.difference(start).inSeconds;
-      
+
       // If we're within the accuracy threshold, stop
       if (currentWindow <= accuracyThreshold) {
         break;
@@ -528,7 +528,7 @@ class PanchangaService {
       } else {
         end = mid;
       }
-      
+
       iteration++;
     }
 
@@ -555,16 +555,12 @@ class PanchangaService {
       location: location,
     );
 
-    if (sunrise == null || sunset == null) {
-      throw CalculationException('Cannot calculate Abhijit Muhurta without sunrise/sunset');
-    }
-
     // Calculate day duration
     final dayDuration = sunset.difference(sunrise);
-    
+
     // A Muhurta is 1/30 of a day (approximately 48 minutes)
     final muhurtaDuration = dayDuration ~/ 30;
-    
+
     // Abhijit is the 8th Muhurta (7th index, starting from 0)
     final abhijitStart = sunrise.add(muhurtaDuration * 7);
     final abhijitEnd = abhijitStart.add(muhurtaDuration);
@@ -597,10 +593,6 @@ class PanchangaService {
       dateTime: date,
       location: location,
     );
-
-    if (sunrise == null) {
-      throw CalculationException('Cannot calculate Brahma Muhurta without sunrise');
-    }
 
     // Brahma Muhurta is exactly 48 minutes (2 Muhurtas) before sunrise
     const brahmaDuration = Duration(minutes: 48);
@@ -641,13 +633,9 @@ class PanchangaService {
       location: location,
     );
 
-    if (todaySunset == null || tomorrowSunrise == null) {
-      throw CalculationException('Cannot calculate nighttime periods');
-    }
-
     // Calculate night duration
     final nightDuration = tomorrowSunrise.difference(todaySunset);
-    
+
     // Divide night into 8 parts (like daytime)
     final partDuration = nightDuration ~/ 8;
 
@@ -657,11 +645,11 @@ class PanchangaService {
     // Nighttime Rahu Kaal sequence (different from daytime)
     // Sun: 7th part, Mon: 6th, Tue: 5th, Wed: 4th, Thu: 3rd, Fri: 2nd, Sat: 1st
     final rahuPart = (7 - weekday) % 8;
-    
+
     // Nighttime Gulika Kaal sequence
     // Sun: 6th, Mon: 5th, Tue: 4th, Wed: 3rd, Thu: 2nd, Fri: 1st, Sat: 7th
     final gulikaPart = (6 - weekday) % 8;
-    
+
     // Nighttime Yamagandam sequence
     // Sun: 5th, Mon: 4th, Tue: 3rd, Wed: 2nd, Thu: 1st, Fri: 7th, Sat: 6th
     final yamaPart = (5 - weekday) % 8;
@@ -710,11 +698,12 @@ class PanchangaService {
 
     // High-precision binary search
     const maxIterations = 100;
-    const accuracyThreshold = Duration(milliseconds: 100); // 0.1 second precision
+    const accuracyThreshold =
+        Duration(milliseconds: 100); // 0.1 second precision
 
     for (var i = 0; i < maxIterations; i++) {
       final window = searchEnd.difference(searchStart);
-      
+
       if (window <= accuracyThreshold) {
         break;
       }
@@ -846,7 +835,8 @@ class AbhijitMuhurta {
   final Duration duration;
   final String description;
 
-  bool contains(DateTime time) => time.isAfter(startTime) && time.isBefore(endTime);
+  bool contains(DateTime time) =>
+      time.isAfter(startTime) && time.isBefore(endTime);
 }
 
 /// Represents Brahma Muhurta timing.
@@ -865,7 +855,8 @@ class BrahmaMuhurta {
   final Duration duration;
   final String description;
 
-  bool contains(DateTime time) => time.isAfter(startTime) && time.isBefore(endTime);
+  bool contains(DateTime time) =>
+      time.isAfter(startTime) && time.isBefore(endTime);
 }
 
 /// Represents a generic time period for Panchanga calculations.
@@ -899,9 +890,9 @@ class NighttimeInauspiciousPeriods {
   final String description;
 
   bool isInauspicious(DateTime time) {
-    return rahuKaal.contains(time) || 
-           gulikaKaal.contains(time) || 
-           yamagandam.contains(time);
+    return rahuKaal.contains(time) ||
+        gulikaKaal.contains(time) ||
+        yamagandam.contains(time);
   }
 }
 

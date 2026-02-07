@@ -171,6 +171,8 @@ class Choghadiya implements MuhurtaPeriod {
     required this.startTime,
     required this.endTime,
     required this.type,
+    required this.isDaytime,
+    required this.periodNumber,
     this.rulingPlanet,
   });
   @override
@@ -184,6 +186,12 @@ class Choghadiya implements MuhurtaPeriod {
 
   /// Ruling planet
   final Planet? rulingPlanet;
+
+  /// Whether it's a daytime Choghadiya
+  final bool isDaytime;
+
+  /// Period number (1-8)
+  final int periodNumber;
 
   @override
   String get name => type.name;

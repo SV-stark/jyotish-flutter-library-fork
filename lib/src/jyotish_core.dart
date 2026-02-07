@@ -9,8 +9,15 @@ import 'models/geographic_location.dart';
 import 'models/kp_calculations.dart';
 import 'models/masa.dart';
 import 'models/muhurta.dart';
-import 'models/nakshatra.dart';
 import 'models/panchanga.dart';
+import 'models/nakshatra.dart';
+import 'models/arudha_pada.dart';
+import 'models/argala.dart';
+import 'models/bhava_bala.dart';
+import 'models/jaimini.dart';
+import 'models/prashna.dart';
+import 'models/rashi.dart';
+import 'models/gowri_panchangam.dart';
 import 'models/planet.dart';
 import 'models/planet_position.dart';
 import 'models/relationship.dart';
@@ -29,6 +36,14 @@ import 'services/kp_service.dart';
 import 'services/masa_service.dart';
 import 'services/muhurta_service.dart';
 import 'services/panchanga_service.dart';
+import 'services/hora_service.dart';
+import 'services/choghadiya_service.dart';
+import 'services/gowri_panchangam_service.dart';
+import 'services/arudha_pada_service.dart';
+import 'services/argala_service.dart';
+import 'services/bhava_bala_service.dart';
+import 'services/jaimini_service.dart';
+import 'services/prashna_service.dart';
 import 'services/shadbala_service.dart';
 import 'services/special_transit_service.dart';
 import 'services/transit_service.dart';
@@ -83,6 +98,14 @@ class Jyotish {
   ShadbalaService? _shadbalaService;
   MasaService? _masaService;
   SudarshanChakraService? _sudarshanChakraService;
+  HoraService? _horaService;
+  ChoghadiyaService? _choghadiyaService;
+  GowriPanchangamService? _gowriPanchangamService;
+  ArudhaPadaService? _arudhaPadaService;
+  ArgalaService? _argalaService;
+  BhavaBalaService? _bhavaBalaService;
+  JaiminiService? _jaiminiService;
+  PrashnaService? _prashnaService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -114,6 +137,14 @@ class Jyotish {
       _shadbalaService = ShadbalaService(_ephemerisService!);
       _masaService = MasaService(_ephemerisService!);
       _sudarshanChakraService = SudarshanChakraService();
+      _horaService = HoraService(_ephemerisService!);
+      _choghadiyaService = ChoghadiyaService(_ephemerisService!);
+      _gowriPanchangamService = GowriPanchangamService(_ephemerisService!);
+      _arudhaPadaService = ArudhaPadaService();
+      _argalaService = ArgalaService();
+      _bhavaBalaService = BhavaBalaService(_shadbalaService!);
+      _jaiminiService = JaiminiService();
+      _prashnaService = PrashnaService(_ephemerisService!);
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -784,6 +815,131 @@ class Jyotish {
       dateTime: dateTime,
       location: location,
     );
+  }
+
+  // ============================================================
+  // MUHURTA EXTENSIONS (Hora, Choghadiya, Gowri)
+  // ============================================================
+
+  /// Gets the current planetary Hora (hour).
+  Future<HoraPeriod> getCurrentHora({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+    return await _horaService!
+        .getCurrentHora(dateTime: dateTime, location: location);
+  }
+
+  /// Gets all 24 Horas for a complete day.
+  Future<List<HoraPeriod>> getHorasForDay({
+    required DateTime date,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+    return await _horaService!.getHorasForDay(date: date, location: location);
+  }
+
+  /// Gets the current Choghadiya.
+  Future<Choghadiya> getCurrentChoghadiya({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+    return await _choghadiyaService!
+        .getCurrentChoghadiya(dateTime: dateTime, location: location);
+  }
+
+  /// Gets the current Gowri Panchangam.
+  Future<GowriPanchangamInfo> getCurrentGowriPanchangam({
+    required DateTime dateTime,
+    required GeographicLocation location,
+  }) async {
+    _ensureInitialized();
+    return await _gowriPanchangamService!
+        .getCurrentGowriPanchangam(dateTime: dateTime, location: location);
+  }
+
+  // ============================================================
+  // JAIMINI ASTROLOGY (Arudha, Argala, etc.)
+  // ============================================================
+
+  /// Calculates Arudha Padas for a given chart.
+  ArudhaPadaResult getArudhaPadas(VedicChart chart) {
+    _ensureInitialized();
+    return _arudhaPadaService!.calculateArudhaPadas(chart);
+  }
+
+  /// Calculates Arudha Lagna (AL).
+  ArudhaPadaInfo getArudhaLagna(VedicChart chart) {
+    _ensureInitialized();
+    return _arudhaPadaService!.calculateArudhaLagna(chart);
+  }
+
+  /// Calculates Upapada (UL).
+  ArudhaPadaInfo getUpapada(VedicChart chart) {
+    _ensureInitialized();
+    return _arudhaPadaService!.calculateUpapada(chart);
+  }
+
+  /// Calculates all Argalas for all houses.
+  Map<int, List<ArgalaInfo>> getAllArgalas(VedicChart chart) {
+    _ensureInitialized();
+    return _argalaService!.calculateAllArgalas(chart);
+  }
+
+  /// Calculates Argalas for a specific house.
+  List<ArgalaInfo> getArgalaForHouse(VedicChart chart, int house) {
+    _ensureInitialized();
+    return _argalaService!.calculateArgalaForHouse(chart, house);
+  }
+
+  /// Gets the Atmakaraka (planet with highest degree).
+  Planet getAtmakaraka(VedicChart chart) {
+    _ensureInitialized();
+    return _jaiminiService!.getAtmakaraka(chart);
+  }
+
+  /// Gets Karakamsa information.
+  KarakamsaInfo getKarakamsa({
+    required VedicChart rashiChart,
+    required VedicChart navamsaChart,
+  }) {
+    _ensureInitialized();
+    return _jaiminiService!.getKarakamsa(
+      rashiChart: rashiChart,
+      navamsaChart: navamsaChart,
+    );
+  }
+
+  /// Calculates Rashi Drishti (Jaimini sign aspects).
+  List<RashiDrishtiInfo> getRashiDrishti(VedicChart chart) {
+    _ensureInitialized();
+    return _jaiminiService!.calculateRashiDrishti(chart);
+  }
+
+  /// Calculates only active Rashi Drishti (from occupied signs).
+  List<RashiDrishtiInfo> getActiveRashiDrishti(VedicChart chart) {
+    _ensureInitialized();
+    return _jaiminiService!.calculateActiveRashiDrishti(chart);
+  }
+
+  /// Calculates Bhava Bala (House Strength) for all houses.
+  Future<Map<int, BhavaBalaResult>> getBhavaBala(VedicChart chart) {
+    _ensureInitialized();
+    return _bhavaBalaService!.calculateBhavaBala(chart);
+  }
+
+  /// Calculates Arudha Lagna for Prashna based on a seed number.
+  Rashi getPrashnaArudha(int seed) {
+    _ensureInitialized();
+    return _prashnaService!.calculatePrashnaArudha(seed);
+  }
+
+  /// Calculates special Sphutas for Prashna.
+  Future<PrashnaSphutas> getPrashnaSphutas(VedicChart chart) {
+    _ensureInitialized();
+    return _prashnaService!.calculateSphutas(chart);
   }
 
   /// Calculates high-precision sunrise and sunset times.

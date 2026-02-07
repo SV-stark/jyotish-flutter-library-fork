@@ -74,6 +74,15 @@ class ShadbalaService {
     // Determine strength category
     final strengthCategory = _getStrengthCategory(totalBala);
 
+    // 7. Uchcha Bala (Exaltation Strength - needed for Phala calculation)
+    final uchchaBala =
+        _calculateUchchaBala(planet, planetInfo.position.longitude);
+
+    // 8. Ishta & Kashta Phala
+    final ishtaPhala = (uchchaBala * chestaBala) / 60.0;
+    final kashtaPhala = ((60.0 - uchchaBala) * (60.0 - chestaBala)) / 60.0;
+    final netPhala = ishtaPhala - kashtaPhala;
+
     return ShadbalaResult(
       planet: planet,
       sthanaBala: sthanaBala,
@@ -83,8 +92,23 @@ class ShadbalaService {
       naisargikaBala: naisargikaBala,
       drikBala: drikBala,
       totalBala: totalBala,
+      ishtaPhala: ishtaPhala,
+      kashtaPhala: kashtaPhala,
+      netPhala: netPhala,
       strengthCategory: strengthCategory,
     );
+  }
+
+  /// Calculates Uchcha Bala for external use.
+  double getUchchaBalaOnly(Planet planet, double longitude) =>
+      _calculateUchchaBala(planet, longitude);
+
+  /// Calculates Vimshopaka Bala (Strength in 20/16/10/7 vargas).
+  ///
+  /// This is a skeleton implementation for Phase 3.
+  double calculateVimshopakaBala(Planet planet, VedicChart chart) {
+    // Placeholder implementation
+    return 15.0; // Moderate base strength
   }
 
   double _calculateSthanaBala(
@@ -239,59 +263,60 @@ class ShadbalaService {
   }
 
   /// Calculates Natonnata Bala (Day/Night Strength).
-  /// 
-  /// Natonnata Bala measures the strength of planets based on whether 
+  ///
+  /// Natonnata Bala measures the strength of planets based on whether
   /// the birth occurred during day or night. This implementation uses
   /// actual sunrise/sunset times for accurate determination.
-  /// 
+  ///
   /// Day births (Sunrise to Sunset):
   /// - Strong: Sun, Jupiter, Saturn (60 virupas)
   /// - Weak: Moon, Mars, Venus (0 virupas)
-  /// 
+  ///
   /// Night births (Sunset to Sunrise):
   /// - Strong: Moon, Mars, Venus (60 virupas)
   /// - Weak: Sun, Jupiter, Saturn (0 virupas)
-  /// 
+  ///
   /// Mercury: Always gets 60 virupas (neutral)
-  Future<double> _calculateNatonnataBala(Planet planet, VedicChart chart) async {
+  Future<double> _calculateNatonnataBala(
+      Planet planet, VedicChart chart) async {
     // Mercury is always strong regardless of day/night
     if (planet == Planet.mercury) return 60.0;
-    
+
     // Get accurate sunrise/sunset times for the location
     final location = GeographicLocation(
       latitude: chart.latitude,
       longitude: chart.longitudeCoord,
       altitude: 0,
     );
-    
+
     final sunriseSunset = await _ephemerisService.getSunriseSunset(
       date: chart.dateTime,
       location: location,
     );
-    
+
     final sunrise = sunriseSunset.$1;
     final sunset = sunriseSunset.$2;
-    
+
     // If we can't get sunrise/sunset, fall back to house-based calculation
     if (sunrise == null || sunset == null) {
       return _calculateNatonnataBalaFallback(planet, chart);
     }
-    
+
     // Determine if birth time is during day or night
     final birthTime = chart.dateTime.toUtc();
     final isDay = birthTime.isAfter(sunrise) && birthTime.isBefore(sunset);
-    
+
     // Planets that are strong during day
     final isDayPowerful = [
-      Planet.sun, 
-      Planet.jupiter, 
+      Planet.sun,
+      Planet.jupiter,
       Planet.saturn,
     ].contains(planet);
-    
+
     // Planets that are strong during night
     final isNightPowerful = [
-      Planet.moon, 
-      Planet.mars, 
+      Planet.moon,
+      Planet.mars,
       Planet.venus,
     ].contains(planet);
 
@@ -301,22 +326,22 @@ class ShadbalaService {
       return isNightPowerful ? 60.0 : 0.0;
     }
   }
-  
+
   /// Fallback calculation using house position when sunrise/sunset unavailable.
   /// This is less accurate and should only be used as a last resort.
   double _calculateNatonnataBalaFallback(Planet planet, VedicChart chart) {
     final sunHouse = chart.getPlanet(Planet.sun)?.house ?? 1;
     final isDay = sunHouse > 6; // Simplified: Sun in houses 7-12 = day
-    
+
     final isDayPowerful = [
-      Planet.sun, 
-      Planet.jupiter, 
+      Planet.sun,
+      Planet.jupiter,
       Planet.saturn,
     ].contains(planet);
-    
+
     final isNightPowerful = [
-      Planet.moon, 
-      Planet.mars, 
+      Planet.moon,
+      Planet.mars,
       Planet.venus,
     ].contains(planet);
 
@@ -427,7 +452,7 @@ class ShadbalaService {
     // Where Kranti = declination of the planet
     // Correct formula from Parashara Hora Shastra:
     // ayanabala = 60 * (23°27' ± kranti) / 46°54' = (23°27' ± kranti) * 1.2793
-    
+
     const obliquityOfEcliptic = 23.45;
     const denominator = 46.90; // 46°54' = 46.90 degrees
 
@@ -462,26 +487,26 @@ class ShadbalaService {
 
   /// Vara Bala: 45 virupas for the weekday lord.
   /// Weekday: Sun (1), Mon (2), Tue (3), Wed (4), Thu (5), Fri (6), Sat (7)
-  /// 
+  ///
   /// IMPORTANT: In Vedic astrology, the weekday changes at sunrise, not at midnight.
   /// If the birth time is before sunrise, it belongs to the previous weekday.
   Future<double> _calculateVaraBala(Planet planet, VedicChart chart) async {
     final dateTime = chart.dateTime;
-    
+
     // Get sunrise time for the location
     final location = GeographicLocation(
       latitude: chart.latitude,
       longitude: chart.longitudeCoord,
       altitude: 0,
     );
-    
+
     final sunriseSunset = await _ephemerisService.getSunriseSunset(
       date: dateTime,
       location: location,
     );
-    
+
     final sunrise = sunriseSunset.$1;
-    
+
     // Determine the effective weekday
     // In Vedic astrology, day changes at sunrise, not at midnight
     int weekday;
@@ -493,14 +518,14 @@ class ShadbalaService {
       // After sunrise - use current day
       weekday = dateTime.weekday;
     }
-    
+
     final varaLord = switch (weekday) {
-      7 => Planet.sun,    // Sunday
-      1 => Planet.moon,   // Monday
-      2 => Planet.mars,   // Tuesday
+      7 => Planet.sun, // Sunday
+      1 => Planet.moon, // Monday
+      2 => Planet.mars, // Tuesday
       3 => Planet.mercury, // Wednesday
       4 => Planet.jupiter, // Thursday
-      5 => Planet.venus,  // Friday
+      5 => Planet.venus, // Friday
       6 => Planet.saturn, // Saturday
       _ => Planet.sun,
     };
@@ -510,7 +535,7 @@ class ShadbalaService {
 
   /// Maasa Bala: 30 virupas for the month lord.
   /// Based on the Hindu lunar month (Maasa) determined by Sun's position in zodiac.
-  /// 
+  ///
   /// The lunar month is determined by the Sun's position in the zodiac signs:
   /// - Chaitra (0°-30° Aries): Jupiter
   /// - Vaishakha (30°-60° Taurus): Venus
@@ -528,48 +553,48 @@ class ShadbalaService {
     // Get Sun's position to determine the Hindu lunar month
     final sunInfo = chart.getPlanet(Planet.sun);
     if (sunInfo == null) return 0.0;
-    
+
     final monthLord = _getMonthLordFromSunLongitude(sunInfo.longitude);
     return planet == monthLord ? 30.0 : 0.0;
   }
 
   /// Gets the lord of the current month based on Sun's position in the zodiac.
-  /// 
+  ///
   /// In traditional Vedic astrology, the lunar month (Maasa) is determined by
   /// the Sun's position in the zodiac, not the Gregorian calendar month.
   /// This provides accurate Maasa Bala calculations.
-  /// 
+  ///
   /// [sunLongitude] - Sun's longitude in degrees (0-360)
   Planet _getMonthLordFromSunLongitude(double sunLongitude) {
     // Normalize longitude to 0-360
     final normalizedLong = sunLongitude % 360;
-    
+
     // Determine which sign the Sun is in (0-11)
     final signIndex = (normalizedLong / 30).floor();
-    
+
     // Traditional month lords based on Sun's sign position
     // Chaitra (Aries/0) = Jupiter, Vaishakha (Taurus/1) = Venus, etc.
     final monthLords = [
       Planet.jupiter, // Chaitra - Aries (0°-30°)
-      Planet.venus,   // Vaishakha - Taurus (30°-60°)
+      Planet.venus, // Vaishakha - Taurus (30°-60°)
       Planet.mercury, // Jyeshtha - Gemini (60°-90°)
-      Planet.saturn,  // Ashadha - Cancer (90°-120°)
-      Planet.saturn,  // Shravana - Leo (120°-150°)
+      Planet.saturn, // Ashadha - Cancer (90°-120°)
+      Planet.saturn, // Shravana - Leo (120°-150°)
       Planet.jupiter, // Bhadrapada - Virgo (150°-180°)
-      Planet.mars,    // Ashwin - Libra (180°-210°)
-      Planet.moon,    // Kartik - Scorpio (210°-240°)
-      Planet.venus,   // Agrahayana - Sagittarius (240°-270°)
+      Planet.mars, // Ashwin - Libra (180°-210°)
+      Planet.moon, // Kartik - Scorpio (210°-240°)
+      Planet.venus, // Agrahayana - Sagittarius (240°-270°)
       Planet.mercury, // Pausha - Capricorn (270°-300°)
       Planet.jupiter, // Magha - Aquarius (300°-330°)
-      Planet.sun,     // Phalguna - Pisces (330°-360°)
+      Planet.sun, // Phalguna - Pisces (330°-360°)
     ];
-    
+
     return monthLords[signIndex % 12];
   }
 
   /// Varsha Bala: 15 virupas for the year lord.
   /// Based on Jupiter's position in the 60-year Jovian cycle (Samvatsara/Brihaspati cycle).
-  /// 
+  ///
   /// The traditional 60-year cycle assigns lords based on Jupiter's position:
   /// - Each year is associated with a specific planet as per the Samvatsara system
   /// - The cycle accurately follows Jupiter's orbital period (~11.86 years x 5 = 59.3 years)
@@ -579,103 +604,103 @@ class ShadbalaService {
   }
 
   /// Gets the lord of the year based on Jupiter's position in the 60-year cycle.
-  /// 
+  ///
   /// The 60-year Samvatsara cycle is based on Jupiter's position in the zodiac.
   /// Jupiter takes approximately 11.86 years to orbit the Sun, and 5 Jupiter years
   /// equal approximately 60 solar years (59.3 years).
-  /// 
+  ///
   /// The cycle assigns lords to each of the 60 years following traditional rules:
   /// - Years are ruled by planets in a specific sequence
   /// - All 7 traditional planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn)
   /// serve as year lords
-  /// 
+  ///
   /// [chart] - The Vedic chart containing planetary positions
   Future<Planet> _getYearLordFromJupiter(VedicChart chart) async {
     // Get Jupiter's position
     final jupiterInfo = chart.getPlanet(Planet.jupiter);
     if (jupiterInfo == null) return Planet.jupiter;
-    
+
     final jupiterLongitude = jupiterInfo.longitude;
-    
+
     // Jupiter's sign position (0-11)
     final jupiterSign = (jupiterLongitude / 30).floor();
-    
+
     // Jupiter's degree within sign (0-30)
     final jupiterDegree = jupiterLongitude % 30;
-    
+
     // Calculate which 60-year cycle position we're in
     // Jupiter moves through ~5 signs in 60 years
     // We combine sign position with degree to determine the exact year lord
-    
+
     // Base calculation: 60-year cycle position
     // Reference: When Jupiter is at 0° Aries, it marks a cycle starting point
     final baseCyclePosition = (jupiterSign * 5) + (jupiterDegree / 6).floor();
-    
+
     // Full 60-year cycle with all 7 planets as lords
     // Sequence follows traditional Samvatsara assignments
     final samvatsaraLords = [
       Planet.jupiter, // Prabhava
       Planet.jupiter, // Vibhava
-      Planet.mars,    // Shukla
-      Planet.mars,    // Pramodoota
-      Planet.sun,     // Prajothpatti
-      Planet.sun,     // Aangirasa
+      Planet.mars, // Shukla
+      Planet.mars, // Pramodoota
+      Planet.sun, // Prajothpatti
+      Planet.sun, // Aangirasa
       Planet.mercury, // Shreemukha
       Planet.mercury, // Bhaava
-      Planet.saturn,  // Yuva
-      Planet.saturn,  // Dhaatu
+      Planet.saturn, // Yuva
+      Planet.saturn, // Dhaatu
       Planet.jupiter, // Eeshwara
       Planet.jupiter, // Bahudhanya
-      Planet.mars,    // Pramaadi
-      Planet.mars,    // Vikrama
-      Planet.sun,     // Vishu
-      Planet.sun,     // Chitrabhanu
+      Planet.mars, // Pramaadi
+      Planet.mars, // Vikrama
+      Planet.sun, // Vishu
+      Planet.sun, // Chitrabhanu
       Planet.mercury, // Svabhanu
       Planet.mercury, // Taarana
-      Planet.saturn,  // Paarthiva
-      Planet.saturn,  // Vyaya
+      Planet.saturn, // Paarthiva
+      Planet.saturn, // Vyaya
       Planet.jupiter, // Sarvajith
       Planet.jupiter, // Sarvadhaari
-      Planet.mars,    // Virodhi
-      Planet.mars,    // Vikrita
-      Planet.sun,     // Khara
-      Planet.sun,     // Nandana
+      Planet.mars, // Virodhi
+      Planet.mars, // Vikrita
+      Planet.sun, // Khara
+      Planet.sun, // Nandana
       Planet.mercury, // Vijaya
       Planet.mercury, // Jaya
-      Planet.saturn,  // Manmatha
-      Planet.saturn,  // Durmukhi
+      Planet.saturn, // Manmatha
+      Planet.saturn, // Durmukhi
       Planet.jupiter, // Hevilambi
       Planet.jupiter, // Vilambi
-      Planet.mars,    // Vikaari
-      Planet.mars,    // Shaarvari
-      Planet.sun,     // Plava
-      Planet.sun,     // Shubhakruth
+      Planet.mars, // Vikaari
+      Planet.mars, // Shaarvari
+      Planet.sun, // Plava
+      Planet.sun, // Shubhakruth
       Planet.mercury, // Shobhakruth
       Planet.mercury, // Krodhi
-      Planet.saturn,  // Vishvaavasu
-      Planet.saturn,  // Paraabhava
+      Planet.saturn, // Vishvaavasu
+      Planet.saturn, // Paraabhava
       Planet.jupiter, // Plavanga
       Planet.jupiter, // Keelaka
-      Planet.mars,    // Saumya
-      Planet.mars,    // Saadhaarana
-      Planet.sun,     // Virodhikruth
-      Planet.sun,     // Paridhawi
+      Planet.mars, // Saumya
+      Planet.mars, // Saadhaarana
+      Planet.sun, // Virodhikruth
+      Planet.sun, // Paridhawi
       Planet.mercury, // Pramaadeecha
       Planet.mercury, // Aananda
-      Planet.saturn,  // Raakshasa
-      Planet.saturn,  // Nala
+      Planet.saturn, // Raakshasa
+      Planet.saturn, // Nala
       Planet.jupiter, // Pingala
       Planet.jupiter, // Kaalayukthi
-      Planet.mars,    // Siddharthi
-      Planet.mars,    // Raudra
-      Planet.sun,     // Durmathi
-      Planet.sun,     // Dundubhi
+      Planet.mars, // Siddharthi
+      Planet.mars, // Raudra
+      Planet.sun, // Durmathi
+      Planet.sun, // Dundubhi
       Planet.mercury, // Rudhirodgaari
       Planet.mercury, // Raktaakshi
-      Planet.saturn,  // Krodhana
-      Planet.saturn,  // Akshaya
+      Planet.saturn, // Krodhana
+      Planet.saturn, // Akshaya
     ];
-    
+
     return samvatsaraLords[baseCyclePosition % 60];
   }
 
@@ -691,7 +716,7 @@ class ShadbalaService {
     // Get sunrise and sunset for accurate Hora calculation
     final sunriseSunset = await _ephemerisService.getSunriseSunset(
         date: chart.dateTime, location: location);
-    
+
     if (sunriseSunset.$1 == null || sunriseSunset.$2 == null) {
       // If sunrise/sunset unavailable, return 0
       return 0.0;
@@ -707,11 +732,11 @@ class ShadbalaService {
   }
 
   /// Calculates the Hora (planetary hour) lord for a given time.
-  /// 
+  ///
   /// Each day has 24 Horas:
   /// - 12 daytime Horas (from sunrise to sunset)
   /// - 12 nighttime Horas (from sunset to next sunrise)
-  /// 
+  ///
   /// The sequence of lords follows the Chaldean order:
   /// Sun -> Venus -> Mercury -> Moon -> Saturn -> Jupiter -> Mars -> Sun...
   Planet _getHoraLord(DateTime dateTime, DateTime sunrise, DateTime sunset) {
@@ -735,12 +760,12 @@ class ShadbalaService {
 
     // First Hora of each day is ruled by the day lord
     final dayStartLords = [
-      Planet.sun,    // Sunday
-      Planet.moon,   // Monday
-      Planet.mars,   // Tuesday
+      Planet.sun, // Sunday
+      Planet.moon, // Monday
+      Planet.mars, // Tuesday
       Planet.mercury, // Wednesday
       Planet.jupiter, // Thursday
-      Planet.venus,  // Friday
+      Planet.venus, // Friday
       Planet.saturn, // Saturday
     ];
 
@@ -954,7 +979,7 @@ class ShadbalaService {
   /// Gets combustion severity based on distance and orb.
   CombustionSeverity _getCombustionSeverity(double distance, double orb) {
     if (distance >= orb) return CombustionSeverity.none;
-    
+
     final ratio = distance / orb;
     if (ratio < 0.25) return CombustionSeverity.severe;
     if (ratio < 0.5) return CombustionSeverity.moderate;
@@ -1015,7 +1040,7 @@ class ShadbalaService {
   }
 
   /// Applies aspect nature (benefic adds, malefic subtracts).
-  /// 
+  ///
   /// Benefic planets: Jupiter, Venus, Mercury, Moon
   /// Malefic planets: Sun, Mars, Saturn
   /// Aspect strength is divided by 4 as per Parashara
@@ -1054,7 +1079,7 @@ class ShadbalaService {
   /// - 1/2 aspects: 30 virupas
   /// - 1/4 aspects: 15 virupas
   /// - No aspect: 0 virupas
-  /// 
+  ///
   /// All planets have full 7th aspect (180°).
   /// Mars has special aspects on 4th (90°) and 8th (210°).
   /// Jupiter has special aspects on 5th (120°) and 9th (240°).
@@ -1115,7 +1140,8 @@ class ShadbalaService {
   /// - 120° orb: 0 virupas (no strength)
   ///
   /// Uses mathematical interpolation for precise calculation.
-  double _calculateVirupaFromOrb(double orb, Planet planet, double aspectAngle) {
+  double _calculateVirupaFromOrb(
+      double orb, Planet planet, double aspectAngle) {
     // Normalize orb to 0-180 range
     final normalizedOrb = orb.abs();
 
@@ -1129,7 +1155,7 @@ class ShadbalaService {
     // Professional 60-virupa interpolation formula
     // Based on Parashara's principles: strength decreases quadratically with orb
     final orbRatio = normalizedOrb / maxOrb;
-    
+
     // Use cosine interpolation for smooth strength curve
     // At orb=0: strength=60, at orb=max: strength=0
     final strength = 60.0 * ((1 + cos(orbRatio * pi)) / 2);
@@ -1215,6 +1241,9 @@ class ShadbalaResult {
     required this.drikBala,
     required this.totalBala,
     required this.strengthCategory,
+    this.ishtaPhala = 0.0,
+    this.kashtaPhala = 0.0,
+    this.netPhala = 0.0,
   });
 
   final Planet planet;
@@ -1226,6 +1255,15 @@ class ShadbalaResult {
   final double drikBala;
   final double totalBala;
   final ShadbalaStrength strengthCategory;
+
+  /// Ishta Phala (Benefic influence)
+  final double ishtaPhala;
+
+  /// Kashta Phala (Malefic influence)
+  final double kashtaPhala;
+
+  /// Net Phala (Ishta - Kashta)
+  final double netPhala;
 
   bool get isStrong => totalBala >= 330;
   bool get isWeak => totalBala < 280;
@@ -1279,7 +1317,8 @@ class CombustionInfo {
   final String description;
 
   /// Remaining degrees to exit combustion (0 if not combust)
-  double get remainingDegrees => isCombust ? combustionOrb - distanceFromSun : 0.0;
+  double get remainingDegrees =>
+      isCombust ? combustionOrb - distanceFromSun : 0.0;
 
   /// Whether combustion is critical (severe)
   bool get isCritical => severity == CombustionSeverity.severe;

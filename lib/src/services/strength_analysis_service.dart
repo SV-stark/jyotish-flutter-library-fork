@@ -362,7 +362,8 @@ class StrengthAnalysisService {
     return (friendships[planet1]?[planet2] ?? 0).toDouble();
   }
 
-  bool _isPlanetAspectingHouse(double planetLongitude, int houseNum, VedicChart chart) {
+  bool _isPlanetAspectingHouse(
+      double planetLongitude, int houseNum, VedicChart chart) {
     // Simplified aspect check
     // Full aspect is 180° (7th house aspect)
     final houseCusp = chart.houses.cusps[houseNum - 1];
@@ -447,38 +448,6 @@ enum VimshopakStrength {
   final String name;
   final double minScore;
   final double maxScore;
-}
-
-/// Represents Bhava Bala (house strength) result.
-class BhavaBalaResult {
-  const BhavaBalaResult({
-    required this.houseNumber,
-    required this.strength,
-    required this.category,
-  });
-
-  /// House number (1-12)
-  final int houseNumber;
-
-  /// Strength value (0-100)
-  final double strength;
-
-  /// Strength category
-  final BhavaStrengthCategory category;
-}
-
-/// Bhava strength categories
-enum BhavaStrengthCategory {
-  veryStrong(90, 100),
-  strong(70, 90),
-  moderate(50, 70),
-  weak(30, 50),
-  veryWeak(0, 30);
-
-  const BhavaStrengthCategory(this.minStrength, this.maxStrength);
-
-  final double minStrength;
-  final double maxStrength;
 }
 
 /// Represents Ishtaphala-Kashtaphala analysis for a planet.

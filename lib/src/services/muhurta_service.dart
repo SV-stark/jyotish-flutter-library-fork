@@ -170,6 +170,8 @@ class MuhurtaService {
         startTime: currentTime,
         endTime: endTime,
         type: daytimeTypes[i],
+        isDaytime: true,
+        periodNumber: i + 1,
       ));
       currentTime = endTime;
     }
@@ -193,6 +195,8 @@ class MuhurtaService {
         startTime: currentTime,
         endTime: endTime,
         type: nighttimeTypes[i],
+        isDaytime: false,
+        periodNumber: i + 1,
       ));
       currentTime = endTime;
     }
