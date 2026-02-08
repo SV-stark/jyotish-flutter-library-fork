@@ -86,6 +86,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Current period calculation
   - Birth time precision warnings
 
+- **Yogini Dasha Antardashas**
+  - Added support for sub-periods (Antardasha) in Yogini Dasha
+  - Added support for sub-sub-periods (Pratyantardasha) in Yogini Dasha
+  - Correctly displaying Yogini names (e.g., Mangala, Pingala) instead of planet names
+
+
 ### New API Methods
 
 - `getAspects()` - Calculate all Vedic aspects between planets
