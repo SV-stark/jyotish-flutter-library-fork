@@ -15,6 +15,7 @@ A comprehensive API reference for the Jyotish Flutter library - production-ready
   - [EphemerisService](#ephemerisservice)
   - [VedicChartService](#vedicchartservice)
   - [DashaService](#dashaservice)
+  - [VarshapalService](#varshapalservice)
   - [PanchangaService](#panchangaservice)
   - [AshtakavargaService](#ashtakavargaservice)
   - [AspectService](#aspectservice)
@@ -118,6 +119,13 @@ await jyotish.initialize({String? ephemerisPath});
 | `getAshtottariDasha({natalChart, scheme?})` | `Future<AshtottariDashaResult>` | Ashtottari Dasha (108-year) |
 | `getKalachakraDasha({natalChart})` | `Future<KalachakraDashaResult>` | Kalachakra Dasha |
 | `getCurrentDasha({natalChart, targetDate, type?})` | `DashaPeriod` | Current active period |
+
+#### Varshapal (Annual Chart) Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getVarshapal({birthDateTime, varshaDateTime, location, houseSystem?, checkDate?})` | `Future<Varshapal>` | Annual chart for specific year |
+| `getCurrentVarshapal({birthDateTime, location, houseSystem?, checkDate?})` | `Future<Varshapal>` | Current year's annual chart |
 
 #### Transit Methods
 
@@ -386,6 +394,21 @@ final service = DashaService();
 | `getNarayanaDasha(rashiChart, {levels?})` | `NarayanaDashaResult` | Jaimini sign-based dasha |
 | `getAshtottariDasha(chart, {scheme?})` | `AshtottariDashaResult` | 108-year cycle dasha |
 | `getKalachakraDasha(chart)` | `KalachakraDashaResult` | Nakshatra-based dasha |
+
+---
+
+### VarshapalService
+
+Varshapal (Annual Chart) calculations. The annual chart is calculated from the birthday each year.
+
+```dart
+final service = VarshapalService(ephemerisService);
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `calculateVarshapal({birthDateTime, varshaDateTime, location, houseSystem?, checkDate?})` | `Future<Varshapal>` | Annual chart for a specific year |
+| `calculateCurrentVarshapal({birthDateTime, location, houseSystem?, checkDate?})` | `Future<Varshapal>` | Current year's annual chart |
 
 ---
 
@@ -736,6 +759,44 @@ Dasha calculation result.
 
 ---
 
+### Varshapal
+
+Annual chart data with periods.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `chart` | `VedicChart` | The annual chart |
+| `birthDateTime` | `DateTime` | Original birth date/time |
+| `varshaDateTime` | `DateTime` | Annual chart date (birthday) |
+| `varshaLord` | `Planet` | Ruling planet of the year |
+| `varshaNumber` | `int` | Year number in 60-year cycle (1-60) |
+| `samvatsaraName` | `String` | Traditional Samvatsara name |
+| `allVarshaPeriods` | `List<VarshapalPeriod>` | All year periods |
+| `allMaasaPeriods` | `List<VarshapalPeriod>` | All month periods |
+| `allDinaPeriods` | `List<VarshapalPeriod>` | All day periods |
+| `allHoraPeriods` | `List<VarshapalPeriod>` | All hour periods |
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getCurrentPeriods(date)` | `VarshapalCurrentPeriods` | Current periods at date |
+| `getCurrentPeriodString(date)` | `String` | Formatted period string |
+
+---
+
+### VarshapalPeriod
+
+A period within the Varshapal system.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `VarshapalPeriodType` | Period type (varsha/maasa/dina/hora) |
+| `lord` | `Planet` | Ruling planet |
+| `startDate` | `DateTime` | Period start |
+| `endDate` | `DateTime` | Period end |
+| `duration` | `Duration` | Period duration |
+
+---
+
 ### Ashtakavarga
 
 Complete Ashtakavarga data.
@@ -1077,6 +1138,19 @@ Planet visibility status.
 | `daytime` | Visible in daylight |
 | `evening` | Evening star |
 | `morning` | Morning star |
+
+---
+
+### VarshapalPeriodType
+
+Varshapal period types.
+
+| Value | Description |
+|-------|-------------|
+| `varsha` | Year period (1 year) |
+| `maasa` | Month period (~30 days) |
+| `dina` | Day period (1 day) |
+| `hora` | Hour period (1 hour) |
 
 ---
 

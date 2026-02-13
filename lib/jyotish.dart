@@ -73,3 +73,6 @@ export 'src/models/jaimini.dart';
 export 'src/services/arudha_pada_service.dart';
 export 'src/services/argala_service.dart';
 export 'src/services/jaimini_service.dart';
+// Varshapal (Annual Chart)
+export 'src/models/varshapal.dart';
+export 'src/services/varshapal_service.dart';

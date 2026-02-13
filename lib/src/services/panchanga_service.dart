@@ -244,11 +244,19 @@ class PanchangaService {
   /// - Altitude of the location
   /// - Sun's disc size
   ///
+  /// Note: For latitudes above 66.5° (Arctic Circle) or below -66.5° (Antarctic Circle),
+  /// the sun may not rise or set for extended periods. In such cases, the method
+  /// falls back to an approximate NOAA algorithm.
+  ///
   /// Returns (sunrise, sunset) times in local timezone.
   Future<(DateTime, DateTime)> _calculateSunriseSunset({
     required DateTime dateTime,
     required GeographicLocation location,
   }) async {
+    // Check for extreme latitudes that may have polar day/night
+    final absLatitude = location.latitude.abs();
+    final isPolarRegion = absLatitude > 66.5;
+
     try {
       // Use high-precision calculation from Swiss Ephemeris
       final (sunrise, sunset) = await _ephemerisService.getSunriseSunset(
@@ -259,6 +267,9 @@ class PanchangaService {
       // Fallback to approximation if precise calculation fails
       // (e.g., in polar regions where sun may not rise/set)
       if (sunrise == null || sunset == null) {
+        if (isPolarRegion) {
+          // Log polar region case - could add to a debug log
+        }
         return _calculateApproximateSunriseSunset(
           dateTime: dateTime,
           location: location,
@@ -543,11 +554,11 @@ class PanchangaService {
   ///
   /// [dateTime] - The starting date/time for the search
   /// [location] - Geographic location for calculations
-  /// [accuracyThreshold] - Desired accuracy in seconds (default: 1 second)
+  /// [accuracyThreshold] - Desired accuracy duration (default: 1 second)
   Future<DateTime> getTithiEndTime({
     required DateTime dateTime,
     required GeographicLocation location,
-    int accuracyThreshold = 1, // 1 second precision by default
+    Duration accuracyThreshold = const Duration(seconds: 1),
   }) async {
     final flags = CalculationFlags.defaultFlags();
 
@@ -577,17 +588,20 @@ class PanchangaService {
 
     // Continue searching until we meet the accuracy threshold
     var iteration = 0;
-    const maxIterations = 50; // Safety limit to prevent infinite loops
+    const maxIterations = 60; // Increased for better convergence
 
     while (iteration < maxIterations) {
-      final currentWindow = end.difference(start).inSeconds;
+      final currentWindow = end.difference(start);
 
       // If we're within the accuracy threshold, stop
       if (currentWindow <= accuracyThreshold) {
         break;
       }
 
-      final mid = start.add(Duration(seconds: currentWindow ~/ 2));
+      // Adaptive mid point - use smaller steps near the target
+      final mid = start.add(Duration(
+        milliseconds: currentWindow.inMilliseconds ~/ 2,
+      ));
 
       final midSun = await _ephemerisService.calculatePlanetPosition(
         planet: Planet.sun,
@@ -607,6 +621,14 @@ class PanchangaService {
       // Handle 0/360 boundary crossing
       if (targetElongation >= 360 && midElongation < 180) {
         midElongation += 360;
+      }
+
+      // Check if we're very close to the target - helps with edge cases
+      final elongationDiff = (midElongation - targetElongation).abs();
+      if (elongationDiff < 0.001) {
+        // Very close to target, use this as end
+        end = mid;
+        break;
       }
 
       if (midElongation < targetElongation) {
@@ -816,6 +838,14 @@ class PanchangaService {
       // Handle 0/360 boundary
       if (targetElongation < 12 && elongation > 348) {
         elongation -= 360;
+      }
+
+      // Check if we're very close to the target - helps with edge cases
+      final elongationDiff = (elongation - targetElongation).abs();
+      if (elongationDiff < 0.001) {
+        // Very close to target, use this as end
+        searchEnd = mid;
+        break;
       }
 
       if (elongation < targetElongation) {

@@ -100,6 +100,14 @@ class DashaService {
       levels: levels,
     );
 
+    // Generate precision warning if birth time uncertainty is provided
+    String? precisionWarning;
+    if (birthTimeUncertainty != null && birthTimeUncertainty > 0) {
+      precisionWarning =
+          'Birth time uncertain by $birthTimeUncertainty minutes. '
+          'Dasha timing may vary by up to ${(birthTimeUncertainty / 60 * 0.2).toStringAsFixed(1)} days.';
+    }
+
     return DashaResult(
       type: DashaType.vimshottari,
       birthDateTime: birthDateTime,
@@ -108,6 +116,7 @@ class DashaService {
       birthPada: pada,
       balanceOfFirstDasha: balanceDays,
       allMahadashas: mahadashas,
+      precisionWarning: precisionWarning,
     );
   }
 
@@ -275,6 +284,10 @@ class DashaService {
       birthPada: (positionInNakshatra / (nakshatraWidth / 4)).floor() + 1,
       balanceOfFirstDasha: balanceDays,
       allMahadashas: mahadashas,
+      precisionWarning: birthTimeUncertainty != null && birthTimeUncertainty > 0
+          ? 'Birth time uncertain by $birthTimeUncertainty minutes. '
+              'Dasha timing may vary by up to ${(birthTimeUncertainty / 60 * 0.2).toStringAsFixed(1)} days.'
+          : null,
     );
   }
 

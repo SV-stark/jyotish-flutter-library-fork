@@ -25,6 +25,7 @@ import 'models/special_transits.dart';
 import 'models/transit.dart';
 import 'models/sudarshan_chakra.dart';
 import 'models/vedic_chart.dart';
+import 'models/varshapal.dart';
 
 import 'services/aspect_service.dart';
 import 'services/ashtakavarga_service.dart';
@@ -51,6 +52,7 @@ import 'services/sudarshan_chakra_service.dart';
 import 'services/vedic_chart_service.dart';
 import 'services/gochara_vedha_service.dart';
 import 'services/strength_analysis_service.dart';
+import 'services/varshapal_service.dart';
 
 /// The main entry point for the Jyotish library.
 ///
@@ -110,6 +112,7 @@ class Jyotish {
   PrashnaService? _prashnaService;
   GocharaVedhaService? _gocharaVedhaService;
   StrengthAnalysisService? _strengthAnalysisService;
+  VarshapalService? _varshapalService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -151,6 +154,7 @@ class Jyotish {
       _prashnaService = PrashnaService(_ephemerisService!);
       _gocharaVedhaService = GocharaVedhaService();
       _strengthAnalysisService = StrengthAnalysisService();
+      _varshapalService = VarshapalService(_ephemerisService!);
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -686,6 +690,111 @@ class Jyotish {
   }) async {
     _ensureInitialized();
     return _dashaService!.getKalachakraDasha(natalChart);
+  }
+
+  // ============================================================
+  // VARSHAPAL (ANNUAL CHART) CALCULATIONS
+  // ============================================================
+
+  /// Calculates the Varshapal (Annual Chart) for a given year.
+  ///
+  /// Varshapal is an annual chart calculated from the birthday each year.
+  /// It shows the planetary influences for the entire year based on the
+  /// solar return chart (when the Sun returns to the birth Sun position).
+  ///
+  /// The Varshapal has its own period system (Dasa):
+  /// - Varsha Dasa: Year-long periods ruled by planets
+  /// - Maas Dasa: Monthly periods
+  /// - Dina Dasa: Daily periods
+  /// - Hora Dasa: Hourly periods
+  ///
+  /// [birthDateTime] - Original birth date and time
+  /// [varshaDateTime] - The birthday date/time for the year to calculate
+  /// [location] - Birth location for chart calculation
+  /// [houseSystem] - House system to use (default: Whole Sign 'W')
+  /// [checkDate] - Optional date to check current periods (defaults to now)
+  ///
+  /// Returns [Varshapal] with chart and all period calculations.
+  ///
+  /// Example:
+  /// ```dart
+  /// final varshapal = await jyotish.getVarshapal(
+  ///   birthDateTime: DateTime(1990, 5, 15, 10, 30),
+  ///   varshaDateTime: DateTime(2025, 5, 15, 10, 30),
+  ///   location: location,
+  /// );
+  /// print('Varsha Lord: ${varshapal.varshaLord.displayName}');
+  /// print('Current Period: ${varshapal.getCurrentPeriodString(DateTime.now())}');
+  /// ```
+  Future<Varshapal> getVarshapal({
+    required DateTime birthDateTime,
+    required DateTime varshaDateTime,
+    required GeographicLocation location,
+    String houseSystem = 'W',
+    DateTime? checkDate,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _varshapalService!.calculateVarshapal(
+        birthDateTime: birthDateTime,
+        varshaDateTime: varshaDateTime,
+        location: location,
+        houseSystem: houseSystem,
+        checkDate: checkDate,
+      );
+    } catch (e) {
+      if (e is JyotishException) rethrow;
+      throw JyotishException(
+        'Failed to calculate Varshapal: ${e.toString()}',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Calculates the current Varshapal for this year.
+  ///
+  /// This calculates the annual chart from this year's birthday and
+  /// determines the current periods.
+  ///
+  /// [birthDateTime] - Original birth date and time
+  /// [location] - Birth location for chart calculation
+  /// [houseSystem] - House system to use (default: Whole Sign 'W')
+  /// [checkDate] - Optional date to check current periods (defaults to now)
+  ///
+  /// Returns [Varshapal] with chart and current period calculations.
+  ///
+  /// Example:
+  /// ```dart
+  /// final varshapal = await jyotish.getCurrentVarshapal(
+  ///   birthDateTime: DateTime(1990, 5, 15, 10, 30),
+  ///   location: location,
+  /// );
+  /// print('Samvatsara: ${varshapal.samvatsaraName}');
+  /// print('Current Period: ${varshapal.getCurrentPeriodString(DateTime.now())}');
+  /// ```
+  Future<Varshapal> getCurrentVarshapal({
+    required DateTime birthDateTime,
+    required GeographicLocation location,
+    String houseSystem = 'W',
+    DateTime? checkDate,
+  }) async {
+    _ensureInitialized();
+
+    try {
+      return await _varshapalService!.calculateCurrentVarshapal(
+        birthDateTime: birthDateTime,
+        location: location,
+        houseSystem: houseSystem,
+        checkDate: checkDate,
+      );
+    } catch (e) {
+      if (e is JyotishException) rethrow;
+      throw JyotishException(
+        'Failed to calculate current Varshapal: ${e.toString()}',
+        originalError: e,
+      );
+    }
   }
 
   // ============================================================
