@@ -76,3 +76,15 @@ export 'src/services/jaimini_service.dart';
 // Varshapal (Annual Chart)
 export 'src/models/varshapal.dart';
 export 'src/services/varshapal_service.dart';
+// House Strength (Vimsopaka Bala)
+export 'src/models/house_strength.dart';
+export 'src/services/house_strength_service.dart';
+// Nadi Astrology
+export 'src/models/nadi.dart';
+export 'src/services/nadi_service.dart';
+// Progeny Analysis
+export 'src/models/progeny.dart';
+export 'src/services/progeny_service.dart';
+// Marriage Compatibility
+export 'src/models/compatibility.dart';
+export 'src/services/compatibility_service.dart';

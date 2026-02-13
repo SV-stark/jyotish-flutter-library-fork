@@ -26,6 +26,10 @@ import 'models/transit.dart';
 import 'models/sudarshan_chakra.dart';
 import 'models/vedic_chart.dart';
 import 'models/varshapal.dart';
+import 'models/house_strength.dart';
+import 'models/nadi.dart';
+import 'models/progeny.dart';
+import 'models/compatibility.dart';
 
 import 'services/aspect_service.dart';
 import 'services/ashtakavarga_service.dart';
@@ -48,6 +52,10 @@ import 'services/prashna_service.dart';
 import 'services/shadbala_service.dart';
 import 'services/special_transit_service.dart';
 import 'services/transit_service.dart';
+import 'services/house_strength_service.dart';
+import 'services/nadi_service.dart';
+import 'services/progeny_service.dart';
+import 'services/compatibility_service.dart';
 import 'services/sudarshan_chakra_service.dart';
 import 'services/vedic_chart_service.dart';
 import 'services/gochara_vedha_service.dart';
@@ -113,6 +121,10 @@ class Jyotish {
   GocharaVedhaService? _gocharaVedhaService;
   StrengthAnalysisService? _strengthAnalysisService;
   VarshapalService? _varshapalService;
+  HouseStrengthService? _houseStrengthService;
+  NadiService? _nadiService;
+  ProgenyService? _progenyService;
+  CompatibilityService? _compatibilityService;
   bool _isInitialized = false;
 
   /// Initializes the Swiss Ephemeris library.
@@ -155,6 +167,10 @@ class Jyotish {
       _gocharaVedhaService = GocharaVedhaService();
       _strengthAnalysisService = StrengthAnalysisService();
       _varshapalService = VarshapalService(_ephemerisService!);
+      _houseStrengthService = HouseStrengthService(_shadbalaService!);
+      _nadiService = NadiService();
+      _progenyService = ProgenyService();
+      _compatibilityService = CompatibilityService();
       _isInitialized = true;
     } catch (e) {
       throw JyotishException(
@@ -2037,5 +2053,111 @@ class Jyotish {
   Future<double> calculateGulikaSphuta(VedicChart chart) async {
     _ensureInitialized();
     return await _prashnaService!.calculateGulikaSphuta(chart);
+  }
+
+  // ============================================================
+  // HOUSE STRENGTH (VIMSOPAKA BALA)
+  // ============================================================
+
+  /// Calculates enhanced Bhava Bala with Vimsopaka integration.
+  Future<Map<int, EnhancedBhavaBalaResult>> getEnhancedBhavaBala(VedicChart chart) async {
+    _ensureInitialized();
+    return await _houseStrengthService!.calculateEnhancedBhavaBala(chart);
+  }
+
+  /// Calculates Vimsopaka Bala (divisional chart strength).
+  Map<Planet, VimsopakaBalaResult> getVimsopakaBala(VedicChart chart) {
+    _ensureInitialized();
+    return _houseStrengthService!.calculateVimsopakaBala(chart);
+  }
+
+  // ============================================================
+  // NADI ASTROLOGY
+  // ============================================================
+
+  /// Calculates the Nadi chart for a given Vedic chart.
+  NadiChart calculateNadiChart(VedicChart chart) {
+    _ensureInitialized();
+    return _nadiService!.calculateNadiChart(chart);
+  }
+
+  /// Gets Nadi information from a specific longitude.
+  NadiInfo getNadiFromLongitude(double longitude) {
+    _ensureInitialized();
+    return _nadiService!.getNadiFromLongitude(longitude);
+  }
+
+  /// Gets the Nadi interpretation for a given Nadi number.
+  String getNadiInterpretation(int nadiNumber) {
+    _ensureInitialized();
+    return _nadiService!.getNadiInterpretation(nadiNumber);
+  }
+
+  /// Identifies the Nadi seed based on Nakshatra and Pada.
+  NadiSeedResult identifyNadiSeed(int nakshatraNumber, int pada) {
+    _ensureInitialized();
+    return _nadiService!.identifyNadiSeed(nakshatraNumber, pada);
+  }
+
+  // ============================================================
+  // PROGENY (CHILD) ANALYSIS
+  // ============================================================
+
+  /// Analyzes progeny prospects based on the chart.
+  ProgenyResult analyzeProgeny(VedicChart chart) {
+    _ensureInitialized();
+    return _progenyService!.analyzeProgeny(chart);
+  }
+
+  /// Analyzes the strength of the 5th house for children.
+  FifthHouseStrength analyzeFifthHouse(VedicChart chart) {
+    _ensureInitialized();
+    return _progenyService!.analyzeFifthHouse(chart);
+  }
+
+  /// Analyzes Jupiter's condition for child prospects.
+  JupiterCondition analyzeJupiterCondition(VedicChart chart) {
+    _ensureInitialized();
+    return _progenyService!.analyzeJupiterCondition(chart);
+  }
+
+  /// Detects favorable child yogas in the chart.
+  List<ChildYoga> detectChildYogas(VedicChart chart) {
+    _ensureInitialized();
+    return _progenyService!.detectChildYogas(chart);
+  }
+
+  // ============================================================
+  // MARRIAGE COMPATIBILITY (KUNDLI MILAN)
+  // ============================================================
+
+  /// Calculates compatibility between two charts.
+  CompatibilityResult calculateCompatibility(VedicChart boyChart, VedicChart girlChart) {
+    _ensureInitialized();
+    return _compatibilityService!.calculateCompatibility(boyChart, girlChart);
+  }
+
+  /// Calculates Guna Milan (Ashtakoota) scores.
+  GunaScores calculateGunaMilan(VedicChart boyChart, VedicChart girlChart) {
+    _ensureInitialized();
+    return _compatibilityService!.calculateGunaMilan(boyChart, girlChart);
+  }
+
+  /// Checks for Manglik Dosha in a chart.
+  ManglikDoshaResult checkManglikDosha(VedicChart chart) {
+    _ensureInitialized();
+    return _compatibilityService!.checkManglikDosha(chart);
+  }
+
+  /// Checks for Nadi Dosha between two charts.
+  NadiDoshaResult checkNadiDosha(VedicChart boyChart, VedicChart girlChart) {
+    _ensureInitialized();
+    return _compatibilityService!.checkNadiDosha(boyChart, girlChart);
+  }
+
+  /// Checks for Bhakoot Dosha between two charts.
+  BhakootDoshaResult checkBhakootDosha(VedicChart boyChart, VedicChart girlChart) {
+    _ensureInitialized();
+    return _compatibilityService!.checkBhakootDosha(boyChart, girlChart);
   }
 }
