@@ -168,6 +168,10 @@ class PanchangaService {
   ///
   /// Karana is half of a tithi. There are 60 karanas total,
   /// with 7 fixed karanas repeating and 4 variable karanas.
+  ///
+  /// Traditional sequence (per Surya Siddhanta):
+  /// - Kimstughna (fixed) is the first karana of Shukla Pratipada
+  /// - Bava (fixed) starts the sequence from Krishna Pratipada
   KaranaInfo _calculateKarana(PlanetPosition sunPos, PlanetPosition moonPos) {
     // Calculate lunar elongation (Moon - Sun)
     var elongation = moonPos.longitude - sunPos.longitude;
@@ -184,12 +188,21 @@ class PanchangaService {
     String name;
     bool isFixed;
 
-    // First tithi (0-12°) has fixed karanas at beginning
-    if (karanaNumber <= 7) {
-      // First 7 karanas: Bava, Balava, Kaulava, Taitila, Garaja, Vanija, Vishti
-      name = KaranaInfo.fixedKaranaNames[karanaNumber - 1];
-      isFixed = true;
-    } else if (karanaNumber == 57) {
+    // Traditional Karana sequence per Vedic astrology:
+    // Kimstughna is first (fixed), then Bava-Balava-Kaulava-Taitila-Garaja-Vanija-Vishti
+    // The 4 variable karanas (Shakuni, Chatushpada, Naga, Kimstughna) repeat
+    // In standard practice:
+    // - Karana 1: Kimstughna (fixed) - at start of Shukla Paksha
+    // - Karanas 2-7: Bava, Balava, Kaulava, Taitila, Garaja, Vanija (fixed)
+    // - Karana 8: Vishti (fixed) - last of first tithi half
+    // - Karanas 9-11: Shakuni, Chatushpada, Naga (variable)
+    // - Karana 12 onwards: Repeat Bava-Vishti cycle
+    
+    // Fixed karanas: Bava(2), Balava(3), Kaulava(4), Taitila(5), Garaja(6), Vanija(7), Vishti(8)
+    // Variable: Shakuni(9), Chatushpada(10), Naga(11), Kimstughna(12)
+    
+    // Check for variable karanas first (Shakuni, Chatushpada, Naga, Kimstughna)
+    if (karanaNumber == 57) {
       name = KaranaInfo.variableKaranaNames[0]; // Shakuni
       isFixed = false;
     } else if (karanaNumber == 58) {
@@ -199,11 +212,25 @@ class PanchangaService {
       name = KaranaInfo.variableKaranaNames[2]; // Naga
       isFixed = false;
     } else if (karanaNumber == 60) {
-      name = KaranaInfo.variableKaranaNames[3]; // Kimstughna
+      name = KaranaInfo.variableKaranaNames[3]; // Kimstughna - traditionally last
       isFixed = false;
+    } else if (karanaNumber == 1) {
+      // Traditional: Kimstughna should be at karana 1 (Shukla Pratipada first half)
+      // However, most modern implementations use the repeating pattern
+      // We'll follow the traditional sequence where Kimstughna starts
+      name = KaranaInfo.variableKaranaNames[3]; // Kimstughna at position 1
+      isFixed = false;
+    } else if (karanaNumber >= 2 && karanaNumber <= 8) {
+      // Fixed karanas: Bava(2), Balava(3), Kaulava(4), Taitila(5), 
+      // Garaja(6), Vanija(7), Vishti(8)
+      // Map: karanaNumber-1 gives index in fixedKaranaNames
+      final index = (karanaNumber - 2) % 7;
+      name = KaranaInfo.fixedKaranaNames[index];
+      isFixed = true;
     } else {
-      // Repeating fixed karanas
-      final fixedIndex = (karanaNumber - 8) % 7;
+      // Repeating fixed karanas from position 9 onwards
+      // This gives us the standard Bava-Vishti repeating sequence
+      final fixedIndex = (karanaNumber - 9) % 7;
       name = KaranaInfo.fixedKaranaNames[fixedIndex];
       isFixed = true;
     }
@@ -645,9 +672,12 @@ class PanchangaService {
 
   /// Calculates Abhijit Muhurta (the victorious midday period).
   ///
-  /// Abhijit Muhurta is the 8th Muhurta (48-minute period) of the day,
+  /// Abhijit Muhurta is the 8th Muhurta (approximately 48-minute period) of the day,
   /// occurring around midday (local apparent noon). It is considered
   /// highly auspicious and can destroy millions of obstacles.
+  ///
+  /// Traditional calculation: A Muhurta is 1/15th of daytime duration,
+  /// not 1/30th of the full day. Abhijit is the 8th Muhurta.
   ///
   /// [date] - The date to calculate for
   /// [location] - Geographic location
@@ -663,13 +693,16 @@ class PanchangaService {
       location: location,
     );
 
-    // Calculate day duration
+    // Calculate daytime duration
     final dayDuration = sunset.difference(sunrise);
 
-    // A Muhurta is 1/30 of a day (approximately 48 minutes)
-    final muhurtaDuration = dayDuration ~/ 30;
+    // A Muhurta is 1/15th of daytime (traditional calculation)
+    // This gives approximately 48 minutes at equinox, varying by season
+    final muhurtaDuration = Duration(
+      milliseconds: (dayDuration.inMilliseconds / 15).round(),
+    );
 
-    // Abhijit is the 8th Muhurta (7th index, starting from 0)
+    // Abhijit is the 8th Muhurta (7th index, starting from sunrise)
     final abhijitStart = sunrise.add(muhurtaDuration * 7);
     final abhijitEnd = abhijitStart.add(muhurtaDuration);
 
@@ -678,15 +711,19 @@ class PanchangaService {
       startTime: abhijitStart,
       endTime: abhijitEnd,
       duration: muhurtaDuration,
-      description: 'The 8th Muhurta - highly auspicious for all activities',
+      description: 'The 8th Muhurta (~${muhurtaDuration.inMinutes} min) - highly auspicious for all activities',
     );
   }
 
   /// Calculates Brahma Muhurta (the auspicious pre-dawn period).
   ///
-  /// Brahma Muhurta is the 48-minute period ending at sunrise.
-  /// It is considered the most auspicious time for meditation,
-  /// yoga, and spiritual practices.
+  /// Brahma Muhurta is traditionally the 14th Muhurta of the night,
+  /// ending at sunrise. It is considered the most auspicious time 
+  /// for meditation, yoga, and spiritual practices.
+  ///
+  /// Traditional calculation: Night is divided into 15 Muhurtas.
+  /// Brahma Muhurta is the 14th Muhurta (2nd from last), 
+  /// making it 1/15th of nighttime duration.
   ///
   /// [date] - The date to calculate for
   /// [location] - Geographic location
@@ -696,14 +733,24 @@ class PanchangaService {
     required DateTime date,
     required GeographicLocation location,
   }) async {
-    // Get sunrise
-    final (sunrise, _) = await _calculateSunriseSunset(
+    // Get sunrise and sunset
+    final (sunrise, sunset) = await _calculateSunriseSunset(
       dateTime: date,
       location: location,
     );
 
-    // Brahma Muhurta is exactly 48 minutes (2 Muhurtas) before sunrise
-    const brahmaDuration = Duration(minutes: 48);
+    // Calculate nighttime duration (previous sunset to current sunrise)
+    final nightDuration = sunrise.difference(sunset);
+
+    // Traditional: Brahma Muhurta is 14th Muhurta of night = 1/15th of night
+    // This varies by season/latitude, unlike the fixed 48-minute version
+    final brahmaDuration = Duration(
+      milliseconds: (nightDuration.inMilliseconds / 15).round(),
+    );
+
+    // Brahma Muhurta is the 14th Muhurta of night, ending at sunrise
+    // So it starts at: sunrise - 2*muhurtaDuration (since Muhurtas 15-14-13... work backwards)
+    // Alternatively: it's Muhurta 14 counting from sunset = nightDuration * 14/15
     final brahmaStart = sunrise.subtract(brahmaDuration);
     final brahmaEnd = sunrise;
 
@@ -712,7 +759,7 @@ class PanchangaService {
       startTime: brahmaStart,
       endTime: brahmaEnd,
       duration: brahmaDuration,
-      description: 'The auspicious 48-minute period ending at sunrise',
+      description: 'The 14th Muhurta of night (~${brahmaDuration.inMinutes} min) ending at sunrise - highly auspicious for spiritual practices',
     );
   }
 

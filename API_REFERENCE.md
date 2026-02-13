@@ -182,7 +182,7 @@ await jyotish.initialize({String? ephemerisPath});
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `getVimshottariDasha({natalChart, levels?})` | `Future<DashaResult>` | Vimshottari Dasha (120-year) |
+| `getVimshottariDasha({natalChart, levels?, birthTimeUncertainty?, yearLength?})` | `Future<DashaResult>` | Vimshottari Dasha (120-year). yearLength: 365.25 (default) or 360.0 for Savana year |
 | `getYoginiDasha({natalChart, levels?})` | `Future<DashaResult>` | Yogini Dasha (36-year) |
 | `getCharaDasha({natalChart, levels?})` | `Future<CharaDashaResult>` | Chara Dasha (Jaimini) |
 | `getNarayanaDasha({chart, levels?})` | `Future<NarayanaDashaResult>` | Narayana Dasha (Jaimini) |
@@ -578,8 +578,8 @@ final service = PanchangaService(ephemerisService);
 | `getVara(dateTime, location)` | `Future<VaraInfo>` | Vara (weekday lord) |
 | `getNakshatra({dateTime, location})` | `Future<NakshatraInfo>` | Moon's nakshatra |
 | `getTithiEndTime({dateTime, location, accuracyThreshold?})` | `Future<DateTime>` | Precise Tithi end |
-| `calculateAbhijitMuhurta({date, location})` | `Future<AbhijitMuhurta>` | Midday 8th Muhurta |
-| `calculateBrahmaMuhurta({date, location})` | `Future<BrahmaMuhurta>` | Pre-dawn auspicious period |
+| `calculateAbhijitMuhurta({date, location})` | `Future<AbhijitMuhurta>` | 8th Muhurta (1/15th of daytime) |
+| `calculateBrahmaMuhurta({date, location})` | `Future<BrahmaMuhurta>` | 14th Muhurta of night (1/15th of nighttime) |
 | `calculateNighttimeInauspicious({date, location})` | `Future<NighttimeInauspiciousPeriods>` | Night Rahu/Gulika/Yamagandam |
 | `getTithiJunction({targetTithiNumber, startDate, location})` | `Future<DateTime>` | Microsecond-precision Tithi change |
 | `getMoonPhaseDetails({dateTime, location})` | `Future<MoonPhaseDetails>` | Comprehensive lunar data |
@@ -686,15 +686,15 @@ final service = ShadbalaService(ephemerisService);
 |--------|---------|-------------|
 | `calculateShadbala(chart)` | `Map<Planet, ShadbalaResult>` | Complete Shadbala |
 | `calculateHoraLordsForDay({date, location})` | `Future<List<Planet>>` | 24 Hora lords |
-| `checkCombustion({planet, planetLongitude, sunLongitude})` | `CombustionInfo` | Detailed combustion status |
+| `checkCombustion({planet, planetLongitude, sunLongitude, planetSpeed?})` | `CombustionInfo` | Detailed combustion status. planetSpeed enables retrograde-aware orbs for Mercury/Venus |
 
 **Shadbala Components**:
 1. **Sthana Bala** - Positional strength (Uchcha, Saptavargaja, Ojayugma, Drekkana, Kendra)
 2. **Dig Bala** - Directional strength
 3. **Kala Bala** - Temporal strength (Natonnata, Paksha, Tribhaga, VMDH, Ayana)
-4. **Chesta Bala** - Motional strength
+4. **Chesta Bala** - Motional strength (Vakra retrograde, Vikala stationary)
 5. **Naisargika Bala** - Natural strength
-6. **Drik Bala** - Aspectual strength
+6. **Drik Bala** - Aspectual strength (linear interpolation, partial aspects)
 
 ---
 
@@ -1265,7 +1265,7 @@ Solar or lunar eclipse information.
 
 ### AbhijitMuhurta
 
-Abhijit Muhurta timing.
+The 8th Muhurta of daytime. Calculated as 1/15th of daylight duration (traditional). Duration varies by season/location (~45-60 min).
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -1282,7 +1282,7 @@ Abhijit Muhurta timing.
 
 ### BrahmaMuhurta
 
-Brahma Muhurta timing.
+The 14th Muhurta of night, ending at sunrise. Calculated as 1/15th of nighttime (traditional). Duration varies by season/location.
 
 | Property | Type | Description |
 |----------|------|-------------|

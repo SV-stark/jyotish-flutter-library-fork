@@ -571,10 +571,14 @@ class Jyotish {
   /// print('Current dasha: ${dasha.getCurrentPeriodString(DateTime.now())}');
   /// print('Birth nakshatra: ${dasha.birthNakshatra}');
   /// ```
+  /// 
+  /// [yearLength] - Optional year length in days. Default is 365.25 (sidereal).
+  /// Use 360.0 for traditional Savana year calculations.
   Future<DashaResult> getVimshottariDasha({
     required VedicChart natalChart,
     int levels = 3,
     int? birthTimeUncertainty,
+    double yearLength = 365.25,
   }) async {
     _ensureInitialized();
 
@@ -590,6 +594,7 @@ class Jyotish {
         birthDateTime: natalChart.dateTime,
         levels: levels,
         birthTimeUncertainty: birthTimeUncertainty,
+        yearLength: yearLength,
       );
     } catch (e) {
       if (e is JyotishException) rethrow;
