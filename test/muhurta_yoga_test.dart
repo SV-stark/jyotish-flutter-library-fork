@@ -3,7 +3,7 @@ import 'package:jyotish/jyotish.dart';
 
 void main() {
   final service = MuhurtaService();
-  final location = GeographicLocation(
+  final location = const GeographicLocation(
     latitude: 28.6139,
     longitude: 77.2090,
   ); // Delhi

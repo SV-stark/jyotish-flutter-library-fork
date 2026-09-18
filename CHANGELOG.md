@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.0] - 2026-09-18
+
+### Added
+- **Multi-Isolate Concurrency & `JyotishCompute`**:
+  - Implemented `JyotishCompute` (`jyotish_compute.dart`) providing safe, serialized background isolate computation via `JyotishCompute.run()` off the Flutter UI isolate.
+  - Documented Swiss Ephemeris C process-global static state and isolate concurrency constraints on `EphemerisService`.
+- **Fast-Path Daily Sunrise Arithmetic**:
+  - Added `VedicTime.fromSunrises(time, currentSunrise, nextSunrise)` to calculate precise Vedic time directly from pre-computed daily sunrise bounds without hitting native C-FFI.
+  - Implemented daily sunrise bounds caching in `VedicDigitalClock` and `VedicAnalogClock`, eliminating 2–4Hz native C-FFI polling and reducing UI thread battery/CPU overhead.
+- **Integration & Widget Test Suites**:
+  - Added `test/widget_rendering_test.dart` exercising `VedicChartView` (North & South styles), `VedicDigitalClock`, `VedicAnalogClock`, and CustomPainter repaint behavior.
+  - Added `test/comprehensive_services_test.dart` testing previously uncovered services (`AspectService`, `StrengthAnalysisService`, `GocharaVedhaService`, `JaiminiService`, `ArudhaPadaService`, `TajakaService`, `NadiService`).
+  - Total passing tests grew to 190 tests (+20 new tests) with +933 additional covered lines.
+
+### Refactored & Optimized
+- **CustomPainter Repaint Performance**:
+  - Implemented property-based equality checks in `shouldRepaint()` across `NorthIndianChartPainter` and `SouthIndianChartPainter`, eliminating wasteful repaint cycles and text layout recalculations on ancestor widget rebuilds.
+- **Data Model Const Optimization**:
+  - Refactored `GeographicLocation` constructor to be `const` with assert initializers, converting call sites across services and tests to `const` allocations.
+- **Clock Widget Lifecycle**:
+  - Improved `VedicDigitalClock` and `VedicAnalogClock` to properly react to controller and location changes in `didUpdateWidget()`.
+
+### Fixed & Packaging
+- **Android Gradle Cleanup**:
+  - Removed redundant `android/build.gradle.kts` and unified Android configuration in `android/build.gradle` under namespace `com.jyotish` and version `2.20.0`.
+- **Windows Binary Bundling**:
+  - Added `jyotish_bundled_libraries` to `windows/CMakeLists.txt` to ensure `swisseph.dll` is automatically bundled with host Flutter application executables.
+- **iOS Linker & Sandboxing Compatibility**:
+  - Updated `ios/jyotish.podspec` to version `2.20.0`.
+  - Added `DynamicLibrary.process()` and dynamic framework fallback loading in `swisseph_bindings.dart` for standard iOS app sandbox compliance.
+
+---
+
 ## [2.19.0] - 2026-08-25
 
 ### Added

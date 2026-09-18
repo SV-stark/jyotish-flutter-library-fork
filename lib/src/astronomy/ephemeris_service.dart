@@ -13,11 +13,21 @@ import 'package:path/path.dart' as p;
 import 'package:synchronized/synchronized.dart';
 import 'package:jyotish/src/astronomy/planet_position.dart';
 import 'package:jyotish/src/astronomy/astrology_time_service.dart';
+import 'package:jyotish/src/astronomy/jyotish_compute.dart';
 
 /// Service for calculating planetary positions using Swiss Ephemeris.
 ///
 /// This service provides high-level methods for astronomical calculations
 /// using the Swiss Ephemeris library.
+///
+/// ### Multi-Isolate & Concurrency Note:
+/// Swiss Ephemeris is a C shared library containing process-global static state
+/// (e.g. `swe_set_sid_mode`, calculation buffers, and topocentric geographic coordinates).
+/// While [_calculationLock] protects against concurrent calls within a **single isolate**,
+/// executing concurrent calculations across multiple ad-hoc isolates (such as calling
+/// `compute()` or `Isolate.run()` concurrently) can trigger race conditions in C static state.
+/// For safe, off-UI-thread execution in Flutter apps, use [JyotishCompute.run], which
+/// serializes background isolate dispatches to prevent concurrent C-state corruption.
 class EphemerisService {
   static final EphemerisService _sharedInstance = EphemerisService._internal();
 

@@ -180,7 +180,7 @@ class SpecialTransitService {
     required Duration signExitAccuracy,
     required Duration signEntryAccuracy,
   }) async {
-    final location = GeographicLocation(latitude: 0, longitude: 0, altitude: 0);
+    final location = const GeographicLocation(latitude: 0, longitude: 0, altitude: 0);
     final flags = CalculationFlags.defaultFlags();
 
     // Calculate end date using ephemeris projection
@@ -377,7 +377,7 @@ class SpecialTransitService {
       type = houseFromMoon == 4 ? DhaiyaType.fourth : DhaiyaType.eighth;
 
       // Calculate dates using ephemeris-based projection
-      final location = GeographicLocation(
+      final location = const GeographicLocation(
         latitude: 0,
         longitude: 0,
         altitude: 0,

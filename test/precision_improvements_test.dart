@@ -17,7 +17,7 @@ void main() {
   });
 
   group('Precision Improvements Tests', () {
-    final location = GeographicLocation(
+    final location = const GeographicLocation(
       latitude: 28.6139,
       longitude: 77.2090,
       altitude: 216.0,
@@ -122,7 +122,7 @@ void main() {
     test('Verify polar region fallback for sunrise/sunset (Improvement 3)',
         () async {
       // Longyearbyen, Svalbard (Norway) - deep inside Arctic Circle
-      final polarLocation = GeographicLocation(
+      final polarLocation = const GeographicLocation(
         latitude: 78.22,
         longitude: 15.65,
         altitude: 0.0,

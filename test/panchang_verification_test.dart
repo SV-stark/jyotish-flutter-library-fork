@@ -17,7 +17,7 @@ void main() {
     final masaService = MasaService(ephemerisService);
 
     // New Delhi: 28.6139° N, 77.2090° E
-    final location = GeographicLocation(
+    final location = const GeographicLocation(
       latitude: 28.6139,
       longitude: 77.2090,
       altitude: 216.0,

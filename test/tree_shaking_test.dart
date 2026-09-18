@@ -62,7 +62,7 @@ void main() {
     });
 
     test('exports GeographicLocation', () {
-      final location = core.GeographicLocation(
+      final location = const core.GeographicLocation(
         latitude: 28.6139,
         longitude: 77.2090,
       );
@@ -696,7 +696,7 @@ void main() {
   group('Tree Shaking - Selective import usage patterns', () {
     test('can use core module independently', () {
       // Simulates a consumer that only needs core functionality
-      final location = core.GeographicLocation(
+      final location = const core.GeographicLocation(
         latitude: 40.7128,
         longitude: -74.0060,
         timezone: 'America/New_York',

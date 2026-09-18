@@ -238,7 +238,17 @@ class SwissEphBindings {
     // Fall back to standard loading
     if (Platform.isAndroid) {
       return ffi.DynamicLibrary.open('libswisseph.so');
-    } else if (Platform.isIOS || Platform.isMacOS) {
+    } else if (Platform.isIOS) {
+      try {
+        return ffi.DynamicLibrary.process();
+      } catch (_) {
+        try {
+          return ffi.DynamicLibrary.open('jyotish.framework/jyotish');
+        } catch (_) {
+          return ffi.DynamicLibrary.open('libswisseph.dylib');
+        }
+      }
+    } else if (Platform.isMacOS) {
       return ffi.DynamicLibrary.open('libswisseph.dylib');
     } else if (Platform.isLinux) {
       try {
