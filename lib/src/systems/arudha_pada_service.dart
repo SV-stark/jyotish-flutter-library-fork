@@ -205,11 +205,16 @@ class ArudhaPadaService {
     if (sign2 == ownSign && sign1 != ownSign) return sign1;
 
     // Rule 1: More planets in sign
-    final planets1 = chart.planets.values
-        .where((p) => Rashi.fromLongitude(p.longitude) == sign1)
+    final allLongitudes = [
+      ...chart.planets.values.map((p) => p.longitude),
+      chart.rahu.longitude,
+      chart.ketu.longitude,
+    ];
+    final planets1 = allLongitudes
+        .where((lng) => Rashi.fromLongitude(lng) == sign1)
         .length;
-    final planets2 = chart.planets.values
-        .where((p) => Rashi.fromLongitude(p.longitude) == sign2)
+    final planets2 = allLongitudes
+        .where((lng) => Rashi.fromLongitude(lng) == sign2)
         .length;
 
     if (planets1 > planets2) return sign1;

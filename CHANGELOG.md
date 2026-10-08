@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Preserved Whole Sign house invariant so Whole Sign natal and varga charts (`'Whole Sign (Varga)'`) strictly match Rashi placements (0 shifted planets).
   - Added Ketu to `BhavaChalit.shiftedPlanets`.
   - Corrected aspect vector to `(houseCusp - planetLongitude + 360) % 360` in `HouseStrengthService` (aspects cast forward from planet to cusp).
-  - Removed artificial `virupas * 4.8` multiplier in `BhavaBalaService`, categorizing actual virupas directly against BPHS thresholds.
+  - Removed artificial `virupas * 4.8` multiplier in `BhavaBalaService`, and updated `BhavaStrengthCategory` enum thresholds directly to raw virupas (480-600 veryStrong, 420-480 strong, 360-420 moderate, 300-360 weak, 0-300 veryWeak).
 - **Dignity, Compatibility & Natural Friendship**:
   - Reordered `moolaTrikona` check before `ownSigns` in `DivisionalChartService`, restoring the 45.0 Saptavargaja and 18.0 Vimsopaka tiers for Sun, Mars, Mercury, Venus, and Saturn.
   - Natural friendship (Naisargika Maitri) in `RelationshipCalculator`: BPHS Moolatrikona-derived directed relations preserved across all charts.
@@ -36,9 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Corrected Jupiter deep debilitation degree to 275.0° (Capricorn 5°) in `VedicChartService`.
   - Corrected Abhijit Nakshatra end longitude to 280.8888889° in `nakshatra.dart`.
   - Consistently aligned transit special aspects to directed Parashari drishti (Mars 4th at 90°, 8th at 210° forward).
+  - Clamped `totalBala` in `ShadbalaService` to $\ge 0.0$ so negative Planetary War (Yuddha Bala) deductions preserve signal without allowing total Shadbala or Shadbala ratio to drop below zero.
+  - Added Rahu and Ketu to transit calculations (natal position lookup and aspect checks), respecting `natalChart.calculationFlags`.
+  - Added Rahu and Ketu to sign planet counting in `JaiminiService` and `ArudhaPadaService`.
 - **Panchanga & Dasha Systems**:
   - Anchored Amanta lunar month calculation to Sun's longitude at preceding New Moon (Amavasya), ensuring month name constancy across the full synodic cycle across mid-month Sankrantis.
   - Fixed Yogini dasha starting index offset (`(nakshatraIndex + 3) % 8`), Ashtottari nakshatra group distribution `[4, 3, 4, 3, 4, 3, 4, 2]` (Rahu 4, Venus 2), exact duration millisecond consistency, Mahadasha level 0 / Antardasha level 1 bookkeeping.
+  - Kalachakra dasha: synchronized `duration` to exact milliseconds matching `endDate`.
   - Corrected Narayana dasha subperiods: rotated to start from `mahadashaSign` and normalized proportions by total years so all 12 subperiods execute without premature truncation.
 
 ---

@@ -77,12 +77,12 @@ class ShadbalaService {
     final drikBala = _calculateDrikBala(planet, planetInfo, chart);
 
     // Calculate total Shadbala
-    final totalBala = sthanaBala +
+    final totalBala = (sthanaBala +
         digBala +
         kalaBala +
         chestaBala +
         naisargikaBala +
-        drikBala;
+        drikBala).clamp(0.0, double.infinity);
 
     // Determine strength category
     final strengthCategory = _getStrengthCategory(totalBala, planet);

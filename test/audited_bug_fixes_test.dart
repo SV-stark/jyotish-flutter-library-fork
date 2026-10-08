@@ -156,5 +156,31 @@ void main() {
       expect(amanta.month.sanskrit, equals('Vaishakha'));
       expect(purnimanta.month.sanskrit, equals('Jyeshtha'));
     });
+
+    test('7. BhavaStrengthCategory virupas and Kalachakra duration consistency', () async {
+      expect(BhavaStrengthCategory.veryStrong.minStrength, equals(480));
+      expect(BhavaStrengthCategory.strong.minStrength, equals(420));
+      expect(BhavaStrengthCategory.moderate.minStrength, equals(360));
+      expect(BhavaStrengthCategory.weak.minStrength, equals(300));
+      expect(BhavaStrengthCategory.veryWeak.maxStrength, equals(300));
+
+      final jyotish = Jyotish();
+      final kalachakra = jyotish.systems.dasha.getKalachakraDasha(chart, levels: 2);
+      for (final md in kalachakra.allMahadashas) {
+        expect(md.endDate, equals(md.startDate.add(md.duration)));
+        for (final ad in md.subPeriods) {
+          expect(ad.endDate, equals(ad.startDate.add(ad.duration)));
+        }
+      }
+
+      final transits = await jyotish.systems.transit.calculateTransits(
+        natalChart: chart,
+        transitDateTime: DateTime(2026, 5, 2),
+        location: location,
+      );
+      expect(transits.containsKey(Planet.meanNode), isTrue);
+      final rahuTransit = transits[Planet.meanNode]!;
+      expect(rahuTransit.natalPosition, isNotNull);
+    });
   });
 }

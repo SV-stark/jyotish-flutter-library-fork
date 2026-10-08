@@ -195,10 +195,17 @@ class JaiminiService {
   }
 
   List<Planet> _getPlanetsInSign(VedicChart chart, Rashi sign) {
-    return chart.planets.entries
+    final planets = chart.planets.entries
         .where((e) => Rashi.fromLongitude(e.value.longitude) == sign)
         .map((e) => e.key)
         .toList();
+    if (Rashi.fromLongitude(chart.rahu.longitude) == sign) {
+      planets.add(chart.rahu.position.planet);
+    }
+    if (Rashi.fromLongitude(chart.ketu.longitude) == sign) {
+      planets.add(chart.ketu.position.planet);
+    }
+    return planets;
   }
 }
 

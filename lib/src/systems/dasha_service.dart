@@ -825,10 +825,9 @@ class DashaService {
     if (lagnaLord == null) return false;
 
     final lagnaLordInfo = chart.planets[lagnaLord];
-    final rahuInfo =
-        chart.planets[Planet.meanNode] ?? chart.planets[Planet.trueNode];
+    final rahuInfo = chart.rahu;
 
-    if (lagnaLordInfo != null && rahuInfo != null) {
+    if (lagnaLordInfo != null) {
       int houseDiff = rahuInfo.house - lagnaLordInfo.house;
       if (houseDiff < 0) houseDiff += 12;
       final houseDistance = houseDiff + 1;
@@ -1025,7 +1024,9 @@ class DashaService {
       final sign = sequence[idx];
       final years = _getKalachakraYears(sign);
       final durationDays = (idx == 0) ? balanceDays : years * 365.25;
-      final endDate = currentDate.add(Duration(days: durationDays.round()));
+      final duration =
+          Duration(milliseconds: (durationDays * 86400000).round());
+      final endDate = currentDate.add(duration);
 
       List<DashaPeriod> antardashas = [];
       if (levels >= 2) {
@@ -1043,7 +1044,7 @@ class DashaService {
           rashi: sign,
           startDate: currentDate,
           endDate: endDate,
-          duration: Duration(days: durationDays.round()),
+          duration: duration,
           level: 0,
           subPeriods: antardashas,
         ),

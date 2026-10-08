@@ -27,7 +27,8 @@ class TransitService {
     required DateTime transitDateTime,
     required GeographicLocation location,
   }) async {
-    final flags = CalculationFlags.defaultFlags();
+    final flags =
+        natalChart.calculationFlags ?? CalculationFlags.defaultFlags();
     final transits = <Planet, TransitInfo>{};
 
     // Calculate transit positions for traditional planets + nodes
@@ -42,8 +43,14 @@ class TransitService {
       );
 
       // Get natal position for this planet
-      final natalInfo = natalChart.planets[planet];
-      final natalPosition = natalInfo?.position;
+      PlanetPosition? natalPosition;
+      if (natalChart.planets.containsKey(planet)) {
+        natalPosition = natalChart.planets[planet]?.position;
+      } else if (planet == Planet.meanNode || planet == Planet.trueNode) {
+        natalPosition = natalChart.rahu.position;
+      } else if (planet == Planet.ketu) {
+        natalPosition = natalChart.ketu.position;
+      }
 
       // Determine which house the transit planet is in (natal chart houses)
       final transitHouse = natalChart.houses.getHouseForLongitude(
@@ -77,10 +84,16 @@ class TransitService {
   ) {
     const config = AspectConfig.vedic;
 
-    return natalChart.planets.entries
+    final allNatal = <Planet, PlanetPosition>{
+      ...natalChart.planets.map((k, v) => MapEntry(k, v.position)),
+      natalChart.rahu.position.planet: natalChart.rahu.position,
+      natalChart.ketu.position.planet: natalChart.ketu.position,
+    };
+
+    return allNatal.entries
         .map((entry) {
           final natalPlanet = entry.key;
-          final natalPos = entry.value.position;
+          final natalPos = entry.value;
 
           // Calculate angular difference
           var angularDiff = (natalPos.longitude - transitPos.longitude) % 360;

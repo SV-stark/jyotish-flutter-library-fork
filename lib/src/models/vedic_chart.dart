@@ -172,6 +172,19 @@ class KetuPosition {
   /// Ketu's speed (opposite to Rahu)
   double get longitudeSpeed => rahuPosition.longitudeSpeed;
 
+  /// PlanetPosition representation of Ketu
+  PlanetPosition get position => PlanetPosition(
+        planet: Planet.ketu,
+        dateTime: rahuPosition.dateTime,
+        longitude: longitude,
+        latitude: latitude,
+        distance: distance,
+        longitudeSpeed: longitudeSpeed,
+        latitudeSpeed: -rahuPosition.latitudeSpeed,
+        distanceSpeed: rahuPosition.distanceSpeed,
+        isRetrograde: isRetrograde,
+      );
+
   /// Ketu always moves retrograde (like Rahu)
   bool get isRetrograde => true;
 
