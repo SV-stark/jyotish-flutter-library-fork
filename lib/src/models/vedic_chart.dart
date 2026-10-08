@@ -408,6 +408,8 @@ class VedicPlanetInfo {
         'isCombust': isCombust,
         'exaltationDegree': exaltationDegree,
         'debilitationDegree': debilitationDegree,
+        if (positionInSign != null) 'positionInSign': positionInSign,
+        if (subSpan != null) 'subSpan': subSpan,
         'position': position.toJson(),
       };
 
@@ -428,6 +430,8 @@ class VedicPlanetInfo {
       isCombust: json['isCombust'] as bool? ?? false,
       exaltationDegree: (json['exaltationDegree'] as num?)?.toDouble(),
       debilitationDegree: (json['debilitationDegree'] as num?)?.toDouble(),
+      positionInSign: (json['positionInSign'] as num?)?.toDouble(),
+      subSpan: (json['subSpan'] as num?)?.toDouble(),
     );
   }
 
@@ -586,6 +590,8 @@ class VedicChart {
         ),
         'rahu': rahu.toJson(),
         'ketu': ketu.toJson(),
+        if (calculationFlags != null)
+          'calculationFlags': calculationFlags!.toJson(),
       };
 
   /// Creates a VedicChart instance from a JSON map.
@@ -609,6 +615,10 @@ class VedicChart {
 
     final rahuInfo = VedicPlanetInfo.fromJson(json['rahu'] as Map<String, dynamic>);
     final ketuInfo = KetuPosition(rahuPosition: rahuInfo.position);
+    final calculationFlags = json['calculationFlags'] != null
+        ? CalculationFlags.fromJson(
+            json['calculationFlags'] as Map<String, dynamic>)
+        : null;
 
     return VedicChart(
       dateTime: dateTime,
@@ -620,6 +630,7 @@ class VedicChart {
       planets: planets,
       rahu: rahuInfo,
       ketu: ketuInfo,
+      calculationFlags: calculationFlags,
     );
   }
 

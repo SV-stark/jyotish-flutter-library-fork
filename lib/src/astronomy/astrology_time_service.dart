@@ -47,7 +47,16 @@ class AstrologyTimeService {
       return tzDt.toUtc();
     } catch (e) {
       // Fallback to UTC if zone is not found
-      return localDt.toUtc();
+      return DateTime.utc(
+        localDt.year,
+        localDt.month,
+        localDt.day,
+        localDt.hour,
+        localDt.minute,
+        localDt.second,
+        localDt.millisecond,
+        localDt.microsecond,
+      );
     }
   }
 

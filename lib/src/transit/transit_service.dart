@@ -28,11 +28,18 @@ class TransitService {
     required GeographicLocation location,
   }) async {
     final flags =
-        natalChart.calculationFlags ?? CalculationFlags.defaultFlags();
+        natalChart.calculationFlags ?? CalculationFlags.traditionalist();
     final transits = <Planet, TransitInfo>{};
 
     // Calculate transit positions for traditional planets + nodes
-    final planetsToCalculate = [...Planet.traditionalPlanets, Planet.meanNode];
+    final rahuPlanet = flags.nodeType == NodeType.trueNode
+        ? Planet.trueNode
+        : Planet.meanNode;
+    final planetsToCalculate = [
+      ...Planet.traditionalPlanets,
+      rahuPlanet,
+      Planet.ketu,
+    ];
 
     for (final planet in planetsToCalculate) {
       final transitPosition = await _ephemerisService.calculatePlanetPosition(

@@ -246,6 +246,39 @@ class CalculationFlags {
     );
   }
 
+  /// Converts this CalculationFlags to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'system': system.name,
+        'useSwissEphemeris': useSwissEphemeris,
+        'calculateSpeed': calculateSpeed,
+        'siderealMode': siderealMode.name,
+        'useTopocentric': useTopocentric,
+        'useEquatorial': useEquatorial,
+        'nodeType': nodeType.name,
+      };
+
+  /// Creates a CalculationFlags instance from a JSON map.
+  factory CalculationFlags.fromJson(Map<String, dynamic> json) {
+    return CalculationFlags(
+      system: AstrologicalSystem.values.firstWhere(
+        (s) => s.name == json['system'],
+        orElse: () => AstrologicalSystem.traditional,
+      ),
+      useSwissEphemeris: json['useSwissEphemeris'] as bool? ?? true,
+      calculateSpeed: json['calculateSpeed'] as bool? ?? true,
+      siderealMode: SiderealMode.values.firstWhere(
+        (m) => m.name == json['siderealMode'],
+        orElse: () => SiderealMode.lahiri,
+      ),
+      useTopocentric: json['useTopocentric'] as bool? ?? false,
+      useEquatorial: json['useEquatorial'] as bool? ?? false,
+      nodeType: NodeType.values.firstWhere(
+        (n) => n.name == json['nodeType'],
+        orElse: () => NodeType.meanNode,
+      ),
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -151,7 +151,7 @@ class DashaPeriod {
 
   /// Whether this period is currently active
   bool isActiveAt(DateTime date) =>
-      date.isAfter(startDate) && date.isBefore(endDate);
+      !date.isBefore(startDate) && date.isBefore(endDate);
 
   /// Whether this is a mahadasha (major period)
   bool get isMahadasha => level == 0;

@@ -179,8 +179,51 @@ void main() {
         location: location,
       );
       expect(transits.containsKey(Planet.meanNode), isTrue);
+      expect(transits.containsKey(Planet.ketu), isTrue);
       final rahuTransit = transits[Planet.meanNode]!;
       expect(rahuTransit.natalPosition, isNotNull);
+    });
+
+    test('8. Chart JSON preserves flags/sub-spans, DashaPeriod boundaries, and Yoga nature', () {
+      // 1. Chart JSON roundtrip with calculationFlags
+      final chartWithFlags = VedicChart(
+        dateTime: chart.dateTime,
+        location: chart.location,
+        latitude: chart.latitude,
+        longitudeCoord: chart.longitudeCoord,
+        altitude: chart.altitude,
+        houses: chart.houses,
+        planets: chart.planets,
+        rahu: chart.rahu,
+        ketu: chart.ketu,
+        calculationFlags: CalculationFlags.kp(),
+      );
+      final json = chartWithFlags.toJson();
+      final roundtrip = VedicChart.fromJson(json);
+      expect(roundtrip.calculationFlags, isNotNull);
+      expect(roundtrip.flags.isKP, isTrue);
+
+      // 2. DashaPeriod.isActiveAt boundary condition
+      final dashaPeriod = DashaPeriod(
+        rashi: Rashi.aries,
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2027, 1, 1),
+        duration: const Duration(days: 365),
+        level: 0,
+      );
+      expect(dashaPeriod.isActiveAt(DateTime(2026, 1, 1)), isTrue);
+      expect(dashaPeriod.isActiveAt(DateTime(2026, 6, 1)), isTrue);
+      expect(dashaPeriod.isActiveAt(DateTime(2027, 1, 1)), isFalse);
+
+      // 3. Yoga nature includes 1, 15, 19 as malefic
+      const vishkumbha = YogaInfo(number: 1, name: 'Vishkumbha', elapsed: 0.5);
+      const vajra = YogaInfo(number: 15, name: 'Vajra', elapsed: 0.5);
+      const parigha = YogaInfo(number: 19, name: 'Parigha', elapsed: 0.5);
+      const priti = YogaInfo(number: 2, name: 'Priti', elapsed: 0.5);
+      expect(vishkumbha.nature, equals(YogaNature.malefic));
+      expect(vajra.nature, equals(YogaNature.malefic));
+      expect(parigha.nature, equals(YogaNature.malefic));
+      expect(priti.nature, equals(YogaNature.benefic));
     });
   });
 }

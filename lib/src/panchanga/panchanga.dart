@@ -215,14 +215,10 @@ class YogaInfo {
 
   /// Gets the yoga nature (benefic or malefic)
   YogaNature get nature {
-    final maleficYogas = [
-      6,
-      9,
-      10,
-      13,
-      17,
-      27,
-    ]; // Atiganda, Shula, Ganda, Vyaghata, Vyatipata, Vaidhriti
+    // Inauspicious Nitya Yogas per classical Muhurta texts:
+    // 1: Vishkumbha, 6: Atiganda, 9: Shula, 10: Ganda, 13: Vyaghata,
+    // 15: Vajra, 17: Vyatipata, 19: Parigha, 27: Vaidhriti
+    const maleficYogas = [1, 6, 9, 10, 13, 15, 17, 19, 27];
     return maleficYogas.contains(number)
         ? YogaNature.malefic
         : YogaNature.benefic;
@@ -732,8 +728,11 @@ class KaranaInfo {
   /// Gets the karana nature
   KaranaNature get nature {
     if (name == 'Vishti') return KaranaNature.malefic;
-    if (isFixed) return KaranaNature.benefic;
-    return KaranaNature.mixed;
+    if (name == 'Shakuni' || name == 'Chatushpada' || name == 'Naga') {
+      return KaranaNature.malefic;
+    }
+    if (name == 'Kimstughna') return KaranaNature.mixed;
+    return KaranaNature.benefic;
   }
 }
 
