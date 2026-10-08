@@ -236,7 +236,7 @@ class YogaService {
     {
       final isPresent = signMap[Planet.sun] == signMap[Planet.mercury];
       final explanation = isPresent
-          ? 'Sun and Mercury conjoined in sign ${Rashi.fromIndex(signMap[Planet.sun]!).name}'
+          ? 'Sun and Mercury conjoined in sign ${Rashi.fromIndex(signMap[Planet.sun]!).label}'
           : 'Sun and Mercury in different signs';
       result.add(
         NatalYoga(
@@ -347,7 +347,7 @@ class YogaService {
     {
       final isPresent = signMap[Planet.moon] == signMap[Planet.mars];
       final explanation = isPresent
-          ? 'Moon and Mars conjoined in sign ${Rashi.fromIndex(signMap[Planet.moon]!).name}'
+          ? 'Moon and Mars conjoined in sign ${Rashi.fromIndex(signMap[Planet.moon]!).label}'
           : 'Moon and Mars in different signs';
       result.add(
         NatalYoga(

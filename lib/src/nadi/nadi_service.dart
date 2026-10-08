@@ -261,7 +261,7 @@ class NadiService {
     final sign = Rashi.values[signIndex];
 
     final sb = StringBuffer();
-    sb.writeln('Nadi $nadiNumber - ${sign.name}');
+    sb.writeln('Nadi $nadiNumber - ${sign.label}');
     sb.writeln(
       'Position in sign: ${(positionInSign / 150 * 100).toStringAsFixed(1)}%',
     );

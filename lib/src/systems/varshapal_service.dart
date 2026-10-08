@@ -1074,12 +1074,11 @@ class VarshapalService {
     return samvatsaraNames[(yearNumber - 1) % 60];
   }
 
-  /// Gets the current Varsha number based on a date and reference year.
+  /// Gets the current Varsha number based on a date and reference year (1-60).
   static int getCurrentVarshaNumber(DateTime date, {int? referenceYear}) {
-    // This requires knowing a reference point (e.g., 2025 = year 7 in cycle)
-    // The cycle started in 1983 (Prabhava) - year 1
-    referenceYear ??= DateTime.now().year;
-    final yearsSince1983 = referenceYear - 1983;
-    return ((yearsSince1983 % 60) + 1);
+    // The cycle started in 1987 (Prabhava) - year 1
+    referenceYear ??= date.year;
+    final yearsSince1987 = referenceYear - 1987;
+    return (((yearsSince1987 % 60) + 60) % 60) + 1;
   }
 }

@@ -12,13 +12,33 @@ class Ashtakavarga {
     required this.bhinnashtakavarga,
     required this.sarvashtakavarga,
     required this.samudayaAshtakavarga,
+    this.lagnaBhinnashtakavarga,
   });
 
   /// Birth chart used for calculations
   final VedicChart natalChart;
 
-  /// Bhinnashtakavarga for each planet
+  /// Bhinnashtakavarga for each of the 7 grahas (Sun..Saturn).
+  ///
+  /// Deliberately does **not** contain the Ascendant: see
+  /// [lagnaBhinnashtakavarga]. Parashara gives no Rahu/Ketu rows.
   final Map<Planet, Bhinnashtakavarga> bhinnashtakavarga;
+
+  /// The Ascendant's own Bhinnashtakavarga — the 8th row of classical Prastara.
+  ///
+  /// It is kept outside [bhinnashtakavarga] for two reasons:
+  /// 1. That map is keyed by [Planet] and the Ascendant is not a graha, so it
+  ///    has no key there.
+  /// 2. [sarvashtakavarga] is the sum of [bhinnashtakavarga]; the Ascendant is
+  ///    already counted through bit 7 of each graha's contribution mask, so an
+  ///    extra entry in the map would double count it and move the classical
+  ///    337 total.
+  ///
+  /// [Bhinnashtakavarga.bindus] of this row is the binary Prastara cell for the
+  /// Ascendant: 1 when any graha row gives the Ascendant a bindu in that sign,
+  /// 0 otherwise. Bit 7 of its contribution mask is set exactly when it is, so
+  /// [Bhinnashtakavarga.doesAscendantContribute] stays meaningful.
+  final Bhinnashtakavarga? lagnaBhinnashtakavarga;
 
   /// Sarvashtakavarga (total points per house)
   final Sarvashtakavarga sarvashtakavarga;
@@ -69,13 +89,17 @@ class Ashtakavarga {
 /// plus ascendant in each of the 12 signs.
 class Bhinnashtakavarga {
   const Bhinnashtakavarga({
-    required this.planet,
     required this.bindus,
     required this.contributions,
+    this.planet,
   });
 
-  /// The planet this Ashtakavarga belongs to
-  final Planet planet;
+  /// The planet this Bhinnashtakavarga belongs to.
+  ///
+  /// `null` for the Ascendant's own Bhinnashtakavarga (the 8th Prastara row),
+  /// which is exposed via [Ashtakavarga.lagnaBhinnashtakavarga] rather than
+  /// through the [Planet]-keyed [Ashtakavarga.bhinnashtakavarga] map.
+  final Planet? planet;
 
   /// Number of bindus in each sign (0-8)
   final List<int> bindus;
@@ -138,7 +162,10 @@ class Bhinnashtakavarga {
 class Sarvashtakavarga {
   const Sarvashtakavarga({required this.bindus});
 
-  /// Total bindus in each sign (0-11)
+  /// Total bindus in each sign (0-56).
+  ///
+  /// A sign can receive a bindu from each of the 8 Prastara contributors
+  /// (7 grahas + Ascendant), so the per-sign maximum is 56, not 12.
   final List<int> bindus;
 
   /// Alias for `bindus.length` for legacy tests.
@@ -230,10 +257,11 @@ class AshtakavargaTransit {
 /// These tables define which planets contribute bindus (1)
 /// in which signs from the perspective of each planet.
 class AshtakavargaTables {
-  // Contribution tables for each planet
-  // Each row represents a sign (0=Aries, 11=Pisces)
-  // Contribution tables for each planet (Brihat Parashara Hora Shastra)
-  // Each row represents relative house from contributor (0 = 1st house, 11 = 12th house).
+  // Contribution tables for each planet (Brihat Parashara Hora Shastra).
+  // Indexed as table[relativeHouseFromContributor][contributorIndex]:
+  // row 0 = 1st house from the contributor, row 11 = 12th house from it.
+  // Rows are NOT absolute zodiac signs — the caller converts a zodiac sign to a
+  // relative house via (sign - contributorSign + 12) % 12 before indexing.
   // Each column represents the contributor planet in order:
   // Col 0: Sun, Col 1: Moon, Col 2: Mars, Col 3: Mercury, Col 4: Jupiter, Col 5: Venus, Col 6: Saturn.
   // 1 = contributes bindu, 0 = does not contribute.

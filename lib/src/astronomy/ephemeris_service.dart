@@ -492,7 +492,10 @@ class EphemerisService {
           timezoneId: location.timezone,
         );
 
-        final errorBuffer = malloc<ffi.Char>(256);
+        // calloc, not malloc: an unwritten buffer must read as a genuine empty
+        // string rather than stale bytes, so the empty-error case below is
+        // deterministic instead of depending on leftover heap contents.
+        final errorBuffer = calloc<ffi.Char>(256);
         try {
           final result = _bindings!.calculateRiseSet(
             julianDay: julianDay,
@@ -507,16 +510,26 @@ class EphemerisService {
 
           if (result == null) {
             final error = errorBuffer.cast<Utf8>().toDartString();
-            final isCircumpolar = error.toLowerCase().contains('circumpolar') ||
-                error.toLowerCase().contains('always') ||
-                error.toLowerCase().contains('no rise') ||
-                error.toLowerCase().contains('no set') ||
-                error.isEmpty;
-            if (isCircumpolar || location.latitude.abs() >= 60.0) {
+            final normalizedError = error.toLowerCase();
+            // Only a genuine never-rises/never-sets condition justifies a null.
+            // The previous bare `latitude.abs() >= 60.0` clause masked every
+            // failure at high latitude (bad ephemeris data, parse error, empty
+            // error buffer) as "circumpolar", converting real errors into a
+            // bogus result via the caller's +/-6 h noon approximation.
+            final isCircumpolar = normalizedError.contains('circumpolar') ||
+                normalizedError.contains('always') ||
+                normalizedError.contains('no rise') ||
+                normalizedError.contains('no set') ||
+                // What swe_rise_trans actually emits when the body does not
+                // cross the horizon within the search window
+                // ("rise or set not found for planet %d"). Genuinely polar.
+                normalizedError.contains('rise or set not found');
+            if (isCircumpolar) {
               return null;
             }
             throw CalculationException(
-              'Failed to calculate rise/set for planet ${planet.name}: $error',
+              'Failed to calculate rise/set for planet ${planet.name}: '
+              '${error.isEmpty ? '<no error message returned>' : error}',
             );
           }
 
@@ -549,8 +562,13 @@ class EphemerisService {
     double atpress = 0.0,
     double attemp = 0.0,
   }) async {
+    // Key on the calendar day only: getRiseSet anchors its search at
+    // midnight of `date`, so the result depends on Y/M/D plus the location
+    // and refraction inputs — never on the wall-clock time. Including
+    // millisecondsSinceEpoch made every same-day call with a different time
+    // a guaranteed cache miss.
     final cacheKey =
-        '${date.millisecondsSinceEpoch}_${location.timezone}_${location.latitude.toStringAsFixed(6)}_${location.longitude.toStringAsFixed(6)}_${location.altitude.toStringAsFixed(2)}_${atpress.toStringAsFixed(2)}_${attemp.toStringAsFixed(2)}';
+        '${date.year}-${date.month}-${date.day}_${location.timezone}_${location.latitude.toStringAsFixed(6)}_${location.longitude.toStringAsFixed(6)}_${location.altitude.toStringAsFixed(2)}_${atpress.toStringAsFixed(2)}_${attemp.toStringAsFixed(2)}';
     if (_sunriseSunsetCache.containsKey(cacheKey)) {
       final cached = _sunriseSunsetCache.remove(cacheKey)!;
       _sunriseSunsetCache[cacheKey] = cached;
@@ -596,6 +614,12 @@ class EphemerisService {
     double atpress = 0.0,
     double attemp = 0.0,
   }) async {
+    // Find the rise first, then search for the set starting *from* that rise.
+    // Searching both from midnight returns the first rise and the first set
+    // after 00:00, which inverts the pair whenever a body's rise/set straddles
+    // midnight (e.g. the Moon after full moon), yielding set < rise.
+    // This mirrors the lunar-eclipse path, which seeds the moonset search from
+    // the found moonrise via `searchFromExactTime`.
     final riseTime = await getRiseSet(
       planet: planet,
       date: date,
@@ -605,14 +629,46 @@ class EphemerisService {
       attemp: attemp,
     );
 
+    if (riseTime == null) {
+      // No rise on this date. Search the set from midnight as before so a
+      // caller that only wants the set still receives one.
+      final setFromMidnight = await getRiseSet(
+        planet: planet,
+        date: date,
+        location: location,
+        rsmi: SwissEphConstants.calcSet,
+        atpress: atpress,
+        attemp: attemp,
+      );
+      return (null, setFromMidnight);
+    }
+
     final setTime = await getRiseSet(
       planet: planet,
-      date: date,
+      date: riseTime,
       location: location,
       rsmi: SwissEphConstants.calcSet,
       atpress: atpress,
       attemp: attemp,
+      searchFromExactTime: true,
     );
+
+    // swe_rise_trans searches forward from the supplied instant, so a set that
+    // falls on the following day is found normally. Guard anyway: if it still
+    // returns a value at or before the rise, retry from the next day's midnight
+    // rather than returning an inverted pair.
+    if (setTime != null && !setTime.isAfter(riseTime)) {
+      final nextDay = DateTime(date.year, date.month, date.day + 1);
+      final setFromNextDay = await getRiseSet(
+        planet: planet,
+        date: nextDay,
+        location: location,
+        rsmi: SwissEphConstants.calcSet,
+        atpress: atpress,
+        attemp: attemp,
+      );
+      return (riseTime, setFromNextDay);
+    }
 
     return (riseTime, setTime);
   }
@@ -901,7 +957,9 @@ class EphemerisService {
     var high = end.millisecondsSinceEpoch;
 
     for (var i = 0; i < 10; i++) {
-      // 10 iterations enough for ~1 min precision
+      // low/high are epoch-milliseconds (not Julian days). The window is one
+      // day (86,400,000 ms), so 10 halvings leave ~84,000 ms (~1.4 min) of
+      // tolerance — not Julian-day precision.
       final mid = (low + high) ~/ 2;
       final time = DateTime.fromMillisecondsSinceEpoch(mid);
 

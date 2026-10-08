@@ -11,6 +11,25 @@ import 'package:jyotish/src/models/prastara_result.dart';
 /// benefic points (bindus) contributed by each of the seven planets plus
 /// the ascendant in each sign of the zodiac.
 class AshtakavargaService {
+  /// The 7 grahas in mask-bit order (bit 0 .. bit 6).
+  static const List<Planet> _contributorPlanets = [
+    Planet.sun,
+    Planet.moon,
+    Planet.mars,
+    Planet.mercury,
+    Planet.jupiter,
+    Planet.venus,
+    Planet.saturn,
+  ];
+
+  /// Number of graha bits in a contributions mask (bits 0..6).
+  static const int _contributorCount = 7;
+
+  /// Bit position of the Ascendant (Lagna) inside a contributions mask.
+  ///
+  /// Parashara's 8th contributor is the Ascendant, not Rahu or Ketu.
+  static const int _ascendantBit = 1 << 7;
+
   /// Calculates the Prastara Ashtakavarga 96-cell grid for a planet.
   PrastaraResult calculatePrastaraAshtakavarga(
     VedicChart chart,
@@ -37,36 +56,93 @@ class AshtakavargaService {
   ///
   /// [natalChart] - The Vedic birth chart
   ///
-  /// Returns an [Ashtakavarga] with Bhinnashtakavarga for each planet
-  /// and Sarvashtakavarga totals.
+  /// Returns an [Ashtakavarga] with Bhinnashtakavarga for each of the 7 grahas,
+  /// the Ascendant's own 8th Prastara row, and the Sarvashtakavarga totals.
   Ashtakavarga calculateAshtakavarga(VedicChart natalChart) {
     final bhinnashtakavarga = <Planet, Bhinnashtakavarga>{
-      for (final planet in [
-        Planet.sun,
-        Planet.moon,
-        Planet.mars,
-        Planet.mercury,
-        Planet.jupiter,
-        Planet.venus,
-        Planet.saturn,
-      ])
+      for (final planet in _contributorPlanets)
         planet: _calculateBhinnashtakavarga(planet, natalChart),
     };
 
-    // Calculate Sarvashtakavarga
-    final sarvashtakavarga = _calculateSarvashtakavarga(bhinnashtakavarga);
-
-    // Calculate Samudaya Ashtakavarga
-    final samudayaAshtakavarga = _calculateSamudayaAshtakavarga(
+    return _assemble(
+      natalChart,
       bhinnashtakavarga,
+      _calculateLagnaBhinnashtakavarga(bhinnashtakavarga),
     );
+  }
 
+  /// Builds an [Ashtakavarga] from an already-computed map of graha BAVs.
+  ///
+  /// Only the 7 graha entries are summed into the Sarvashtakavarga, so the
+  /// classical 337 total is preserved regardless of [lagnaBav].
+  Ashtakavarga _assemble(
+    VedicChart natalChart,
+    Map<Planet, Bhinnashtakavarga> bhinnashtakavarga,
+    Bhinnashtakavarga? lagnaBav,
+  ) {
     return Ashtakavarga(
       natalChart: natalChart,
       bhinnashtakavarga: bhinnashtakavarga,
-      sarvashtakavarga: sarvashtakavarga,
-      samudayaAshtakavarga: samudayaAshtakavarga,
+      sarvashtakavarga: _calculateSarvashtakavarga(bhinnashtakavarga),
+      samudayaAshtakavarga: _calculateSamudayaAshtakavarga(bhinnashtakavarga),
+      lagnaBhinnashtakavarga: lagnaBav,
     );
+  }
+
+  /// Calculates the Ascendant's own Bhinnashtakavarga (the 8th Prastara row).
+  ///
+  /// Classical Prastara is an 8x12 grid of bindu/rekha cells whose rows are the
+  /// 7 grahas plus the Ascendant. A Prastara row is binary per sign, so the
+  /// Ascendant row is too: `bindus[sign]` is 1 when the Ascendant is given a
+  /// bindu in that sign and 0 otherwise, and `contributions[sign]` carries only
+  /// bit 7 (the Ascendant) when it is.
+  ///
+  /// A sign qualifies when *any* of the 7 graha rows credits the Ascendant
+  /// there — i.e. via [Bhinnashtakavarga.doesAscendantContribute], the same
+  /// predicate that populates bit 7 of every graha row. Which grahas those are
+  /// is not lost: it is already readable from bit 7 of each graha row's mask.
+  ///
+  /// The invariant `popcount(contributions[sign]) == bindus[sign]` therefore
+  /// holds here too, and [Bhinnashtakavarga.doesAscendantContribute] returns
+  /// exactly `bindus[sign] > 0` for this row.
+  ///
+  /// This row is **not** part of the Sarvashtakavarga sum — the Ascendant is
+  /// already counted once via bit 7 of each graha's mask.
+  Bhinnashtakavarga _calculateLagnaBhinnashtakavarga(
+    Map<Planet, Bhinnashtakavarga> bhinnashtakavarga,
+  ) {
+    final bindus = List<int>.filled(12, 0);
+    final contributions = List<int>.filled(12, 0);
+
+    for (var signIndex = 0; signIndex < 12; signIndex++) {
+      var ascendantContributed = false;
+      for (var i = 0; i < _contributorCount; i++) {
+        final bav = bhinnashtakavarga[_contributorPlanets[i]];
+        if (bav == null) continue;
+        if (bav.doesAscendantContribute(signIndex)) {
+          ascendantContributed = true;
+          break;
+        }
+      }
+      bindus[signIndex] = ascendantContributed ? 1 : 0;
+      contributions[signIndex] = ascendantContributed ? _ascendantBit : 0;
+    }
+
+    return Bhinnashtakavarga(
+      bindus: bindus,
+      contributions: contributions,
+    );
+  }
+
+  /// Counts the set bits of a contributions mask.
+  static int _popCount(int mask) {
+    var remaining = mask;
+    var count = 0;
+    while (remaining != 0) {
+      remaining &= remaining - 1;
+      count++;
+    }
+    return count;
   }
 
   /// Calculates Bhinnashtakavarga for a single planet.
@@ -88,15 +164,8 @@ class AshtakavargaService {
     }
 
     // Calculate contributions from each contributing planet
-    final contributingPlanets = [
-      Planet.sun,
-      Planet.moon,
-      Planet.mars,
-      Planet.mercury,
-      Planet.jupiter,
-      Planet.venus,
-      Planet.saturn,
-    ];
+    // Calculate contributions from each planet (Sun..Saturn, mask bits 0..6)
+    const contributingPlanets = _contributorPlanets;
 
     for (var signIndex = 0; signIndex < 12; signIndex++) {
       var binduCount = 0;
@@ -133,7 +202,7 @@ class AshtakavargaService {
       // Ascendant contribution varies by planet
       if (_doesAscendantContribute(subjectPlanet, relativeAscendant)) {
         binduCount++;
-        contributionMask |= 1 << 7; // Use bit 7 for ascendant
+        contributionMask |= _ascendantBit; // bit 7 = Ascendant
       }
 
       bindus[signIndex] = binduCount;
@@ -192,18 +261,16 @@ class AshtakavargaService {
   }
 
   /// Calculates Samudaya Ashtakavarga (total for all planets).
+  ///
+  /// Samudaya is *by definition* the sum of every Bhinnashtakavarga, which is
+  /// exactly what [_calculateSarvashtakavarga] computes, so it delegates rather
+  /// than repeating the fold. Returns a copy so the two lists stay independent.
   List<int> _calculateSamudayaAshtakavarga(
     Map<Planet, Bhinnashtakavarga> bhinnashtakavarga,
   ) {
-    // Samudaya is the same as Sarvashtakavarga total
-    final totals = List<int>.filled(12, 0);
-    for (var i = 0; i < 12; i++) {
-      totals[i] = bhinnashtakavarga.values.fold<int>(
-        0,
-        (sum, bav) => sum + bav.bindus[i],
-      );
-    }
-    return totals;
+    return List<int>.from(
+      _calculateSarvashtakavarga(bhinnashtakavarga).bindus,
+    );
   }
 
   /// Analyzes transit favorability based on Ashtakavarga.
@@ -293,60 +360,112 @@ class AshtakavargaService {
       for (final planet in ashtakavarga.bhinnashtakavarga.keys)
         planet: () {
           final bav = ashtakavarga.bhinnashtakavarga[planet]!;
-          final reducedBindus = List<int>.from(bav.bindus);
-
-          for (final trikona in _trikonas) {
-            final bindu1 = bav.bindus[trikona[0]];
-            final bindu2 = bav.bindus[trikona[1]];
-            final bindu3 = bav.bindus[trikona[2]];
-
-            // BPHS Rule 1: If any sign in the trine has 0, no reduction is made
-            if (bindu1 == 0 || bindu2 == 0 || bindu3 == 0) {
-              continue;
-            }
-
-            // BPHS Rule 2: If all three signs are equal, eliminate all (set to 0)
-            if (bindu1 == bindu2 && bindu2 == bindu3) {
-              reducedBindus[trikona[0]] = 0;
-              reducedBindus[trikona[1]] = 0;
-              reducedBindus[trikona[2]] = 0;
-              continue;
-            }
-
-            // BPHS Rule 3: If unequal, deduct the smallest from the other two
-            final minBindu = [bindu1, bindu2, bindu3].reduce(math.min);
-            if (bindu1 > minBindu) {
-              reducedBindus[trikona[0]] = bindu1 - minBindu;
-            }
-            if (bindu2 > minBindu) {
-              reducedBindus[trikona[1]] = bindu2 - minBindu;
-            }
-            if (bindu3 > minBindu) {
-              reducedBindus[trikona[2]] = bindu3 - minBindu;
-            }
-          }
-
-          return Bhinnashtakavarga(
-            planet: planet,
-            bindus: reducedBindus,
-            contributions: bav.contributions,
+          return _withRebuiltMask(
+            bav,
+            _reduceTrikona(bav.bindus),
           );
         }(),
     };
 
-    // Recalculate Sarvashtakavarga
-    final sarvashtakavarga = _calculateSarvashtakavarga(
-      reducedBhinnashtakavarga,
-    );
+    // The Ascendant's own Prastara row is reduced with the same rules so the
+    // reduced chart stays internally consistent.
+    final rawLagna = ashtakavarga.lagnaBhinnashtakavarga;
+    final reducedLagna = rawLagna == null
+        ? null
+        : _withRebuiltMask(rawLagna, _reduceTrikona(rawLagna.bindus));
 
-    return Ashtakavarga(
-      natalChart: ashtakavarga.natalChart,
-      bhinnashtakavarga: reducedBhinnashtakavarga,
-      sarvashtakavarga: sarvashtakavarga,
-      samudayaAshtakavarga: _calculateSamudayaAshtakavarga(
-        reducedBhinnashtakavarga,
-      ),
+    return _assemble(
+      ashtakavarga.natalChart,
+      reducedBhinnashtakavarga,
+      reducedLagna,
     );
+  }
+
+  /// Applies the BPHS Ch. 68 Trikona rules to a 12-entry bindu array.
+  ///
+  /// The rules are unchanged; they are simply factored out so they can be
+  /// shared by the graha BAVs and the Ascendant's own row.
+  List<int> _reduceTrikona(List<int> bindus) {
+    final reducedBindus = List<int>.from(bindus);
+
+    for (final trikona in _trikonas) {
+      final bindu1 = bindus[trikona[0]];
+      final bindu2 = bindus[trikona[1]];
+      final bindu3 = bindus[trikona[2]];
+
+      // BPHS Rule 1: If any sign in the trine has 0, no reduction is made
+      if (bindu1 == 0 || bindu2 == 0 || bindu3 == 0) {
+        continue;
+      }
+
+      // BPHS Rule 2: If all three signs are equal, eliminate all (set to 0)
+      if (bindu1 == bindu2 && bindu2 == bindu3) {
+        reducedBindus[trikona[0]] = 0;
+        reducedBindus[trikona[1]] = 0;
+        reducedBindus[trikona[2]] = 0;
+        continue;
+      }
+
+      // BPHS Rule 3: If unequal, deduct the smallest from the other two
+      final minBindu = [bindu1, bindu2, bindu3].reduce(math.min);
+      if (bindu1 > minBindu) {
+        reducedBindus[trikona[0]] = bindu1 - minBindu;
+      }
+      if (bindu2 > minBindu) {
+        reducedBindus[trikona[1]] = bindu2 - minBindu;
+      }
+      if (bindu3 > minBindu) {
+        reducedBindus[trikona[2]] = bindu3 - minBindu;
+      }
+    }
+
+    return reducedBindus;
+  }
+
+  /// Rebuilds a [Bhinnashtakavarga] from reduced bindus and a matching mask.
+  ///
+  /// A Shodhana reduction only produces counts, not contributor identities, so
+  /// the mask is re-derived from the reduced values instead of being copied
+  /// from the unreduced chart (which previously let a reduced BAV's Prastara
+  /// breakdown contradict its own bindu count).
+  Bhinnashtakavarga _withRebuiltMask(Bhinnashtakavarga bav, List<int> reduced) {
+    return Bhinnashtakavarga(
+      planet: bav.planet,
+      bindus: reduced,
+      contributions: [
+        for (var sign = 0; sign < 12; sign++)
+          _maskForReducedBindus(bav.contributions[sign], reduced[sign]),
+      ],
+    );
+  }
+
+  /// Derives the contribution mask for one sign from its reduced bindu count.
+  ///
+  /// Invariant: the result's population count always equals [reducedCount].
+  /// - [reducedCount] <= 0  -> mask cleared (no contributor survives).
+  /// - nothing removed     -> the original mask is kept verbatim.
+  /// - otherwise           -> the Ascendant bit (bit 7) is retained whenever it
+  ///   was present, and the lowest-indexed graha bits are filled in to reach
+  ///   [reducedCount]. Shodhana does not identify *which* contributors were
+  ///   removed, so this deterministic choice keeps the mask well-formed.
+  int _maskForReducedBindus(int rawMask, int reducedCount) {
+    if (reducedCount <= 0) return 0;
+
+    final rawCount = _popCount(rawMask);
+    if (reducedCount >= rawCount) return rawMask;
+
+    final ascendantSurvives = (rawMask & _ascendantBit) != 0;
+    var mask = ascendantSurvives ? _ascendantBit : 0;
+    var remaining = reducedCount - (ascendantSurvives ? 1 : 0);
+
+    for (var i = 0; i < _contributorCount && remaining > 0; i++) {
+      if (rawMask & (1 << i) != 0) {
+        mask |= 1 << i;
+        remaining--;
+      }
+    }
+
+    return mask;
   }
 
   /// Applies Ekadhipati Shodhana (Reduction for Same Lordship).
@@ -372,66 +491,73 @@ class AshtakavargaService {
       for (final planet in ashtakavarga.bhinnashtakavarga.keys)
         planet: () {
           final bav = ashtakavarga.bhinnashtakavarga[planet]!;
-          final reducedBindus = List<int>.from(bav.bindus);
-
-          // Apply classical BPHS reduction to each planet's dual signs
-          for (final signPair in _dualSigns) {
-            final sign1 = signPair[0];
-            final sign2 = signPair[1];
-            final bindu1 = reducedBindus[sign1];
-            final bindu2 = reducedBindus[sign2];
-
-            final occ1 = occupiedSigns.contains(sign1);
-            final occ2 = occupiedSigns.contains(sign2);
-
-            // Case 1: Both signs unoccupied
-            if (!occ1 && !occ2) {
-              if (bindu1 == bindu2) {
-                reducedBindus[sign1] = 0;
-                reducedBindus[sign2] = 0;
-              } else {
-                final minBindu = bindu1 < bindu2 ? bindu1 : bindu2;
-                reducedBindus[sign1] = minBindu;
-                reducedBindus[sign2] = minBindu;
-              }
-            }
-            // Case 2: One sign occupied, one unoccupied
-            else if (occ1 && !occ2) {
-              if (bindu2 > bindu1) {
-                reducedBindus[sign2] = bindu1;
-              } else {
-                reducedBindus[sign2] = 0;
-              }
-            } else if (!occ1 && occ2) {
-              if (bindu1 > bindu2) {
-                reducedBindus[sign1] = bindu2;
-              } else {
-                reducedBindus[sign1] = 0;
-              }
-            }
-          }
-
-          return Bhinnashtakavarga(
-            planet: planet,
-            bindus: reducedBindus,
-            contributions: bav.contributions,
+          return _withRebuiltMask(
+            bav,
+            _reduceEkadhipati(bav.bindus, occupiedSigns),
           );
         }(),
     };
 
-    // Recalculate Sarvashtakavarga
-    final sarvashtakavarga = _calculateSarvashtakavarga(
-      reducedBhinnashtakavarga,
-    );
+    final rawLagna = ashtakavarga.lagnaBhinnashtakavarga;
+    final reducedLagna = rawLagna == null
+        ? null
+        : _withRebuiltMask(
+            rawLagna,
+            _reduceEkadhipati(rawLagna.bindus, occupiedSigns),
+          );
 
-    return Ashtakavarga(
-      natalChart: ashtakavarga.natalChart,
-      bhinnashtakavarga: reducedBhinnashtakavarga,
-      sarvashtakavarga: sarvashtakavarga,
-      samudayaAshtakavarga: _calculateSamudayaAshtakavarga(
-        reducedBhinnashtakavarga,
-      ),
+    return _assemble(
+      ashtakavarga.natalChart,
+      reducedBhinnashtakavarga,
+      reducedLagna,
     );
+  }
+
+  /// Applies the BPHS Ch. 67 Ekadhipati rules to a 12-entry bindu array.
+  ///
+  /// The rules are unchanged; they are factored out so they can be shared by
+  /// the graha BAVs and the Ascendant's own row.
+  List<int> _reduceEkadhipati(List<int> bindus, Set<int> occupiedSigns) {
+    final reducedBindus = List<int>.from(bindus);
+
+    // Apply classical BPHS reduction to each planet's dual signs
+    for (final signPair in _dualSigns) {
+      final sign1 = signPair[0];
+      final sign2 = signPair[1];
+      final bindu1 = reducedBindus[sign1];
+      final bindu2 = reducedBindus[sign2];
+
+      final occ1 = occupiedSigns.contains(sign1);
+      final occ2 = occupiedSigns.contains(sign2);
+
+      // Case 1: Both signs unoccupied
+      if (!occ1 && !occ2) {
+        if (bindu1 == bindu2) {
+          reducedBindus[sign1] = 0;
+          reducedBindus[sign2] = 0;
+        } else {
+          final minBindu = bindu1 < bindu2 ? bindu1 : bindu2;
+          reducedBindus[sign1] = minBindu;
+          reducedBindus[sign2] = minBindu;
+        }
+      }
+      // Case 2: One sign occupied, one unoccupied
+      else if (occ1 && !occ2) {
+        if (bindu2 > bindu1) {
+          reducedBindus[sign2] = bindu1;
+        } else {
+          reducedBindus[sign2] = 0;
+        }
+      } else if (!occ1 && occ2) {
+        if (bindu1 > bindu2) {
+          reducedBindus[sign1] = bindu2;
+        } else {
+          reducedBindus[sign1] = 0;
+        }
+      }
+    }
+
+    return reducedBindus;
   }
 
   /// Calculates Pinda (Planetary Strength) from Ashtakavarga.
@@ -496,7 +622,7 @@ class AshtakavargaService {
             planet: planet,
             totalPinda: totalPinda,
             signPindas: signPindas,
-            averagePinda: totalPinda / 12,
+            pindaPerSign: totalPinda / 12,
           );
         }(),
     };
@@ -540,7 +666,7 @@ class AshtakavargaService {
             planet: planet,
             totalYogaPinda: totalYogaPinda,
             signYogaPindas: signYogaPindas,
-            averageYogaPinda: totalYogaPinda / 12,
+            yogaPindaPerSign: totalYogaPinda / 12,
             strengthRating: _getYogaPindaRating(totalYogaPinda),
           );
         }(),
@@ -592,8 +718,10 @@ class AshtakavargaService {
       yogaPinda: yogaPinda,
       totalReducedPinda: totalReducedPinda,
       totalYogaPinda: totalYogaPinda,
-      averageReducedPinda: totalReducedPinda / reducedPinda.length,
-      averageYogaPinda: totalYogaPinda / yogaPinda.length,
+      reducedPindaPerPlanet:
+          reducedPinda.isEmpty ? 0.0 : totalReducedPinda / reducedPinda.length,
+      yogaPindaPerPlanet:
+          yogaPinda.isEmpty ? 0.0 : totalYogaPinda / yogaPinda.length,
     );
   }
 
@@ -691,20 +819,31 @@ class PindaResult {
     required this.planet,
     required this.totalPinda,
     required this.signPindas,
-    required this.averagePinda,
+    required this.pindaPerSign,
   });
 
   final Planet planet;
+
+  /// Total Pinda = Rashi Pinda (all 12 signs) + Graha Pinda.
   final double totalPinda;
+
+  /// Pinda contribution of each individual sign.
   final Map<int, double> signPindas;
-  final double averagePinda;
+
+  /// Mean Pinda per sign: [totalPinda] / 12.
+  ///
+  /// DERIVED CONVENIENCE, NOT A CLASSICAL FIGURE. Pinda is already a weighted
+  /// score (bindus x Rashi/Graha multiplier), not a bindu count, and the Graha
+  /// Pinda component is not sign-indexed — so dividing by 12 does not yield a
+  /// meaningful "bindus per sign". Use [totalPinda] or [signPindas].
+  final double pindaPerSign;
 
   /// Gets Pinda for a specific sign
   double getPindaForSign(int signIndex) => signPindas[signIndex] ?? 0.0;
 
   @override
   String toString() {
-    return '${planet.displayName}: ${totalPinda.toStringAsFixed(1)} total, ${averagePinda.toStringAsFixed(1)} avg';
+    return '${planet.displayName}: ${totalPinda.toStringAsFixed(1)} total, ${pindaPerSign.toStringAsFixed(1)} per sign';
   }
 }
 
@@ -714,14 +853,21 @@ class YogaPindaResult {
     required this.planet,
     required this.totalYogaPinda,
     required this.signYogaPindas,
-    required this.averageYogaPinda,
+    required this.yogaPindaPerSign,
     required this.strengthRating,
   });
 
   final Planet planet;
   final double totalYogaPinda;
   final Map<int, double> signYogaPindas;
-  final double averageYogaPinda;
+
+  /// Mean Yoga Pinda per sign: [totalYogaPinda] / 12.
+  ///
+  /// DERIVED CONVENIENCE, NOT A CLASSICAL FIGURE. "Yoga Pinda" itself has no
+  /// standard per-sign mean in BPHS, and a fractional Pinda is not a bindu.
+  /// Use [totalYogaPinda] or [signYogaPindas].
+  final double yogaPindaPerSign;
+
   final YogaPindaRating strengthRating;
 
   /// Gets Yoga Pinda for a specific sign
@@ -761,8 +907,8 @@ class ShodhyaPindaResult {
     required this.yogaPinda,
     required this.totalReducedPinda,
     required this.totalYogaPinda,
-    required this.averageReducedPinda,
-    required this.averageYogaPinda,
+    required this.reducedPindaPerPlanet,
+    required this.yogaPindaPerPlanet,
   });
 
   /// Ashtakavarga after Trikona Shodhana
@@ -783,11 +929,19 @@ class ShodhyaPindaResult {
   /// Total Yoga Pinda across all planets
   final double totalYogaPinda;
 
-  /// Average reduced Pinda per planet
-  final double averageReducedPinda;
+  /// Mean reduced Pinda per planet: [totalReducedPinda] / number of grahas.
+  ///
+  /// DERIVED CONVENIENCE, NOT A CLASSICAL FIGURE. There is no BPHS "average
+  /// reduced Pinda" quantity. Divisor is the graha count (7), not the sign
+  /// count, so it is not a per-sign figure and is never fractional bindus.
+  final double reducedPindaPerPlanet;
 
-  /// Average Yoga Pinda per planet
-  final double averageYogaPinda;
+  /// Mean Yoga Pinda per planet: [totalYogaPinda] / number of grahas.
+  ///
+  /// DERIVED CONVENIENCE, NOT A CLASSICAL FIGURE — see
+  /// [reducedPindaPerPlanet]. Note this is a *per planet* mean and is distinct
+  /// from [YogaPindaResult.yogaPindaPerSign].
+  final double yogaPindaPerPlanet;
 
   /// Gets Yoga Pinda for a specific planet
   YogaPindaResult? getYogaPindaForPlanet(Planet planet) => yogaPinda[planet];
@@ -797,10 +951,10 @@ class ShodhyaPindaResult {
 
   /// Overall strength assessment
   ShodhyaStrength get overallStrength {
-    if (averageYogaPinda >= 25) return ShodhyaStrength.veryStrong;
-    if (averageYogaPinda >= 20) return ShodhyaStrength.strong;
-    if (averageYogaPinda >= 15) return ShodhyaStrength.moderate;
-    if (averageYogaPinda >= 10) return ShodhyaStrength.weak;
+    if (yogaPindaPerPlanet >= 25) return ShodhyaStrength.veryStrong;
+    if (yogaPindaPerPlanet >= 20) return ShodhyaStrength.strong;
+    if (yogaPindaPerPlanet >= 15) return ShodhyaStrength.moderate;
+    if (yogaPindaPerPlanet >= 10) return ShodhyaStrength.weak;
     return ShodhyaStrength.veryWeak;
   }
 }

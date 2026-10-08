@@ -428,7 +428,6 @@ class SpecialTransitService {
     var lateBound = checkDate;
 
     const maxIterations = 50;
-    const accuracyThreshold = Duration(hours: 1);
 
     for (var i = 0; i < maxIterations; i++) {
       if (lateBound.difference(earlyBound) <= accuracyThreshold) {

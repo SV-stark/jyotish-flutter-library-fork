@@ -10,6 +10,7 @@ class SpecialLagnasService {
   SpecialLagnas calculateSpecialLagnas(VedicChart chart, DateTime sunrise) {
     final ascendant = chart.ascendant;
     final birthTime = chart.dateTime;
+    final sunLong = chart.getPlanet(Planet.sun)?.longitude ?? 0.0;
 
     // Calculate elapsed time in hours from sunrise to birth time.
     var elapsedMs = birthTime.difference(sunrise).inMilliseconds;
@@ -19,11 +20,13 @@ class SpecialLagnasService {
     }
     final elapsedHours = elapsedMs / (1000 * 60 * 60);
 
-    // 1. Hora Lagna (HL): 2.5 hours (150 minutes or 6 ghatis) per sign (30 degrees)
-    final horaLagna = (ascendant + (elapsedHours / 2.5) * 30.0) % 360.0;
+    // 1. Hora Lagna (HL): 2.5 ghatis (1 hour = 60 minutes) per sign (30 degrees).
+    // Anchored at Sun's longitude at sunrise/birth per BPHS Ch. 5.
+    final horaLagna = (sunLong + elapsedHours * 30.0) % 360.0;
 
-    // 2. Ghati Lagna (GL): 0.4 hours (24 minutes or 1 ghati) per sign (30 degrees)
-    final ghatiLagna = (ascendant + (elapsedHours / 0.4) * 30.0) % 360.0;
+    // 2. Ghati Lagna (GL): 1 ghati (0.4 hours = 24 minutes) per sign (30 degrees).
+    // Anchored at Sun's longitude per BPHS Ch. 5.
+    final ghatiLagna = (sunLong + (elapsedHours / 0.4) * 30.0) % 360.0;
 
     // 3. Sree Lagna (SL): Point of Lakshmi based on Moon's nakshatra fraction added to Ascendant.
     final moonInfo = chart.getPlanet(Planet.moon);

@@ -702,13 +702,26 @@ class KaranaInfo {
   /// Karana name
   final String name;
 
-  /// Whether it's a fixed karana (first 7) or variable
+  /// Whether it's a fixed (Sthira) karana - true only for the 4 Sthira
+  /// karanas (Kimstughna, Shakuni, Chatushpada, Naga); false for the 7
+  /// repeating (Chara) karanas.
   final bool isFixed;
 
   /// Elapsed portion of the karana (0.0 - 1.0)
   final double elapsed;
 
+  /// The 4 fixed (Sthira) karanas, which occur at fixed points of the lunar
+  /// month: Kimstughna, Shakuni, Chatushpada and Naga.
   static const List<String> fixedKaranaNames = [
+    'Shakuni',
+    'Chatushpada',
+    'Naga',
+    'Kimstughna',
+  ];
+
+  /// The 7 repeating (Chara/movable) karanas, which recur throughout the
+  /// 60-karana cycle: Bava, Balava, Kaulava, Taitila, Garaja, Vanija, Vishti.
+  static const List<String> variableKaranaNames = [
     'Bava',
     'Balava',
     'Kaulava',
@@ -716,13 +729,6 @@ class KaranaInfo {
     'Garaja',
     'Vanija',
     'Vishti',
-  ];
-
-  static const List<String> variableKaranaNames = [
-    'Shakuni',
-    'Chatushpada',
-    'Naga',
-    'Kimstughna',
   ];
 
   /// Gets the karana nature

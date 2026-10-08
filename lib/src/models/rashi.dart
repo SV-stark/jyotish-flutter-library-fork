@@ -15,10 +15,14 @@ enum Rashi {
   aquarius('Aquarius', 'Kumbha', 10),
   pisces('Pisces', 'Meena', 11);
 
-  const Rashi(this.name, this.sanskritName, this.number);
+  const Rashi(this.label, this.sanskritName, this.number);
 
-  /// English name of the sign
-  final String name;
+  /// Human-readable English name of the sign, for display only.
+  ///
+  /// Deliberately **not** called `name`: that would shadow the enum's own
+  /// `name` getter, so `Rashi.aries.name` would return 'Aries' instead of the
+  /// identifier 'aries'.  Use the identifier for persistence and matching.
+  final String label;
 
   /// Sanskrit name of the sign
   final String sanskritName;
@@ -65,5 +69,5 @@ enum Rashi {
       };
 
   @override
-  String toString() => name;
+  String toString() => label;
 }

@@ -40,7 +40,11 @@ class HouseSystem {
   /// The Midheaven (MC) degree
   final double midheaven;
 
-  /// Gets the house number (1-12) for a given longitude
+  /// Gets the house number (1-12) for a given longitude.
+  ///
+  /// Throws [ArgumentError] if the longitude falls in no cusp interval, which
+  /// means [cusps] is malformed (unsorted or containing duplicates).  This
+  /// used to silently report house 1, producing a wrong answer with no signal.
   int getHouseForLongitude(double longitude) {
     final lon = (longitude % 360.0 + 360.0) % 360.0;
     for (var i = 0; i < 12; i++) {
@@ -58,7 +62,12 @@ class HouseSystem {
         }
       }
     }
-    return 1; // Default to first house
+    throw ArgumentError.value(
+      longitude,
+      'longitude',
+      'No house interval contains this longitude. The house cusps are '
+      'malformed (unsorted or containing duplicates): $cusps',
+    );
   }
 
   /// Gets the 0-based zodiac sign index of the Ascendant (0=Aries, 11=Pisces).
@@ -649,6 +658,7 @@ class VedicChart {
     Map<Planet, VedicPlanetInfo>? planets,
     VedicPlanetInfo? rahu,
     KetuPosition? ketu,
+    CalculationFlags? calculationFlags,
   }) {
     return VedicChart(
       dateTime: dateTime ?? this.dateTime,
@@ -660,6 +670,7 @@ class VedicChart {
       planets: planets ?? this.planets,
       rahu: rahu ?? this.rahu,
       ketu: ketu ?? this.ketu,
+      calculationFlags: calculationFlags ?? this.calculationFlags,
     );
   }
 

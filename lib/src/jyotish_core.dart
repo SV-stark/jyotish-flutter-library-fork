@@ -2222,9 +2222,9 @@ class Jyotish {
   /// );
   ///
   /// for (final mahadasha in charaDasha.allMahadashas) {
-  ///   print('${mahadasha.rashi?.name}: ${mahadasha.startDate} - ${mahadasha.endDate}');
+  ///   print('${mahadasha.rashi?.label}: ${mahadasha.startDate} - ${mahadasha.endDate}');
   ///   for (final antardasha in mahadasha.subPeriods) {
-  ///     print('  ${antardasha.rashi?.name}: ${antardasha.startDate} - ${antardasha.endDate}');
+  ///     print('  ${antardasha.rashi?.label}: ${antardasha.startDate} - ${antardasha.endDate}');
   ///   }
   /// }
   /// ```
@@ -3832,12 +3832,14 @@ class Jyotish {
     required DateTime date,
     required GeographicLocation location,
     required DateTime sunrise,
+    SiderealMode siderealMode = SiderealMode.lahiri,
   }) async {
     _ensureInitialized();
     return _udayaLagnaService!.calculateUdayaLagnas(
       date: date,
       location: location,
       sunrise: sunrise,
+      siderealMode: siderealMode,
     );
   }
 

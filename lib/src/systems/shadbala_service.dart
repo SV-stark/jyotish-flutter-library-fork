@@ -308,7 +308,7 @@ class ShadbalaService {
       if (!rashiIsOdd) strength += 15.0;
       if (!navamsaIsOdd) strength += 15.0;
     } else if (isNeuter) {
-      if (!rashiIsOdd) strength += 15.0;
+      if (rashiIsOdd) strength += 15.0;
       if (navamsaIsOdd) strength += 15.0;
     }
 
@@ -444,12 +444,12 @@ class ShadbalaService {
     final isDayPowerful = [
       Planet.sun,
       Planet.jupiter,
-      Planet.saturn,
+      Planet.venus,
     ].contains(planet);
     final isNightPowerful = [
       Planet.moon,
       Planet.mars,
-      Planet.venus,
+      Planet.saturn,
     ].contains(planet);
 
     if (isDayPowerful) {
@@ -1028,8 +1028,8 @@ class ShadbalaService {
 
       return horaSequence[(startIndex + horaIndex) % 7];
     } else {
-      // Nighttime: Night starts with 5th lord from day start
-      startIndex = (startIndex + 4) % 7;
+      // Nighttime: 13th lord in sequence = (startIndex + 12) % 7 = (startIndex + 5) % 7
+      startIndex = (startIndex + 5) % 7;
 
       // Calculate night duration and Hora
       final nextSunrise = sunrise.add(const Duration(days: 1));
@@ -1143,8 +1143,8 @@ class ShadbalaService {
     // Generate 24 Horas
     for (var i = 0; i < 24; i++) {
       if (i == 12) {
-        // Night starts with 5th lord from day start
-        startIndex = (startIndex + 4) % 7;
+        // Night starts at 13th lord = (startIndex + 12) % 7 = (startIndex + 5) % 7
+        startIndex = (startIndex + 5) % 7;
       }
       horaLords.add(horaSequence[(startIndex + (i % 12)) % 7]);
     }
@@ -1274,18 +1274,18 @@ class ShadbalaService {
       return 15.0; // Vikala (Stationary)
     }
 
-    // Retrograde states: Vakra & Anuvakra are 0.0 in classical BPHS
+    // Retrograde states: Vakra is 60.0 in classical BPHS
     if (speed < 0) {
-      return 0.0;
+      return 60.0; // Vakra (Retrograde)
     }
 
-    // Forward states
+    // Forward states per classical BPHS
     final ratio = speed / avgSpeed;
-    if (ratio < 0.5) return 22.5; // Mandatara (Very Slow)
-    if (ratio < 1.0) return 30.0; // Manda (Slow)
-    if (ratio < 1.5) return 45.0; // Sama (Normal/Even)
-    if (ratio < 2.0) return 60.0; // Chara (Fast)
-    return 7.5; // Atichara (Very Fast)
+    if (ratio < 0.5) return 30.0; // Mandatara (Very Slow)
+    if (ratio < 1.0) return 15.0; // Manda (Slow)
+    if (ratio < 1.5) return 7.5; // Sama (Normal/Even)
+    if (ratio < 2.0) return 45.0; // Chara (Fast)
+    return 30.0; // Atichara (Very Fast)
   }
 
   double _calculateNaisargikaBala(Planet planet) {
@@ -1465,57 +1465,38 @@ class ShadbalaService {
   /// - 1/2 aspect (half): Casts on houses 1-2 from position
   /// - 3/4 aspect (three-quarter): Casts on houses 1-3 from position
   List<double> _getPlanetAspects(Planet planet) {
-    // Full aspect - all planets have 7th aspect (180)
-    final aspects = <double>[180.0];
-
-    // Special aspects per planet
-    switch (planet) {
-      case Planet.mars:
-        aspects.addAll([90.0, 210.0]); // 4th and 8th
-      case Planet.jupiter:
-        aspects.addAll([120.0, 240.0]); // 5th and 9th
-      case Planet.saturn:
-        aspects.addAll([60.0, 270.0]); // 3rd and 10th
-      default:
-        break;
-    }
-
-    // Add partial aspects (1/4, 1/2, 3/4) for all planets
-    // These represent the traditional understanding that planets
-    // cast partial aspects on adjacent houses:
-    // - 1/4 aspect: 90 (houses 1-2 from planet's position)
-    // - 1/2 aspect: 180 is full, but 1/2 strength = ~90 effective (same as 1/4 for calculation)
-    // - 3/4 aspect: 270 (houses 1-3 from position)
-    aspects.addAll([90.0, 270.0]); // Partial 1/4 and 3/4 aspects
-
-    return aspects;
+    // All planets cast aspects on 3rd, 4th, 5th, 7th, 8th, 9th, and 10th houses:
+    // 3rd & 10th = 60° & 270° (1/4 aspect, Saturn special full)
+    // 4th & 8th = 90° & 210° (3/4 aspect, Mars special full)
+    // 5th & 9th = 120° & 240° (1/2 aspect, Jupiter special full)
+    // 7th = 180° (full aspect for all)
+    return const [60.0, 90.0, 120.0, 180.0, 210.0, 240.0, 270.0];
   }
 
-  /// Gets the aspect strength multiplier for partial aspects.
-  /// Full aspects (180) get full 60 virupas, partial aspects get reduced.
+  /// Gets the aspect strength multiplier for aspects.
+  /// Per BPHS: 7th=1.0, 4th/8th=0.75 (Mars=1.0), 5th/9th=0.50 (Jupiter=1.0), 3rd/10th=0.25 (Saturn=1.0).
   double _getAspectStrengthMultiplier(Planet aspecting, double aspectAngle) {
     // Full 7th aspect
     if ((aspectAngle - 180.0).abs() < 1e-4) return 1.0;
 
-    // Special aspects (Mars 4th/8th, Jupiter 5th/9th, Saturn 3rd/10th)
-    if (aspecting == Planet.mars &&
-        ((aspectAngle - 90.0).abs() < 1e-4 ||
-            (aspectAngle - 210.0).abs() < 1e-4)) {
-      return 1.0;
-    }
-    if (aspecting == Planet.jupiter &&
-        ((aspectAngle - 120.0).abs() < 1e-4 ||
-            (aspectAngle - 240.0).abs() < 1e-4)) {
-      return 1.0;
-    }
-    if (aspecting == Planet.saturn &&
-        ((aspectAngle - 60.0).abs() < 1e-4 ||
-            (aspectAngle - 270.0).abs() < 1e-4)) {
-      return 1.0;
+    // 4th and 8th aspects (90 and 210)
+    if ((aspectAngle - 90.0).abs() < 1e-4 ||
+        (aspectAngle - 210.0).abs() < 1e-4) {
+      return (aspecting == Planet.mars) ? 1.0 : 0.75;
     }
 
-    // Partial aspects (1/4 and 3/4)
-    // These get 1/4 of full strength per traditional interpretation
+    // 5th and 9th aspects (120 and 240)
+    if ((aspectAngle - 120.0).abs() < 1e-4 ||
+        (aspectAngle - 240.0).abs() < 1e-4) {
+      return (aspecting == Planet.jupiter) ? 1.0 : 0.50;
+    }
+
+    // 3rd and 10th aspects (60 and 270)
+    if ((aspectAngle - 60.0).abs() < 1e-4 ||
+        (aspectAngle - 270.0).abs() < 1e-4) {
+      return (aspecting == Planet.saturn) ? 1.0 : 0.25;
+    }
+
     return 0.25;
   }
 
@@ -1625,7 +1606,7 @@ class ShadbalaService {
   ///
   /// Source: Brihat Parashara Hora Shastra
   static const _minimumShadbala = {
-    Planet.sun: 300.0, // 5.0 Rupas
+    Planet.sun: 390.0, // 6.5 Rupas
     Planet.moon: 360.0, // 6.0 Rupas
     Planet.mars: 300.0, // 5.0 Rupas
     Planet.mercury: 420.0, // 7.0 Rupas

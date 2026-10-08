@@ -34,7 +34,7 @@ class DivisionalChartService {
         : '';
     final key = '${rashiChart.dateTime.millisecondsSinceEpoch}'
         '_${rashiChart.latitude}_${rashiChart.longitudeCoord}'
-        '_${rashiChart.calculationFlags?.siderealMode.name ?? 'default'}'
+        '_${rashiChart.calculationFlags?.siderealMode.name ?? 'default'}' // enum identifier: stable cache key
         '_${rashiChart.ascendant.hashCode}'
         '_${planetsHash}_${type.name}$configKey';
 
@@ -53,8 +53,8 @@ class DivisionalChartService {
       final chartAyanamsa = rashiChart.calculationFlags?.siderealMode;
       if (chartAyanamsa != type.requiredAyanamsa) {
         throw AyanamsaMismatchException(
-          'D${type.divisions} requires ${type.requiredAyanamsa!.name} ayanamsa. '
-          'Chart was calculated with ${chartAyanamsa?.name ?? "unknown"}. '
+          'D${type.divisions} requires ${type.requiredAyanamsa!.label} ayanamsa. '
+          'Chart was calculated with ${chartAyanamsa?.label ?? "unknown"}. '
           'Pass CalculationFlags(siderealMode: SiderealMode.${type.requiredAyanamsa!.name})'
           ' when calculating the root chart.',
         );
@@ -752,24 +752,15 @@ class DivisionalChartService {
         // Traditional D60 calculation (Shashtiamsa)
         // Each sign is divided into 60 parts of 0.5 each
         //
-        // Per BPHS and classical sources:
-        // - For odd signs (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius):
-        //   Count forward: Part 0 = same sign, Part 59 = 11th sign ahead
-        // - For even signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces):
-        //   Count backward: Part 0 = 9th sign from current (traditional method)
-        //
-        // Alternative simpler method (also valid): Continuous count for all
+        // Per BPHS Ch.6 v.33: take the degrees traversed within the sign,
+        // double them, divide by 12, add 1 to the remainder, and count that far
+        // forward from the natal sign itself. This holds for odd AND even signs
+        // alike: for even signs only the 60 Shashtiamsa NAMES run in reverse
+        // order, the sign POSITION does not.
         final part = (degreeInSign / (30 / 60)).floor(); // 0-59
 
-        // Using the sign-based approach (most traditional):
-        if (isOdd) {
-          // Odd signs: forward count from sign
-          return (signIndex + part) % 12;
-        } else {
-          // Even signs: forward from 9th sign (traditional according to tests)
-          // 9th from current sign = (signIndex + 8) % 12
-          return (signIndex + 8 + part) % 12;
-        }
+        // `part` runs 0-59, so `% 12` wraps the count back into the zodiac.
+        return (signIndex + part) % 12;
 
       case DivisionalChartType.d150: // Nadi Amsa
         // D150: 150th division for micro-level analysis

@@ -882,7 +882,7 @@ class DashaService {
     final startOffset = scheme == AshtottariScheme.ardraAdi ? 5 : 2;
     final relativeNakIndex = (nakshatraIndex - startOffset + 27) % 27;
 
-    final groups = [4, 3, 4, 3, 4, 3, 4, 2];
+    final groups = [4, 3, 4, 3, 3, 3, 3, 4];
     int startingLordIndex = 0;
     int sum = 0;
     for (var i = 0; i < groups.length; i++) {

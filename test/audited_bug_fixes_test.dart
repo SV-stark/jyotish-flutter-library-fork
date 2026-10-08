@@ -86,7 +86,7 @@ void main() {
       expect(moonResult.chestaBala, equals(0.0));
 
       // Minimum required values are mapped properly
-      expect(shadbalaMap[Planet.sun]!.minimumRequired, equals(300.0));
+      expect(shadbalaMap[Planet.sun]!.minimumRequired, equals(390.0));
       expect(shadbalaMap[Planet.moon]!.minimumRequired, equals(360.0));
       expect(shadbalaMap[Planet.mars]!.minimumRequired, equals(300.0));
       expect(shadbalaMap[Planet.mercury]!.minimumRequired, equals(420.0));

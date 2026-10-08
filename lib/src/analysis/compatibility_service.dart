@@ -241,16 +241,18 @@ class CompatibilityService {
     // Boy to Girl (count from Boy's nakshatra to Girl's nakshatra)
     final boyToGirlCount =
         ((girlNakshatraNum - boyNakshatraNum) % 27 + 27) % 27 + 1;
-    final boyGroup = (boyToGirlCount - 1) ~/ 9 + 1;
-    if (boyGroup != 2) {
+    final boyTara = ((boyToGirlCount - 1) % 9) + 1;
+    // Auspicious taras: 1 (Janma), 2 (Sampat), 4 (Kshema), 6 (Sadhana), 8 (Mitra), 9 (Parama Mitra)
+    // Inauspicious taras: 3 (Vipat), 5 (Pratyari), 7 (Naidhana/Vadha)
+    if (boyTara != 3 && boyTara != 5 && boyTara != 7) {
       score += 1.5;
     }
 
     // Girl to Boy (count from Girl's nakshatra to Boy's nakshatra)
     final girlToBoyCount =
         ((boyNakshatraNum - girlNakshatraNum) % 27 + 27) % 27 + 1;
-    final girlGroup = (girlToBoyCount - 1) ~/ 9 + 1;
-    if (girlGroup != 2) {
+    final girlTara = ((girlToBoyCount - 1) % 9) + 1;
+    if (girlTara != 3 && girlTara != 5 && girlTara != 7) {
       score += 1.5;
     }
 
@@ -863,8 +865,8 @@ class CompatibilityService {
 
     return BhakootDoshaResult(
       hasDosha: hasDosha,
-      boyRashi: boyMoonSign.name,
-      girlRashi: girlMoonSign.name,
+      boyRashi: boyMoonSign.label,
+      girlRashi: girlMoonSign.label,
       description: description,
     );
   }

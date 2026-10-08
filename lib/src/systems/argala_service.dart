@@ -121,15 +121,15 @@ class ArgalaService {
     required ArgalaType type,
     required List<ArgalaInfo> argalas,
   }) {
-    // Calculate source house
-    final sourceHouse = ((targetHouse - 1 + sourceOffset) % 12) + 1;
+    // Calculate source house (inclusive counting: Nth from targetHouse is targetHouse + N - 1)
+    final sourceHouse = ((targetHouse - 1 + (sourceOffset - 1)) % 12) + 1;
 
     // Get planets in source house
     final planetsInSource = chart.getPlanetsInHouse(sourceHouse);
     if (planetsInSource.isEmpty) return; // No Argala if no planets
 
     // Calculate obstruction house
-    final obstructHouse = ((targetHouse - 1 + obstructOffset) % 12) + 1;
+    final obstructHouse = ((targetHouse - 1 + (obstructOffset - 1)) % 12) + 1;
 
     // Get planets in obstruction house
     final planetsInObstruct = chart.getPlanetsInHouse(obstructHouse);

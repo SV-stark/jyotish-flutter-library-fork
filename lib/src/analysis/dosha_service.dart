@@ -425,8 +425,7 @@ class DoshaService {
     }
 
     return KalathraDoshaResult(
-      hasDosha: hasDosha ||
-          ascMalefics.isNotEmpty, // Present if there are afflictions
+      hasDosha: hasDosha,
       causingMalefics: {...ascMalefics, ...moonMalefics}.toList(),
       description: description,
     );

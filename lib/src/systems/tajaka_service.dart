@@ -89,7 +89,7 @@ class TajakaService {
     // Rog (Disease)
     sahams['Rog'] = calc(marsLon, satLon, ascLon, true);
     // Kali (Conflict)
-    sahams['Kali'] = calc(jupLon, marsLon, ascLon, true);
+    sahams['Kali'] = calc(satLon, marsLon, ascLon, true);
     // Labha (Gain)
     sahams['Labha'] = calc(jupLon, sunLon, ascLon, false); // No reverse
     // Karma (Action)
