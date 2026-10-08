@@ -41,11 +41,10 @@ class BhavaBalaService {
   }
 
   BhavaStrengthCategory _getBhavaStrengthCategory(double strength) {
-    final virupas = strength <= 100 ? strength * 4.8 : strength;
-    if (virupas >= 480) return BhavaStrengthCategory.veryStrong;
-    if (virupas >= 420) return BhavaStrengthCategory.strong;
-    if (virupas >= 360) return BhavaStrengthCategory.moderate;
-    if (virupas >= 300) return BhavaStrengthCategory.weak;
+    if (strength >= 480) return BhavaStrengthCategory.veryStrong;
+    if (strength >= 420) return BhavaStrengthCategory.strong;
+    if (strength >= 360) return BhavaStrengthCategory.moderate;
+    if (strength >= 300) return BhavaStrengthCategory.weak;
     return BhavaStrengthCategory.veryWeak;
   }
 

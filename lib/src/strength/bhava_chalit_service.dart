@@ -45,7 +45,8 @@ class BhavaChalitService {
     allPlanetLongitudes[Planet.ketu] = chart.ketu.longitude;
 
     final isWholeSign =
-        chart.houses.system == 'Whole Sign' || chart.houses.system == 'W';
+        chart.houses.system.startsWith('Whole Sign') ||
+        chart.houses.system == 'W';
 
     final bhavas = <BhavaInfo>[];
     for (var i = 0; i < 12; i++) {

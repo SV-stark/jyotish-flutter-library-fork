@@ -150,7 +150,7 @@ class TransitService {
     final aspects = <AspectInfo>[];
     const orb = 10.0;
 
-    // Mars special aspects
+    // Mars special aspects (4th at 90°, 8th at 210° forward)
     if (transitPos.planet == Planet.mars) {
       if ((angularDiff - 90).abs() <= orb) {
         aspects.add(
@@ -163,17 +163,6 @@ class TransitService {
           ),
         );
       }
-      if ((angularDiff - 270).abs() <= orb) {
-        aspects.add(
-          _createTransitAspect(
-            transitPos,
-            natalPlanet,
-            natalPos,
-            AspectType.marsSpecial4th,
-            angularDiff - 270,
-          ),
-        );
-      }
       if ((angularDiff - 210).abs() <= orb) {
         aspects.add(
           _createTransitAspect(
@@ -182,17 +171,6 @@ class TransitService {
             natalPos,
             AspectType.marsSpecial8th,
             angularDiff - 210,
-          ),
-        );
-      }
-      if ((angularDiff - 150).abs() <= orb) {
-        aspects.add(
-          _createTransitAspect(
-            transitPos,
-            natalPlanet,
-            natalPos,
-            AspectType.marsSpecial8th,
-            angularDiff - 150,
           ),
         );
       }

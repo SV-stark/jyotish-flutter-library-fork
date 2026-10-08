@@ -373,8 +373,7 @@ class ShadbalaService {
       chart.dateTime,
     );
     final yuddha = _calculateYuddhaBala(planet, chart);
-    return (natonnata + paksha + tribhaga + vmdh + ayana + yuddha)
-        .clamp(0.0, double.infinity);
+    return natonnata + paksha + tribhaga + vmdh + ayana + yuddha;
   }
 
   /// Calculates Yuddha Bala (Planetary War Strength) per BPHS.
@@ -1286,7 +1285,7 @@ class ShadbalaService {
     if (ratio < 1.0) return 30.0; // Manda (Slow)
     if (ratio < 1.5) return 45.0; // Sama (Normal/Even)
     if (ratio < 2.0) return 60.0; // Chara (Fast)
-    return 60.0; // Atichara (Very Fast)
+    return 7.5; // Atichara (Very Fast)
   }
 
   double _calculateNaisargikaBala(Planet planet) {
@@ -1626,7 +1625,7 @@ class ShadbalaService {
   ///
   /// Source: Brihat Parashara Hora Shastra
   static const _minimumShadbala = {
-    Planet.sun: 390.0, // 6.5 Rupas
+    Planet.sun: 300.0, // 5.0 Rupas
     Planet.moon: 360.0, // 6.0 Rupas
     Planet.mars: 300.0, // 5.0 Rupas
     Planet.mercury: 420.0, // 7.0 Rupas

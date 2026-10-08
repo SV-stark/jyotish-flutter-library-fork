@@ -241,25 +241,20 @@ class CompatibilityService {
     // Boy to Girl (count from Boy's nakshatra to Girl's nakshatra)
     final boyToGirlCount =
         ((girlNakshatraNum - boyNakshatraNum) % 27 + 27) % 27 + 1;
-    final boyToGirlGroup = boyToGirlCount % 9 == 0 ? 9 : boyToGirlCount % 9;
-    if (_isTaraAuspicious(boyToGirlGroup)) {
+    final boyGroup = (boyToGirlCount - 1) ~/ 9 + 1;
+    if (boyGroup != 2) {
       score += 1.5;
     }
 
     // Girl to Boy (count from Girl's nakshatra to Boy's nakshatra)
     final girlToBoyCount =
         ((boyNakshatraNum - girlNakshatraNum) % 27 + 27) % 27 + 1;
-    final girlToBoyGroup = girlToBoyCount % 9 == 0 ? 9 : girlToBoyCount % 9;
-    if (_isTaraAuspicious(girlToBoyGroup)) {
+    final girlGroup = (girlToBoyCount - 1) ~/ 9 + 1;
+    if (girlGroup != 2) {
       score += 1.5;
     }
 
     return score;
-  }
-
-  bool _isTaraAuspicious(int taraGroup) {
-    // Inauspicious: 3 (vipat), 5 (pratyak), 7 (vadha)
-    return taraGroup != 3 && taraGroup != 5 && taraGroup != 7;
   }
 
   int _getNakshatraNumber(String nakshatra) {

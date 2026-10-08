@@ -768,14 +768,29 @@ class DashaService {
     final totalDuration = mahadashaEnd.difference(mahadashaStart);
     var currentDate = mahadashaStart;
 
-    for (final sign in sequence) {
+    final startIdx = sequence.indexOf(mahadashaSign);
+    final subSequence = startIdx >= 0
+        ? List.generate(12, (i) => sequence[(startIdx + i) % 12])
+        : sequence;
+
+    final totalYears = subSequence.fold<int>(
+      0,
+      (sum, s) => sum + _calculateNarayanaDashaYears(s, chart),
+    );
+    final divisor = totalYears > 0 ? totalYears.toDouble() : 12.0;
+
+    for (var i = 0; i < subSequence.length; i++) {
+      final sign = subSequence[i];
       final years = _calculateNarayanaDashaYears(sign, chart);
-      final proportion = years / 12.0;
-      final duration = Duration(
-        milliseconds: (totalDuration.inMilliseconds * proportion).round(),
-      );
-      final endDate = currentDate.add(duration);
-      if (endDate.isAfter(mahadashaEnd)) break;
+      final proportion = years / divisor;
+      final duration = (i == subSequence.length - 1)
+          ? mahadashaEnd.difference(currentDate)
+          : Duration(
+              milliseconds: (totalDuration.inMilliseconds * proportion).round(),
+            );
+      final endDate = (i == subSequence.length - 1)
+          ? mahadashaEnd
+          : currentDate.add(duration);
 
       final nextSubPeriods = levels >= 2
           ? _calculateNarayanaSubPeriods(
@@ -868,7 +883,7 @@ class DashaService {
     final startOffset = scheme == AshtottariScheme.ardraAdi ? 5 : 2;
     final relativeNakIndex = (nakshatraIndex - startOffset + 27) % 27;
 
-    final groups = [4, 3, 4, 3, 4, 3, 3, 3];
+    final groups = [4, 3, 4, 3, 4, 3, 4, 2];
     int startingLordIndex = 0;
     int sum = 0;
     for (var i = 0; i < groups.length; i++) {
@@ -912,7 +927,7 @@ class DashaService {
           lord: planet,
           startDate: currentDate,
           endDate: endDate,
-          duration: Duration(days: durationDays.round()),
+          duration: duration,
           level: 0,
           subPeriods: subPeriods,
         ),

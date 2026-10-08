@@ -83,7 +83,11 @@ class MasaService {
   }
 
   LunarMonth _calculateAmantaMonth(double sunLongitude, TithiInfo tithi) {
-    return MasaInfo.getMonthFromSunLongitude(sunLongitude);
+    final elongation = (tithi.number - 1 + tithi.elapsed) * 12.0;
+    // Sun moves ~29.1° across the ~29.53-day synodic lunar month.
+    final sunAtNewMoon =
+        (sunLongitude - (elongation * 29.1 / 360.0) + 360) % 360;
+    return MasaInfo.getMonthFromSunLongitude(sunAtNewMoon);
   }
 
   LunarMonth _calculatePurnimantaMonth(double sunLongitude, TithiInfo tithi) {

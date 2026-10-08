@@ -16,28 +16,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed `calculateHousePinda` in `AshtakavargaService` to measure from the Ascendant sign.
   - Updated `getFavorableTransitSigns(aav, planet)` to evaluate the queried planet's specific BAV ($\ge 4$ bindus).
 - **Shadbala Motional & Temporal Strengths**:
-  - Fixed Chesta Bala: Retrograde speed returns 0.0 virupas (resolving +60 virupa inflation into *ishtaPhala*); stationary motion (`speed.abs() < 0.05`) returns 15.0; *Chara* and *Atichara* direct motions return 60.0.
+  - Fixed Chesta Bala: Retrograde speed returns 0.0 virupas (resolving +60 virupa inflation into *ishtaPhala*); stationary motion (`speed.abs() < 0.05`) returns 15.0; *Chara* direct motion returns 60.0; *Atichara* returns classical 7.5.
   - Zeroed Moon Chesta Bala to prevent double-counting *Paksha Bala*.
-  - Added Planetary War strength (*Yuddha Bala*) into Kala Bala via `GrahaYuddhaService` (+30 for victor, -30 for defeated).
+  - Added Planetary War strength (*Yuddha Bala*) into Kala Bala via `GrahaYuddhaService` (+30 for victor, -30 for defeated), removing unneeded clamp that masked war deductions.
   - Re-anchored modern Jovian year to Prabhava epoch (1987, JD 2446885.5) using 361.0220 days, eliminating non-monotonic cycle drift in Samvatsara Lord calculation.
   - Classified waxing crescent Moon (Shukla Paksha 0°–180°) as benefic in Drik Bala.
   - Corrected aspect strength multiplier ladder so only Mars (90°/210°), Jupiter (120°/240°), and Saturn (60°/270°) receive full strength (1.0), and partial aspects receive 0.25.
-  - Added node thresholds (`meanNode: 360.0`, `trueNode: 360.0`, `ketu: 300.0`, `saturn: 300.0`) in `_minimumShadbala` and harmonized `isStrong` with `meetsMinimumStrength`.
+  - Corrected Sun minimum required Shadbala to 300.0 virupas (5.0 Rupas per BPHS), and added node thresholds (`meanNode: 360.0`, `trueNode: 360.0`, `ketu: 300.0`, `saturn: 300.0`) in `_minimumShadbala`.
 - **Bhava Chalit & House Strength**:
   - Corrected mid-cusp boundary index arithmetic in `BhavaChalitService` (`midCusps[(i + 11) % 12]` entering, `midCusps[i]` exiting).
-  - Preserved Whole Sign house invariant so Whole Sign charts strictly match Rashi placements (0 shifted planets).
+  - Preserved Whole Sign house invariant so Whole Sign natal and varga charts (`'Whole Sign (Varga)'`) strictly match Rashi placements (0 shifted planets).
   - Added Ketu to `BhavaChalit.shiftedPlanets`.
   - Corrected aspect vector to `(houseCusp - planetLongitude + 360) % 360` in `HouseStrengthService` (aspects cast forward from planet to cusp).
-  - Scaled lord strength in `HouseStrengthService` to avoid clamping every house to top strength category.
-- **Dignity, Vimsopaka & Natural Friendship**:
+  - Removed artificial `virupas * 4.8` multiplier in `BhavaBalaService`, categorizing actual virupas directly against BPHS thresholds.
+- **Dignity, Compatibility & Natural Friendship**:
   - Reordered `moolaTrikona` check before `ownSigns` in `DivisionalChartService`, restoring the 45.0 Saptavargaja and 18.0 Vimsopaka tiers for Sun, Mars, Mercury, Venus, and Saturn.
-  - Consolidated canonical BPHS natural friendship matrix across `relationship.dart`, `compatibility_service.dart`, and `house_strength_service.dart`, fixing Moon-Venus and Mars/Jupiter-Mercury asymmetries.
+  - Natural friendship (Naisargika Maitri) in `RelationshipCalculator`: BPHS Moolatrikona-derived directed relations preserved across all charts.
+  - Fixed Tara Koota in `CompatibilityService` to use 3-cycle grouping (`group != 2` awards 1.5 points).
   - Corrected Jupiter deep debilitation degree to 275.0° (Capricorn 5°) in `VedicChartService`.
   - Corrected Abhijit Nakshatra end longitude to 280.8888889° in `nakshatra.dart`.
-  - Added 4th (90°) and 8th (210°) special aspects for Mars transits in `TransitService`.
+  - Consistently aligned transit special aspects to directed Parashari drishti (Mars 4th at 90°, 8th at 210° forward).
 - **Panchanga & Dasha Systems**:
-  - Fixed Amanta and Purnimanta lunar month boundaries and solar sign mapping in `MasaService` and `Masa`.
-  - Fixed Yogini dasha starting index offset (`(nakshatraIndex + 3) % 8`), Ashtottari nakshatra group distribution `[4, 3, 4, 3, 4, 3, 3, 3]`, Mahadasha level 0 / Antardasha level 1 bookkeeping, and recursive level propagation for Chara and Narayana subperiods.
+  - Anchored Amanta lunar month calculation to Sun's longitude at preceding New Moon (Amavasya), ensuring month name constancy across the full synodic cycle across mid-month Sankrantis.
+  - Fixed Yogini dasha starting index offset (`(nakshatraIndex + 3) % 8`), Ashtottari nakshatra group distribution `[4, 3, 4, 3, 4, 3, 4, 2]` (Rahu 4, Venus 2), exact duration millisecond consistency, Mahadasha level 0 / Antardasha level 1 bookkeeping.
+  - Corrected Narayana dasha subperiods: rotated to start from `mahadashaSign` and normalized proportions by total years so all 12 subperiods execute without premature truncation.
 
 ---
 
