@@ -398,6 +398,14 @@ class DivisionalChartService {
   }
 
   /// Calculates the absolute longitude (0-360) of a point in a divisional chart.
+  double calculateVargaLongitude(
+    double longitude,
+    DivisionalChartType type, {
+    VargaConfiguration? config,
+  }) =>
+      _calculateVargaLongitude(longitude, type, config: config);
+
+  /// Internal: Calculates the absolute longitude (0-360) of a point in a divisional chart.
   double _calculateVargaLongitude(
     double longitude,
     DivisionalChartType type, {
@@ -421,8 +429,13 @@ class DivisionalChartService {
     );
 
     // 3. Determine degrees in the new sign
-    // Typically: (degreeInSign * N) % 30
-    final degreesInNewSign = (degreeInSign * parts) % 30;
+    // For D30 (Trimsamsa), spans are unequal so degrees are scaled proportionally across 30°.
+    final double degreesInNewSign;
+    if (type == DivisionalChartType.d30) {
+      degreesInNewSign = _calculateD30DegreeInSign(signIndex, degreeInSign);
+    } else {
+      degreesInNewSign = (degreeInSign * parts) % 30;
+    }
 
     // Apply guardrail to degrees in new sign too
     var finalDegrees = degreesInNewSign;
@@ -534,18 +547,19 @@ class DivisionalChartService {
         return (signIndex + offset) % 12;
 
       case DivisionalChartType.d5: // Panchamsa
-        // D5 rules:
+        // D5 rules (BPHS Ch. 6, Sloka 8):
+        // 5 divisions of 6° each.
         // For odd signs (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius):
-        //   Start from Aries (0)
+        //   Aries (0), Aquarius (10), Sagittarius (8), Gemini (2), Libra (6)
         // For even signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces):
-        //   Start from Libra (6)
-        final part = (degreeInSign / (30 / 5)).floor(); // 0-4
+        //   Taurus (1), Virgo (5), Pisces (11), Capricorn (9), Scorpio (7)
+        final part = (degreeInSign / (30 / 5)).floor().clamp(0, 4);
         if (isOdd) {
-          // Start from Aries for odd signs
-          return (0 + part) % 12;
+          const oddSigns = [0, 10, 8, 2, 6];
+          return oddSigns[part];
         } else {
-          // Start from Libra for even signs
-          return (6 + part) % 12;
+          const evenSigns = [1, 5, 11, 9, 7];
+          return evenSigns[part];
         }
 
       case DivisionalChartType.d6: // Shashthamsa
@@ -878,5 +892,52 @@ class DivisionalChartService {
       // 25-30: Mars (Scorpio)
       return 7;
     }
+  }
+
+  double _calculateD30DegreeInSign(int signIndex, double degree) {
+    final sign = signIndex + 1;
+    final isOdd = sign % 2 != 0;
+
+    double spanStart;
+    double spanWidth;
+
+    if (isOdd) {
+      if (degree < 5 - 1e-11) {
+        spanStart = 0.0;
+        spanWidth = 5.0;
+      } else if (degree < 10 - 1e-11) {
+        spanStart = 5.0;
+        spanWidth = 5.0;
+      } else if (degree < 18 - 1e-11) {
+        spanStart = 10.0;
+        spanWidth = 8.0;
+      } else if (degree < 25 - 1e-11) {
+        spanStart = 18.0;
+        spanWidth = 7.0;
+      } else {
+        spanStart = 25.0;
+        spanWidth = 5.0;
+      }
+    } else {
+      if (degree < 5 - 1e-11) {
+        spanStart = 0.0;
+        spanWidth = 5.0;
+      } else if (degree < 12 - 1e-11) {
+        spanStart = 5.0;
+        spanWidth = 7.0;
+      } else if (degree < 20 - 1e-11) {
+        spanStart = 12.0;
+        spanWidth = 8.0;
+      } else if (degree < 25 - 1e-11) {
+        spanStart = 20.0;
+        spanWidth = 5.0;
+      } else {
+        spanStart = 25.0;
+        spanWidth = 5.0;
+      }
+    }
+
+    final ratio = ((degree - spanStart) / spanWidth).clamp(0.0, 1.0);
+    return ratio * 30.0;
   }
 }

@@ -28,13 +28,14 @@ enum Rashi {
 
   /// Returns the Rashi for a given longitude (0-360).
   static Rashi fromLongitude(double longitude) {
-    final idx = (longitude / 30).floor() % 12;
+    final norm = (longitude % 360.0 + 360.0) % 360.0;
+    final idx = (norm / 30).floor() % 12;
     return Rashi.values[idx];
   }
 
   /// Returns the Rashi for a given index (0-11).
   static Rashi fromIndex(int index) {
-    return Rashi.values[index % 12];
+    return Rashi.values[(index % 12 + 12) % 12];
   }
 
   /// Whether this is an odd sign (Aries, Gemini, etc.)

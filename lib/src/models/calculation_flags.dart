@@ -261,19 +261,27 @@ class CalculationFlags {
   factory CalculationFlags.fromJson(Map<String, dynamic> json) {
     return CalculationFlags(
       system: AstrologicalSystem.values.firstWhere(
-        (s) => s.name == json['system'],
+        (s) =>
+            s.name.toLowerCase() == json['system']?.toString().toLowerCase() ||
+            s.name == json['system'],
         orElse: () => AstrologicalSystem.traditional,
       ),
       useSwissEphemeris: json['useSwissEphemeris'] as bool? ?? true,
       calculateSpeed: json['calculateSpeed'] as bool? ?? true,
       siderealMode: SiderealMode.values.firstWhere(
-        (m) => m.name == json['siderealMode'],
+        (m) =>
+            m.name.toLowerCase() ==
+                json['siderealMode']?.toString().toLowerCase() ||
+            m.name == json['siderealMode'],
         orElse: () => SiderealMode.lahiri,
       ),
       useTopocentric: json['useTopocentric'] as bool? ?? false,
       useEquatorial: json['useEquatorial'] as bool? ?? false,
       nodeType: NodeType.values.firstWhere(
-        (n) => n.name == json['nodeType'],
+        (n) =>
+            n.name.toLowerCase() ==
+                json['nodeType']?.toString().toLowerCase() ||
+            n.name == json['nodeType'],
         orElse: () => NodeType.meanNode,
       ),
     );

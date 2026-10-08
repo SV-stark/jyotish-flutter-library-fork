@@ -323,7 +323,7 @@ class YogaService {
             moonHouse,
           ).where((p) => p != Planet.moon && p != Planet.sun).isEmpty &&
           Planet.traditionalPlanets
-              .where((p) => kendraHouses.contains(pMap[p]))
+              .where((p) => p != Planet.moon && kendraHouses.contains(pMap[p]))
               .isEmpty;
       final explanation = isPresent
           ? 'No planets in 1st, 2nd, 12th from Moon and no planets in Kendras from Lagna'

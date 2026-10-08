@@ -294,7 +294,7 @@ class AspectService {
             planet2,
             pos2,
             AspectType.opposition,
-            180 - angularDiff.abs(),
+            angularDiff - 180,
             config,
           ),
         );

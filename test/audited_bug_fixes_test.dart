@@ -224,6 +224,112 @@ void main() {
       expect(vajra.nature, equals(YogaNature.malefic));
       expect(parigha.nature, equals(YogaNature.malefic));
       expect(priti.nature, equals(YogaNature.benefic));
+
+      // 4. Panchanga YogaDetails for Vajra (15) matches YogaNature.malefic
+      final vajraDetails = YogaDetails.getDetails(15);
+      expect(vajraDetails.nature, equals(YogaNature.malefic));
+    });
+
+    test('9. D5 Panchamsa and D30 Trimsamsa canonical calculations', () {
+      final divService = DivisionalChartService();
+
+      // D5 Panchamsa: Odd sign (Aries = 0): Aries(0), Aquarius(10), Sagittarius(8), Gemini(2), Libra(6)
+      // Part 0 (0-6°): 0, Part 1 (6-12°): 10, Part 2 (12-18°): 8, Part 3 (18-24°): 2, Part 4 (24-30°): 6
+      expect(divService.calculateVargaLongitude(2.0, DivisionalChartType.d5) ~/ 30, equals(0));
+      expect(divService.calculateVargaLongitude(7.0, DivisionalChartType.d5) ~/ 30, equals(10));
+      expect(divService.calculateVargaLongitude(13.0, DivisionalChartType.d5) ~/ 30, equals(8));
+      expect(divService.calculateVargaLongitude(19.0, DivisionalChartType.d5) ~/ 30, equals(2));
+      expect(divService.calculateVargaLongitude(25.0, DivisionalChartType.d5) ~/ 30, equals(6));
+
+      // D5 Panchamsa: Even sign (Taurus = 1): Taurus(1), Virgo(5), Pisces(11), Capricorn(9), Scorpio(7)
+      expect(divService.calculateVargaLongitude(32.0, DivisionalChartType.d5) ~/ 30, equals(1));
+      expect(divService.calculateVargaLongitude(37.0, DivisionalChartType.d5) ~/ 30, equals(5));
+      expect(divService.calculateVargaLongitude(43.0, DivisionalChartType.d5) ~/ 30, equals(11));
+      expect(divService.calculateVargaLongitude(49.0, DivisionalChartType.d5) ~/ 30, equals(9));
+      expect(divService.calculateVargaLongitude(55.0, DivisionalChartType.d5) ~/ 30, equals(7));
+
+      // D30 Trimsamsa: Proportional degree scaling within unequal spans
+      // In Aries (odd sign):
+      // 2.0° -> span [0, 5] (width 5), Aries (0), degree = (2.0 / 5.0) * 30.0 = 12.0°
+      final lon2 = divService.calculateVargaLongitude(2.0, DivisionalChartType.d30);
+      expect(lon2 ~/ 30, equals(0));
+      expect(lon2 % 30, closeTo(12.0, 1e-6));
+
+      // 14.0° in Aries -> span [10, 18] (width 8), Sagittarius (8), degree = (4.0 / 8.0) * 30.0 = 15.0°
+      final lon14 = divService.calculateVargaLongitude(14.0, DivisionalChartType.d30);
+      expect(lon14 ~/ 30, equals(8));
+      expect(lon14 % 30, closeTo(15.0, 1e-6));
+
+      // 32.5° (2.5° in Taurus, even sign) -> span [0, 5] (width 5), Taurus (1), degree = (2.5 / 5.0) * 30.0 = 15.0°
+      final lon32 = divService.calculateVargaLongitude(32.5, DivisionalChartType.d30);
+      expect(lon32 ~/ 30, equals(1));
+      expect(lon32 % 30, closeTo(15.0, 1e-6));
+    });
+
+    test('10. Panchadha Maitri arithmetic, Kemadruma Yoga, and negative angle guards', () {
+      // Panchadha Maitri arithmetic
+      expect(
+        RelationshipCalculator.calculateCompound(
+          RelationshipType.neutral,
+          RelationshipType.neutral,
+        ),
+        equals(RelationshipType.neutral),
+      );
+      expect(
+        RelationshipCalculator.calculateCompound(
+          RelationshipType.friend,
+          RelationshipType.neutral,
+        ),
+        equals(RelationshipType.friend),
+      );
+      expect(
+        RelationshipCalculator.calculateCompound(
+          RelationshipType.enemy,
+          RelationshipType.neutral,
+        ),
+        equals(RelationshipType.enemy),
+      );
+      expect(
+        RelationshipCalculator.calculateCompound(
+          RelationshipType.friend,
+          RelationshipType.friend,
+        ),
+        equals(RelationshipType.greatFriend),
+      );
+      expect(
+        RelationshipCalculator.calculateCompound(
+          RelationshipType.enemy,
+          RelationshipType.enemy,
+        ),
+        equals(RelationshipType.greatEnemy),
+      );
+
+      // Negative angle guards
+      expect(Rashi.fromLongitude(-5.0), equals(Rashi.pisces));
+      expect(Rashi.fromIndex(-1), equals(Rashi.pisces));
+      expect(Rashi.fromLongitude(365.0), equals(Rashi.aries));
+
+      final posNeg = PlanetPosition(
+        planet: Planet.sun,
+        longitude: -15.0,
+        latitude: 0.0,
+        distance: 1.0,
+        longitudeSpeed: 1.0,
+        latitudeSpeed: 0.0,
+        distanceSpeed: 0.0,
+        dateTime: DateTime(2026, 1, 1),
+      );
+      expect(posNeg.zodiacSignIndex, equals(11));
+      expect(posNeg.positionInSign, closeTo(15.0, 1e-6));
+
+      // CalculationFlags.fromJson case-insensitivity
+      final flagsLower = CalculationFlags.fromJson({
+        'system': 'traditional',
+        'siderealMode': 'raman',
+        'nodeType': 'truenode',
+      });
+      expect(flagsLower.siderealMode, equals(SiderealMode.raman));
+      expect(flagsLower.nodeType, equals(NodeType.trueNode));
     });
   });
 }

@@ -489,7 +489,7 @@ class YogaDetails {
     YogaDetails(
       number: 15,
       name: 'Vajra',
-      nature: YogaNature.benefic,
+      nature: YogaNature.malefic,
       rulingPlanet: Planet.jupiter,
       description: 'Thunderbolt or Diamond Yoga - Indicates strength',
       effects:

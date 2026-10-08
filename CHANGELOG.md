@@ -45,9 +45,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed Yogini dasha starting index offset (`(nakshatraIndex + 3) % 8`), Ashtottari nakshatra group distribution `[4, 3, 4, 3, 4, 3, 4, 2]` (Rahu 4, Venus 2), exact duration millisecond consistency, Mahadasha level 0 / Antardasha level 1 bookkeeping.
   - Kalachakra dasha: synchronized `duration` to exact milliseconds matching `endDate`.
   - Fixed `DashaPeriod.isActiveAt` boundary to `!date.isBefore(startDate) && date.isBefore(endDate)` (`[startDate, endDate)`), eliminating false-negatives at exact transition points.
-  - Updated `YogaInfo.nature` to include classical inauspicious Nitya Yogas (Vishkumbha 1, Vajra 15, Parigha 19) and corrected Karana nature classification.
-  - Fixed `AstrologyTimeService.localToUtc` fallback to construct explicit UTC date instead of defaulting to host machine's local timezone.
+  - Updated `YogaInfo.nature` and `YogaDetails` (Vajra 15) to consistently reflect classical inauspicious Nitya Yogas (Vishkumbha 1, Vajra 15, Parigha 19) and corrected Karana nature classification.
+  - Fixed `AstrologyTimeService.localToUtc` and `utcToLocal` fallbacks to construct explicit UTC/local representations instead of defaulting to host machine's local timezone.
   - Corrected Narayana dasha subperiods: rotated to start from `mahadashaSign` and normalized proportions by total years so all 12 subperiods execute without premature truncation.
+- **Divisional Charts (D5 & D30) & Classical Algorithms**:
+  - Fixed D5 Panchamsa signs to strictly adhere to BPHS Ch. 6 Sloka 8: odd signs map to `[Aries, Aquarius, Sagittarius, Gemini, Libra]`, even signs map to `[Taurus, Virgo, Pisces, Capricorn, Scorpio]`.
+  - Fixed D30 Trimsamsa degree scaling: degrees in varga signs now scale proportionally within each unequal span across 30° instead of linear modulus.
+  - Exposed public `calculateVargaLongitude` on `DivisionalChartService` and cached service instance in `VedicChart.isVargottama`.
+  - Implemented complete 5-point Panchadha Maitri arithmetic in `RelationshipCalculator.calculateCompound` (+2 Great Friend to -2 Great Enemy), handling neutral temporary relationships accurately.
+  - Excluded `Planet.moon` from Lagna Kendra check in `kemadruma_yoga` evaluation.
+  - Corrected opposition aspect `exactOrb` to `angularDiff - 180`, ensuring proper `isApplying`/`isSeparating` detection.
+  - Added negative angle and wrap-around guards across `Rashi`, `PlanetPosition`, and `VedicChart.getHouseForLongitude`.
+  - Made `CalculationFlags.fromJson` enum matching case-insensitive and aliased both node enum keys in `TransitService`.
 
 ---
 

@@ -100,7 +100,16 @@ class AstrologyTimeService {
       );
     } catch (e) {
       // Fallback
-      return utcDt.toLocal();
+      return DateTime(
+        utcDt.year,
+        utcDt.month,
+        utcDt.day,
+        utcDt.hour,
+        utcDt.minute,
+        utcDt.second,
+        utcDt.millisecond,
+        utcDt.microsecond,
+      );
     }
   }
 

@@ -71,7 +71,7 @@ class TransitService {
         natalChart,
       );
 
-      transits[planet] = TransitInfo(
+      final info = TransitInfo(
         planet: planet,
         transitPosition: transitPosition,
         natalPosition: natalPosition,
@@ -79,6 +79,13 @@ class TransitService {
         transitSignIndex: transitSignIndex,
         aspectsToNatal: aspectsToNatal,
       );
+      transits[planet] = info;
+      if (planet == Planet.meanNode && !transits.containsKey(Planet.trueNode)) {
+        transits[Planet.trueNode] = info;
+      } else if (planet == Planet.trueNode &&
+          !transits.containsKey(Planet.meanNode)) {
+        transits[Planet.meanNode] = info;
+      }
     }
 
     return transits;
@@ -283,8 +290,12 @@ class TransitService {
     required GeographicLocation location,
   }) async {
     final events = <TransitEvent>[];
-    final planets =
-        config.planets ?? [...Planet.traditionalPlanets, Planet.meanNode];
+    final rahuPlanet =
+        (natalChart.calculationFlags?.nodeType == NodeType.trueNode)
+            ? Planet.trueNode
+            : Planet.meanNode;
+    final planets = config.planets ??
+        [...Planet.traditionalPlanets, rahuPlanet, Planet.ketu];
 
     var currentDate = config.startDate;
     while (currentDate.isBefore(config.endDate)) {

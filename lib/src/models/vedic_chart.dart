@@ -42,17 +42,18 @@ class HouseSystem {
 
   /// Gets the house number (1-12) for a given longitude
   int getHouseForLongitude(double longitude) {
+    final lon = (longitude % 360.0 + 360.0) % 360.0;
     for (var i = 0; i < 12; i++) {
       final currentCusp = cusps[i];
       final nextCusp = cusps[(i + 1) % 12];
 
       if (nextCusp > currentCusp) {
-        if (longitude >= currentCusp && longitude < nextCusp) {
+        if (lon >= currentCusp && lon < nextCusp) {
           return i + 1;
         }
       } else {
         // House crosses 0 Aries
-        if (longitude >= currentCusp || longitude < nextCusp) {
+        if (lon >= currentCusp || lon < nextCusp) {
           return i + 1;
         }
       }
@@ -61,7 +62,10 @@ class HouseSystem {
   }
 
   /// Gets the 0-based zodiac sign index of the Ascendant (0=Aries, 11=Pisces).
-  int get ascendantSignIndex => (ascendant / 30).floor() % 12;
+  int get ascendantSignIndex {
+    final norm = (ascendant % 360.0 + 360.0) % 360.0;
+    return (norm / 30).floor() % 12;
+  }
 
   /// Gets the zodiac sign of the Ascendant
   String get ascendantSign {
@@ -674,15 +678,19 @@ class VedicChart {
     return null;
   }
 
+  static final DivisionalChartService _defaultDivisionalService =
+      DivisionalChartService();
+
   /// Checks if a planet is Vargottama (occupies the same sign index in both this chart and the Navamsa D-9 chart).
-  bool isVargottama(Planet planet) {
+  bool isVargottama(Planet planet, [DivisionalChartService? service]) {
     final originalSignIndex = getPlanetSignIndex(planet);
     if (originalSignIndex == null) return false;
 
-    final d9Chart = DivisionalChartService().calculateDivisionalChart(
-      this,
-      DivisionalChartType.d9,
-    );
+    final d9Chart = (service ?? _defaultDivisionalService)
+        .calculateDivisionalChart(
+          this,
+          DivisionalChartType.d9,
+        );
     final d9SignIndex = d9Chart.getPlanetSignIndex(planet);
     return originalSignIndex == d9SignIndex;
   }
