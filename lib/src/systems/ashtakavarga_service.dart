@@ -40,9 +40,16 @@ class AshtakavargaService {
   /// Returns an [Ashtakavarga] with Bhinnashtakavarga for each planet
   /// and Sarvashtakavarga totals.
   Ashtakavarga calculateAshtakavarga(VedicChart natalChart) {
-    // Calculate Bhinnashtakavarga for each planet
     final bhinnashtakavarga = <Planet, Bhinnashtakavarga>{
-      for (final planet in Planet.traditionalPlanets)
+      for (final planet in [
+        Planet.sun,
+        Planet.moon,
+        Planet.mars,
+        Planet.mercury,
+        Planet.jupiter,
+        Planet.venus,
+        Planet.saturn,
+      ])
         planet: _calculateBhinnashtakavarga(planet, natalChart),
     };
 
@@ -101,9 +108,9 @@ class AshtakavargaService {
 
         // Get the sign where the contributing planet is placed
         final planetInfo = natalChart.planets[contributingPlanet];
-        final planetSign = planetInfo != null
-            ? (planetInfo.position.longitude / 30).floor() % 12
-            : 0;
+        if (planetInfo == null) continue;
+        final planetSign =
+            (planetInfo.position.longitude / 30).floor() % 12;
 
         // Calculate relative sign: where the current signIndex is relative to where the contributing planet sits
         // If contributing planet is in sign X, we check the table to see which signs from X get bindus
@@ -142,22 +149,29 @@ class AshtakavargaService {
 
   /// Checks if ascendant contributes bindu for a specific planet in a relative sign.
   bool _doesAscendantContribute(Planet planet, int relativeSign) {
-    // Ascendant contribution rules vary by planet
+    // Classical BPHS Ascendant contribution rules (1-based houses converted to 0-based relative signs: house - 1)
     switch (planet) {
       case Planet.sun:
-        return [0, 3, 6, 10, 11].contains(relativeSign);
+        // Houses 3, 4, 6, 10, 11, 12 (6 bindus)
+        return [2, 3, 5, 9, 10, 11].contains(relativeSign);
       case Planet.moon:
-        return [1, 3, 6, 7, 10, 11].contains(relativeSign);
+        // Houses 3, 6, 10, 11 (4 bindus)
+        return [2, 5, 9, 10].contains(relativeSign);
       case Planet.mars:
-        return [0, 3, 6, 10, 11].contains(relativeSign);
+        // Houses 1, 3, 6, 10, 11 (5 bindus)
+        return [0, 2, 5, 9, 10].contains(relativeSign);
       case Planet.mercury:
-        return [0, 2, 4, 6, 8, 10, 11].contains(relativeSign);
+        // Houses 1, 2, 4, 6, 8, 10, 11 (7 bindus)
+        return [0, 1, 3, 5, 7, 9, 10].contains(relativeSign);
       case Planet.jupiter:
-        return [0, 2, 4, 6, 8, 9, 10, 11].contains(relativeSign);
+        // Houses 1, 2, 4, 5, 6, 7, 9, 10, 11 (9 bindus)
+        return [0, 1, 3, 4, 5, 6, 8, 9, 10].contains(relativeSign);
       case Planet.venus:
-        return [0, 2, 3, 4, 5, 6, 8, 9, 10, 11].contains(relativeSign);
+        // Houses 1, 2, 3, 4, 5, 8, 9, 11 (8 bindus)
+        return [0, 1, 2, 3, 4, 7, 8, 10].contains(relativeSign);
       case Planet.saturn:
-        return [0, 3, 5, 6, 9, 10, 11].contains(relativeSign);
+        // Houses 1, 3, 4, 6, 10, 11 (6 bindus)
+        return [0, 2, 3, 5, 9, 10].contains(relativeSign);
       default:
         return false;
     }
@@ -234,14 +248,21 @@ class AshtakavargaService {
 
   /// Gets favorable periods for a specific planet transit.
   ///
-  /// Returns a list of sign indices where the planet receives
-  /// more than 28 bindus in the Sarvashtakavarga.
+  /// Returns a list of sign indices where the planet has 4 or more bindus
+  /// in its own Bhinnashtakavarga (classical Parashara transit rule).
   List<int> getFavorableTransitSigns(Ashtakavarga ashtakavarga, Planet planet) {
     final favorableSigns = <int>[];
+    final bav = ashtakavarga.bhinnashtakavarga[planet];
 
     for (var sign = 0; sign < 12; sign++) {
-      if (ashtakavarga.isSignFavorableForTransits(sign)) {
-        favorableSigns.add(sign);
+      if (bav != null) {
+        if (bav.getBindusForSign(sign) >= 4) {
+          favorableSigns.add(sign);
+        }
+      } else {
+        if (ashtakavarga.isSignFavorableForTransits(sign)) {
+          favorableSigns.add(sign);
+        }
       }
     }
 
@@ -262,12 +283,11 @@ class AshtakavargaService {
     return details;
   }
 
-  /// Applies Trikona Shodhana (Trine Reduction) to Ashtakavarga.
-  ///
-  /// Note: The implementation strictly subtracts the minimum non-zero value
-  /// of the three signs from all three signs in the trine, leaving the lowest
-  /// sign with 0 bindus. This differs from some interpretations but strictly
-  /// follows the standard BPHS method of subtraction.
+  /// Applies Trikona Shodhana (Trine Reduction) to Ashtakavarga strictly
+  /// adhering to BPHS Ch. 68:
+  /// - If any sign in the trikona has 0 bindus, no reduction is made.
+  /// - If all three signs have equal bindus, all are reduced to 0.
+  /// - If unequal, the minimum is subtracted from the other two signs.
   Ashtakavarga applyTrikonaShodhana(Ashtakavarga ashtakavarga) {
     final reducedBhinnashtakavarga = <Planet, Bhinnashtakavarga>{
       for (final planet in ashtakavarga.bhinnashtakavarga.keys)
@@ -275,32 +295,34 @@ class AshtakavargaService {
           final bav = ashtakavarga.bhinnashtakavarga[planet]!;
           final reducedBindus = List<int>.from(bav.bindus);
 
-          // Apply reduction to each trikona
-          // Traditional Trikona Shodhana:
-          // - Find minimum bindu among the three signs in each trine
-          // - Subtract minimum from the other two signs
           for (final trikona in _trikonas) {
             final bindu1 = bav.bindus[trikona[0]];
             final bindu2 = bav.bindus[trikona[1]];
             final bindu3 = bav.bindus[trikona[2]];
 
-            // Get non-zero bindus
-            final nonZeros = [bindu1, bindu2, bindu3].where((b) => b > 0);
-            if (nonZeros.isEmpty) continue;
-            final minBindu = nonZeros.reduce(math.min);
+            // BPHS Rule 1: If any sign in the trine has 0, no reduction is made
+            if (bindu1 == 0 || bindu2 == 0 || bindu3 == 0) {
+              continue;
+            }
 
-            // Subtract minimum from each sign (traditional method)
-            if (bindu1 > 0) {
-              reducedBindus[trikona[0]] =
-                  (bindu1 - minBindu).clamp(0, bindu1).toInt();
+            // BPHS Rule 2: If all three signs are equal, eliminate all (set to 0)
+            if (bindu1 == bindu2 && bindu2 == bindu3) {
+              reducedBindus[trikona[0]] = 0;
+              reducedBindus[trikona[1]] = 0;
+              reducedBindus[trikona[2]] = 0;
+              continue;
             }
-            if (bindu2 > 0) {
-              reducedBindus[trikona[1]] =
-                  (bindu2 - minBindu).clamp(0, bindu2).toInt();
+
+            // BPHS Rule 3: If unequal, deduct the smallest from the other two
+            final minBindu = [bindu1, bindu2, bindu3].reduce(math.min);
+            if (bindu1 > minBindu) {
+              reducedBindus[trikona[0]] = bindu1 - minBindu;
             }
-            if (bindu3 > 0) {
-              reducedBindus[trikona[2]] =
-                  (bindu3 - minBindu).clamp(0, bindu3).toInt();
+            if (bindu2 > minBindu) {
+              reducedBindus[trikona[1]] = bindu2 - minBindu;
+            }
+            if (bindu3 > minBindu) {
+              reducedBindus[trikona[2]] = bindu3 - minBindu;
             }
           }
 
@@ -589,7 +611,8 @@ class AshtakavargaService {
       throw ArgumentError('House number must be between 1 and 12');
     }
 
-    final signIndex = houseNumber - 1;
+    final signIndex =
+        (ashtakavarga.natalChart.ascendantSignIndex + houseNumber - 1) % 12;
     var housePinda = 0.0;
 
     // Sum bindus from all planets in this house

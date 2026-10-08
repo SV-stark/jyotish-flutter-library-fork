@@ -432,7 +432,7 @@ class DashaService {
     const nakshatraWidth = 360.0 / 27;
     final nakshatraIndex = (moonLongitude / nakshatraWidth).floor() % 27;
     final positionInNakshatra = moonLongitude % nakshatraWidth;
-    final startingYoginiIndex = nakshatraIndex % 8;
+    final startingYoginiIndex = (nakshatraIndex + 3) % 8;
     final portionRemaining = 1.0 - (positionInNakshatra / nakshatraWidth);
     final firstDashaYears = Yogini.values[startingYoginiIndex].years;
     final balanceDays = firstDashaYears * 365.25 * portionRemaining;
@@ -624,6 +624,7 @@ class DashaService {
     required DateTime mahadashaEnd,
     required int levels,
     required VedicChart chart,
+    int currentLevel = 1,
   }) {
     if (levels <= 0) return [];
     final totalMs = mahadashaEnd.difference(mahadashaStart).inMilliseconds;
@@ -648,6 +649,7 @@ class DashaService {
               mahadashaEnd: end,
               levels: levels - 1,
               chart: chart,
+              currentLevel: currentLevel + 1,
             )
           : <DashaPeriod>[];
 
@@ -657,7 +659,7 @@ class DashaService {
           startDate: current,
           endDate: end,
           duration: Duration(milliseconds: ms),
-          level: 1,
+          level: currentLevel,
           subPeriods: subPeriods,
         ),
       );
@@ -759,6 +761,7 @@ class DashaService {
     required Rashi mahadashaSign,
     required VedicChart chart,
     required int levels,
+    int currentLevel = 1,
   }) {
     if (levels <= 0) return [];
     final subPeriods = <DashaPeriod>[];
@@ -774,13 +777,26 @@ class DashaService {
       final endDate = currentDate.add(duration);
       if (endDate.isAfter(mahadashaEnd)) break;
 
+      final nextSubPeriods = levels >= 2
+          ? _calculateNarayanaSubPeriods(
+              sequence: sequence,
+              mahadashaStart: currentDate,
+              mahadashaEnd: endDate,
+              mahadashaSign: sign,
+              chart: chart,
+              levels: levels - 1,
+              currentLevel: currentLevel + 1,
+            )
+          : const <DashaPeriod>[];
+
       subPeriods.add(
         DashaPeriod(
           rashi: sign,
           startDate: currentDate,
           endDate: endDate,
           duration: duration,
-          level: 1,
+          level: currentLevel,
+          subPeriods: nextSubPeriods,
         ),
       );
       currentDate = endDate;
@@ -852,7 +868,7 @@ class DashaService {
     final startOffset = scheme == AshtottariScheme.ardraAdi ? 5 : 2;
     final relativeNakIndex = (nakshatraIndex - startOffset + 27) % 27;
 
-    final groups = [3, 4, 3, 4, 3, 4, 3, 3];
+    final groups = [4, 3, 4, 3, 4, 3, 3, 3];
     int startingLordIndex = 0;
     int sum = 0;
     for (var i = 0; i < groups.length; i++) {
@@ -897,7 +913,7 @@ class DashaService {
           startDate: currentDate,
           endDate: endDate,
           duration: Duration(days: durationDays.round()),
-          level: 1,
+          level: 0,
           subPeriods: subPeriods,
         ),
       );
@@ -941,7 +957,7 @@ class DashaService {
           startDate: current,
           endDate: end,
           duration: Duration(milliseconds: ms),
-          level: 2,
+          level: 1,
           subPeriods: const [],
         ),
       );
@@ -1013,7 +1029,7 @@ class DashaService {
           startDate: currentDate,
           endDate: endDate,
           duration: Duration(days: durationDays.round()),
-          level: 1,
+          level: 0,
           subPeriods: antardashas,
         ),
       );
@@ -1057,7 +1073,7 @@ class DashaService {
           startDate: current,
           endDate: end,
           duration: Duration(milliseconds: ms),
-          level: 2,
+          level: 1,
           subPeriods: const [],
         ),
       );

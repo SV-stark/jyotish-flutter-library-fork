@@ -3,6 +3,7 @@ import 'package:jyotish/src/models/rashi.dart';
 import 'package:jyotish/src/models/vedic_chart.dart';
 import 'package:jyotish/src/models/compatibility_report.dart';
 import 'package:jyotish/src/analysis/compatibility.dart';
+import 'package:jyotish/src/strength/relationship.dart';
 
 
 class CompatibilityService {
@@ -237,18 +238,18 @@ class CompatibilityService {
 
     double score = 0;
 
-    // Boy to Girl
+    // Boy to Girl (count from Boy's nakshatra to Girl's nakshatra)
     final boyToGirlCount =
-        ((girlNakshatraNum - boyNakshatraNum) % 27 + 27) % 27;
-    final boyToGirlGroup = (boyToGirlCount ~/ 9) + 1;
+        ((girlNakshatraNum - boyNakshatraNum) % 27 + 27) % 27 + 1;
+    final boyToGirlGroup = boyToGirlCount % 9 == 0 ? 9 : boyToGirlCount % 9;
     if (_isTaraAuspicious(boyToGirlGroup)) {
       score += 1.5;
     }
 
-    // Girl to Boy
+    // Girl to Boy (count from Girl's nakshatra to Boy's nakshatra)
     final girlToBoyCount =
-        ((boyNakshatraNum - girlNakshatraNum) % 27 + 27) % 27;
-    final girlToBoyGroup = (girlToBoyCount ~/ 9) + 1;
+        ((boyNakshatraNum - girlNakshatraNum) % 27 + 27) % 27 + 1;
+    final girlToBoyGroup = girlToBoyCount % 9 == 0 ? 9 : girlToBoyCount % 9;
     if (_isTaraAuspicious(girlToBoyGroup)) {
       score += 1.5;
     }
@@ -443,29 +444,10 @@ class CompatibilityService {
   /// 2 = friend, 1 = neutral, -1 = enemy
   /// Source: BPHS natural friendship table.
   int _planetFriendship(Planet p1, Planet p2) {
-    // Natural friends of each planet
-    const friends = {
-      Planet.sun: [Planet.moon, Planet.mars, Planet.jupiter],
-      Planet.moon: [Planet.sun, Planet.mercury],
-      Planet.mars: [Planet.sun, Planet.moon, Planet.jupiter],
-      Planet.mercury: [Planet.sun, Planet.venus],
-      Planet.jupiter: [Planet.sun, Planet.moon, Planet.mars],
-      Planet.venus: [Planet.mercury, Planet.saturn],
-      Planet.saturn: [Planet.mercury, Planet.venus],
-    };
-    // Natural enemies
-    const enemies = {
-      Planet.sun: [Planet.saturn, Planet.venus],
-      Planet.moon: [Planet.saturn, Planet.mars, Planet.venus, Planet.jupiter],
-      Planet.mars: [Planet.mercury],
-      Planet.mercury: [Planet.moon],
-      Planet.jupiter: [Planet.mercury, Planet.venus],
-      Planet.venus: [Planet.sun, Planet.moon],
-      Planet.saturn: [Planet.sun, Planet.moon, Planet.mars],
-    };
-
-    if (friends[p1]?.contains(p2) == true) return 2;
-    if (enemies[p1]?.contains(p2) == true) return -1;
+    if (p1 == p2) return 2;
+    final rel = RelationshipCalculator.naturalRelationships[p1]?[p2];
+    if (rel == RelationshipType.friend) return 2;
+    if (rel == RelationshipType.enemy) return -1;
     return 1; // neutral
   }
 

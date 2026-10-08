@@ -5,6 +5,7 @@ import 'package:jyotish/src/models/geographic_location.dart';
 import 'package:jyotish/src/models/planet.dart';
 import 'package:jyotish/src/models/vedic_chart.dart';
 import 'package:jyotish/src/analysis/divisional_chart_service.dart';
+import 'package:jyotish/src/analysis/graha_yuddha_service.dart';
 import 'package:jyotish/src/astronomy/ephemeris_service.dart';
 
 /// Service for calculating Shadbala (Six-fold Strength) of planets.
@@ -54,7 +55,7 @@ class ShadbalaService {
     // 3. Kala Bala (Temporal Strength)
     final kalaBala = await _calculateKalaBala(planet, planetInfo, chart);
 
-    // 4. Chesta Bala (Motional Strength - per BPHS 27:42-43: Sun = Ayana Bala, Moon = Paksha Bala)
+    // 4. Chesta Bala (Motional Strength - per BPHS: Sun = Ayana Bala, Moon = 0 to avoid double counting Paksha Bala in Kala Bala)
     final double chestaBala;
     if (planet == Planet.sun) {
       chestaBala = await _calculateAyanaBala(
@@ -64,7 +65,7 @@ class ShadbalaService {
         chart.dateTime,
       );
     } else if (planet == Planet.moon) {
-      chestaBala = _calculatePakshaBala(planet, planetInfo, chart);
+      chestaBala = 0.0;
     } else {
       chestaBala = _calculateChestaBala(planet, planetInfo);
     }
@@ -84,7 +85,7 @@ class ShadbalaService {
         drikBala;
 
     // Determine strength category
-    final strengthCategory = _getStrengthCategory(totalBala);
+    final strengthCategory = _getStrengthCategory(totalBala, planet);
 
     // 7. Uchcha Bala (Exaltation Strength - needed for Phala calculation)
     final uchchaBala = _calculateUchchaBala(
@@ -361,7 +362,6 @@ class ShadbalaService {
     VedicPlanetInfo planetInfo,
     VedicChart chart,
   ) async {
-    const strength = 0.0;
     final natonnata = await _calculateNatonnataBala(planet, chart);
     final paksha = _calculatePakshaBala(planet, planetInfo, chart);
     final tribhaga = await _calculateTribhagaBala(planet, chart);
@@ -372,7 +372,20 @@ class ShadbalaService {
       planetInfo.position.declination,
       chart.dateTime,
     );
-    return strength + natonnata + paksha + tribhaga + vmdh + ayana;
+    final yuddha = _calculateYuddhaBala(planet, chart);
+    return (natonnata + paksha + tribhaga + vmdh + ayana + yuddha)
+        .clamp(0.0, double.infinity);
+  }
+
+  /// Calculates Yuddha Bala (Planetary War Strength) per BPHS.
+  /// When two true planets are within 1° longitude, the winner gains
+  /// strength and the loser suffers a corresponding deduction.
+  double _calculateYuddhaBala(Planet planet, VedicChart chart) {
+    final war = const GrahaYuddhaService().checkGrahaYuddha(chart);
+    if (war == null) return 0.0;
+    if (war.winner == planet) return 30.0;
+    if (war.loser == planet) return -30.0;
+    return 0.0;
   }
 
   /// Calculates Natonnata Bala (Day/Night Strength).
@@ -863,20 +876,11 @@ class ShadbalaService {
         1721118.5 +
         (dt.hour + dt.minute / 60.0 + dt.second / 3600.0) / 24.0;
 
-    // Kali Yuga epoch JD (midnight at Ujjain)
-    const kaliEpochJd = 588465.50;
-
-    // Ahargana = elapsed days since Kali Yuga
-    final ahargana = jd - kaliEpochJd;
-
-    // Surya Siddhanta constants:
-    // Total signs (Jovian years) in Mahayuga = 364,220 * 12 = 4,370,640
-    // Days in Mahayuga = 1,577,917,828 civil days
-    final elapsedJovianYears = (ahargana * 4370640) / 1577917828;
-
-    // Kali Yuga started in the 28th Samvatsara (Vijaya).
-    // We add 27 so that Index 0 aligns with Prabhava (the 1st Samvatsara).
-    final samvatsaraIndex = (elapsedJovianYears.floor() + 27) % 60;
+    // Modern 60-year Samvatsara cycle anchored to Prabhava 1987 (March 30, 1987, JD 2446885.5)
+    // using the Brhaspatya 361.0220 Jovian days per Samvatsara.
+    const anchorJd = 2446885.5; // Prabhava 1987
+    final elapsedDays = jd - anchorJd;
+    final samvatsaraIndex = ((elapsedDays / 361.0220).floor() % 60 + 60) % 60;
 
     // Full 60-year cycle with all 7 planets as lords
     // Sequence follows traditional Samvatsara assignments
@@ -1259,31 +1263,30 @@ class ShadbalaService {
     return CombustionSeverity.veryMild;
   }
 
-  /// Chesta Bala (Motional Strength) calculation.
+  /// Chesta Bala (Motional Strength) calculation per classical BPHS.
   double _calculateChestaBala(Planet planet, VedicPlanetInfo planetInfo) {
     if (planet == Planet.sun || planet == Planet.moon) return 0.0;
 
     final speed = planetInfo.position.longitudeSpeed;
     final avgSpeed = _averageSpeeds[planet] ?? 1.0;
 
-    if (speed < 0) {
-      // Retrograde states
-      if (speed.abs() > avgSpeed) {
-        return 60.0; // Vakra (Full Retrograde)
-      } else {
-        return 30.0; // Anuvakra (Slow Retrograde) - Simplified mapping
-      }
-    } else if (speed.abs() < 0.05) {
+    // Vikala (Stationary): check first before negative speed
+    if (speed.abs() < 0.05) {
       return 15.0; // Vikala (Stationary)
-    } else {
-      // Forward states
-      final ratio = speed / avgSpeed;
-      if (ratio < 0.5) return 22.5; // Mandatara (Very Slow)
-      if (ratio < 1.0) return 30.0; // Manda (Slow)
-      if (ratio < 1.5) return 45.0; // Sama (Normal/Even)
-      if (ratio < 2.0) return 15.0; // Chara (Fast)
-      return 7.5; // Atichara (Very Fast)
     }
+
+    // Retrograde states: Vakra & Anuvakra are 0.0 in classical BPHS
+    if (speed < 0) {
+      return 0.0;
+    }
+
+    // Forward states
+    final ratio = speed / avgSpeed;
+    if (ratio < 0.5) return 22.5; // Mandatara (Very Slow)
+    if (ratio < 1.0) return 30.0; // Manda (Slow)
+    if (ratio < 1.5) return 45.0; // Sama (Normal/Even)
+    if (ratio < 2.0) return 60.0; // Chara (Fast)
+    return 60.0; // Atichara (Very Fast)
   }
 
   double _calculateNaisargikaBala(Planet planet) {
@@ -1349,10 +1352,19 @@ class ShadbalaService {
     } else if (aspectingPlanet == Planet.moon) {
       if (chart != null) {
         final moonInfo = chart.getPlanet(Planet.moon);
-        if (moonInfo != null) {
+        final sunInfo = chart.getPlanet(Planet.sun);
+        if (moonInfo != null && sunInfo != null) {
+          final elongation =
+              (moonInfo.longitude - sunInfo.longitude + 360) % 360;
           final pakshaBala = _calculatePakshaBala(Planet.moon, moonInfo, chart);
-          isBenefic = pakshaBala >= 30.0;
-          isMalefic = pakshaBala < 30.0;
+          // Waxing Moon (Shukla Paksha 0..180°) is naturally benefic
+          if (elongation > 0 && elongation <= 180) {
+            isBenefic = true;
+            isMalefic = false;
+          } else {
+            isBenefic = pakshaBala >= 30.0;
+            isMalefic = pakshaBala < 30.0;
+          }
         } else {
           isBenefic = true;
         }
@@ -1430,7 +1442,7 @@ class ShadbalaService {
       final baseStrength = _calculateVirupaFromOrb(orb, aspecting, aspectAngle);
 
       // Apply partial aspect multiplier
-      final multiplier = _getAspectStrengthMultiplier(aspectAngle);
+      final multiplier = _getAspectStrengthMultiplier(aspecting, aspectAngle);
       final strength = baseStrength * multiplier;
 
       if (strength > maxStrength) {
@@ -1482,14 +1494,25 @@ class ShadbalaService {
 
   /// Gets the aspect strength multiplier for partial aspects.
   /// Full aspects (180) get full 60 virupas, partial aspects get reduced.
-  double _getAspectStrengthMultiplier(double aspectAngle) {
+  double _getAspectStrengthMultiplier(Planet aspecting, double aspectAngle) {
     // Full 7th aspect
     if ((aspectAngle - 180.0).abs() < 1e-4) return 1.0;
 
     // Special aspects (Mars 4th/8th, Jupiter 5th/9th, Saturn 3rd/10th)
-    const specialAngles = [90.0, 120.0, 210.0, 240.0, 60.0, 270.0];
-    if (specialAngles.any((a) => (a - aspectAngle).abs() < 1e-4)) {
-      return 1.0; // Full strength for special aspects
+    if (aspecting == Planet.mars &&
+        ((aspectAngle - 90.0).abs() < 1e-4 ||
+            (aspectAngle - 210.0).abs() < 1e-4)) {
+      return 1.0;
+    }
+    if (aspecting == Planet.jupiter &&
+        ((aspectAngle - 120.0).abs() < 1e-4 ||
+            (aspectAngle - 240.0).abs() < 1e-4)) {
+      return 1.0;
+    }
+    if (aspecting == Planet.saturn &&
+        ((aspectAngle - 60.0).abs() < 1e-4 ||
+            (aspectAngle - 270.0).abs() < 1e-4)) {
+      return 1.0;
     }
 
     // Partial aspects (1/4 and 3/4)
@@ -1569,11 +1592,13 @@ class ShadbalaService {
   /// Pi constant
   static const double pi = 3.14159265358979323846;
 
-  ShadbalaStrength _getStrengthCategory(double totalBala) {
-    if (totalBala >= 380) return ShadbalaStrength.veryStrong;
-    if (totalBala >= 330) return ShadbalaStrength.strong;
-    if (totalBala >= 280) return ShadbalaStrength.moderate;
-    if (totalBala >= 230) return ShadbalaStrength.weak;
+  ShadbalaStrength _getStrengthCategory(double totalBala, [Planet? planet]) {
+    final minReq = planet != null ? (_minimumShadbala[planet] ?? 330.0) : 330.0;
+    final ratio = totalBala / minReq;
+    if (ratio >= 1.25) return ShadbalaStrength.veryStrong;
+    if (ratio >= 1.0) return ShadbalaStrength.strong;
+    if (ratio >= 0.85) return ShadbalaStrength.moderate;
+    if (ratio >= 0.70) return ShadbalaStrength.weak;
     return ShadbalaStrength.veryWeak;
   }
 
@@ -1608,6 +1633,9 @@ class ShadbalaService {
     Planet.jupiter: 390.0, // 6.5 Rupas
     Planet.venus: 330.0, // 5.5 Rupas
     Planet.saturn: 300.0, // 5.0 Rupas
+    Planet.meanNode: 360.0,
+    Planet.trueNode: 360.0,
+    Planet.ketu: 300.0,
   };
 }
 

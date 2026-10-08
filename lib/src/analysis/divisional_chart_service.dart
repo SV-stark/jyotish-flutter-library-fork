@@ -249,16 +249,16 @@ class DivisionalChartService {
       return PlanetaryDignity.debilitated;
     }
 
+    // Moola Trikona (must be checked BEFORE own signs because MT signs overlap)
+    final moolaTrikona = _getMoolaTrikona(planet);
+    if (moolaTrikona != null && signIndex == moolaTrikona) {
+      return PlanetaryDignity.moolaTrikona;
+    }
+
     // Own signs
     final ownSigns = _getOwnSigns(planet);
     if (ownSigns.contains(signIndex)) {
       return PlanetaryDignity.ownSign;
-    }
-
-    // Moola Trikona
-    final moolaTrikona = _getMoolaTrikona(planet);
-    if (moolaTrikona != null && signIndex == moolaTrikona) {
-      return PlanetaryDignity.moolaTrikona;
     }
 
     // Friend/enemy/neutral based on sign lord

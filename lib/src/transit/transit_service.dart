@@ -163,6 +163,17 @@ class TransitService {
           ),
         );
       }
+      if ((angularDiff - 270).abs() <= orb) {
+        aspects.add(
+          _createTransitAspect(
+            transitPos,
+            natalPlanet,
+            natalPos,
+            AspectType.marsSpecial4th,
+            angularDiff - 270,
+          ),
+        );
+      }
       if ((angularDiff - 210).abs() <= orb) {
         aspects.add(
           _createTransitAspect(
@@ -171,6 +182,17 @@ class TransitService {
             natalPos,
             AspectType.marsSpecial8th,
             angularDiff - 210,
+          ),
+        );
+      }
+      if ((angularDiff - 150).abs() <= orb) {
+        aspects.add(
+          _createTransitAspect(
+            transitPos,
+            natalPlanet,
+            natalPos,
+            AspectType.marsSpecial8th,
+            angularDiff - 150,
           ),
         );
       }

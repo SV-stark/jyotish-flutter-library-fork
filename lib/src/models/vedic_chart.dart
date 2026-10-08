@@ -60,15 +60,18 @@ class HouseSystem {
     return 1; // Default to first house
   }
 
+  /// Gets the 0-based zodiac sign index of the Ascendant (0=Aries, 11=Pisces).
+  int get ascendantSignIndex => (ascendant / 30).floor() % 12;
+
   /// Gets the zodiac sign of the Ascendant
   String get ascendantSign {
-    final signIndex = (ascendant / 30).floor() % 12;
+    final signIndex = ascendantSignIndex;
     return _zodiacSigns[signIndex];
   }
 
   /// Sanskrit name of the Ascendant sign.
   String get ascendantSignSanskrit {
-    final signIndex = (ascendant / 30).floor() % 12;
+    final signIndex = ascendantSignIndex;
     return Rashi.values[signIndex].sanskritName;
   }
 
@@ -493,6 +496,9 @@ class VedicChart {
 
   /// Gets the Ascendant sign
   String get ascendantSign => houses.ascendantSign;
+
+  /// Gets the 0-based zodiac sign index of the Ascendant (0=Aries, 11=Pisces)
+  int get ascendantSignIndex => houses.ascendantSignIndex;
 
   /// Gets the Ascendant degree
   double get ascendant => houses.ascendant;
