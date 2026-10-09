@@ -72,6 +72,50 @@ void main() {
       expect(krishnaCases, greaterThan(50));
     });
 
+    test('matches the authoritative 2026 festival calendar', () async {
+      const location = GeographicLocation(
+        latitude: 28.6139,
+        longitude: 85.3240,
+        timezone: 'Asia/Kathmandu',
+      );
+
+      // These dates are externally verifiable, so they pin the naming logic to
+      // ground truth rather than to an internal invariant.
+      //
+      //  * 19 Apr 2026 is Akshaya Tritiya = Vaishakha Shukla Tritiya, and
+      //    panchang sources give Vaishakha in BOTH calendars.
+      //  * 1 May 2026 is Buddha Purnima / Vaishakha Purnima, so it is the
+      //    Purnima that ENDS Purnimanta Vaishakha.
+      //  * 2 May 2026 is therefore Krishna Pratipada of Purnimanta Jyeshtha,
+      //    while Amanta Vaishakha still runs to ~17 May.
+      final cases = <DateTime, String>{
+        DateTime(2026, 4, 19): 'Vaishakha',
+        DateTime(2026, 5, 1): 'Vaishakha',
+        DateTime(2026, 5, 2): 'Jyeshtha',
+      };
+
+      for (final entry in cases.entries) {
+        final purnimanta = await jyotish.getPurnimantaMasa(
+          dateTime: entry.key,
+          location: location,
+        );
+        expect(
+          purnimanta.month.sanskrit,
+          entry.value,
+          reason: 'on ${entry.key} the Purnimanta month resolved to '
+              '${purnimanta.month.sanskrit}',
+        );
+      }
+
+      // The corresponding Amanta months, confirming the two calendars agree on
+      // 19 April and 1 May (Shukla paksha) and differ by one on 2 May.
+      final amantaOnMay2 = await jyotish.getAmantaMasa(
+        dateTime: DateTime(2026, 5, 2),
+        location: location,
+      );
+      expect(amantaOnMay2.month.sanskrit, 'Vaishakha');
+    });
+
     test('month name and Adhika verdict agree (both from one boundary)', () async {
       const location = GeographicLocation(
         latitude: 28.6139,

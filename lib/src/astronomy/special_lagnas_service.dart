@@ -51,10 +51,18 @@ class SpecialLagnasService {
                 360.0) %
         360.0;
 
-    // 1. Hora Lagna (HL): 1 sign (30 degrees) per hour (2.5 ghatis).
+    // 1. Hora Lagna (HL): one sign (30 degrees) per 2.5 ghatis.
+    //
+    // 2.5 ghatis is 60 minutes, i.e. ONE HOUR, so this is 30 degrees per hour.
+    // Note the unit trap: the classical statement is "per 2.5 ghatis", not "per
+    // 2.5 hours". Reading it as hours (as an earlier revision did) advances the
+    // lagna by only 12 degrees per 2.5 ghatis — a 2.5x error that runs the
+    // other way to the alternative "one sign per 2.5 hours" formulation some
+    // texts use. This implementation follows the ghati reading.
     final horaLagna = (sunLong + elapsedHours * 30.0) % 360.0;
 
-    // 2. Ghati Lagna (GL): 1 sign (30 degrees) per ghati (0.4 hours = 24 minutes).
+    // 2. Ghati Lagna (GL): one sign (30 degrees) per ghati.
+    // 1 ghati = 0.4 hours = 24 minutes, so 15 ghatis over a 6-hour window.
     final ghatiLagna = (sunLong + (elapsedHours / 0.4) * 30.0) % 360.0;
 
     // 3. Sree Lagna (SL): Point of Lakshmi based on Moon's nakshatra fraction added to Ascendant.

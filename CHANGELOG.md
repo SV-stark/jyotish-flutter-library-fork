@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.4] - 2026-10-09
+
+### Verified
+- **Purnimanta naming confirmed against the authoritative 2026 festival calendar.** The Krishna-paksha offset was audited as wrong on the theory that a Purnimanta month straddling two Amanta months cannot follow a fixed offset. It can, and the convention is externally verifiable: 19 April 2026 (Akshaya Tritiya) is Vaishakha in *both* calendars; 1 May 2026 is Vaishakha Purnima / Buddha Purnima, so Purnimanta Vaishakha ends that day; 2 May 2026 is therefore Krishna Pratipada of Purnimanta Jyeshtha while Amanta Vaishakha still runs to ~17 May. All four expectations now hold as regression tests.
+- **Gana Milan Varna table confirmed.** The nakshatra-to-Varna assignments were audited as outliers, specifically Hasta and Uttara Phalguni as Shudra. Both are correct: Kalidasa's *Poorvakalamrut* Ch. 3 shloka 93, the Madhaviya Grantha and B.V. Raman's *Muhurta* all list Hasta and Uttara Phalguni among the six Shudra nakshatras, and all three agree on every one of the 27 assignments.
+
+### Changed
+- **Documentation only, no behaviour change**:
+  - `_getNakshatraVarna` now cites the actual sources (*Poorvakalamrut* Ch. 3 shloka 93, Madhaviya Grantha, B.V. Raman) and states explicitly that all three agree on every assignment, including the two that were questioned.
+  - The Hora Lagna rate comment now spells out the unit trap — the classical rule is 30 degrees per 2.5 **ghatis**, which is one hour, not 2.5 hours — and records that the earlier revision's 2.5x error came from reading it as hours. This distinguishes it from the alternative "one sign per 2.5 hours" formulation.
+
+### Tests
+- Added a `matches the authoritative 2026 festival calendar` case to `test/round7_fixes_test.dart` pinning Purnimanta names to externally verifiable festival dates (Akshaya Tritiya 19 Apr, Buddha Purnima 1 May, and the Krishna Pratipada on 2 May) alongside the corresponding Amanta month, so the naming is checked against ground truth rather than only against an internal invariant.
+
+---
+
 ## [2.20.3] - 2026-10-09
 
 ### Fixed

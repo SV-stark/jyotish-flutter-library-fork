@@ -140,9 +140,6 @@ class CompatibilityService {
     return 0;
   }
 
-  /// Returns the Varna for a given nakshatra per standard classification.
-  ///
-  /// Sources: Muhurta Chintamani, Brihat Parashara Hora Shastra
   /// Returns the Varna for a given nakshatra per the Dakshin-Bharat
   /// (nakshatra-based) classification.
   ///
@@ -151,10 +148,14 @@ class CompatibilityService {
   /// Ashwini and back up again. This yields 7 Brahmin, 7 Kshatriya, 7 Vaishya
   /// and 6 Shudra nakshatras.
   ///
-  /// Sources: Madhaviya Grantha; B.V. Raman, *Muhurta*; the Parashara
-  /// nakshatra-varga tables. Every one of the 27 nakshatras is classified
-  /// explicitly — an unrecognised name is a programming error, not a silent
-  /// default, so that a schema change cannot quietly mis-score Varna Koota.
+  /// Sources: Kalidasa, *Poorvakalamrut* Ch. 3 (Vivaha-Melapaka Prakarana)
+  /// shloka 93; Madhaviya Grantha; B.V. Raman, *Muhurta*. All three agree on
+  /// every one of the 27 assignments, including Hasta and Uttara Phalguni as
+  /// Shudra, which the table below reproduces exactly.
+  ///
+  /// Every nakshatra is classified explicitly — an unrecognised name is a
+  /// programming error, not a silent default, so a schema change cannot quietly
+  /// mis-score Varna Koota.
   String _getNakshatraVarna(String nakshatra) {
     const nakshatraVarna = {
       // Brahmin (7)
