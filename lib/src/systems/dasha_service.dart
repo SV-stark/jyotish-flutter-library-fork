@@ -1,5 +1,6 @@
 import '../exceptions/jyotish_exception.dart';
 import 'package:jyotish/src/systems/dasha.dart';
+import 'package:jyotish/src/systems/jaimini_service.dart';
 import 'package:jyotish/src/models/planet.dart';
 import 'package:jyotish/src/models/rashi.dart';
 import 'package:jyotish/src/models/vedic_chart.dart';
@@ -1251,21 +1252,10 @@ class DashaService {
   }
 
   Planet _getAtmakaraka(VedicChart chart) {
-    // Jaimini's Chara Karaka scheme includes Rahu, giving eight karakas. The
-    // rest of the library (JaiminiService.getAtmakaraka, and getCharaKarakas on
-    // the facade) defaults to that eight-karaka scheme, so using only the seven
-    // traditional planets here made Narayana dasha's Atmakaraka disagree with
-    // the Jaimini API whenever Rahu held the highest degree.
-    Planet ak = Planet.sun;
-    double maxDeg = -1.0;
-    for (final planet in [...Planet.traditionalPlanets, Planet.meanNode]) {
-      final deg = (chart.getPlanet(planet)?.longitude ?? 0) % 30;
-      if (deg > maxDeg) {
-        maxDeg = deg;
-        ak = planet;
-      }
-    }
-    return ak;
+    // Delegates to JaiminiService, which implements the canonical eight-karaka
+    // scheme with Rahu's traversed degree reversed (30.0 - deg) for retrograde
+    // motion and adheres to the chart's configured nodeType.
+    return const JaiminiService().getAtmakaraka(chart);
   }
 
   /// Generates a stream of nested dasha periods lazily to minimize memory footprint.

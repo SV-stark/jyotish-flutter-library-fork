@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.7] - 2026-10-09
+
+### Fixed
+- **Transit window inversion & negative orb** (`transit_service.dart`):
+  - In `_createTransitAspect`, `exactOrb` was taking a signed orb difference that could be negative, causing `startDate` to fall after `endDate` when constructing transit event windows. `exactOrb` is now always non-negative (`orb.abs()`), and `halfSpanDays` in `findTransitEvents` takes `aspect.exactOrb.abs() / relativeSpeed`, guaranteeing `startDate <= exactDate <= endDate`.
+- **Atmakaraka retrograde Rahu reverse degree calculation** (`dasha_service.dart`, `jaimini_service.dart`):
+  - In `DashaService`, `_getAtmakaraka` previously computed Rahu's degree as raw `longitude % 30.0`, ignoring retrograde movement and bypassing `CalculationFlags.nodeType`. It now delegates directly to `JaiminiService.getAtmakaraka`, which measures retrograde Rahu's distance traversed in sign as `30.0 - (longitude % 30.0)`. Added `const JaiminiService()` constructor.
+- **Varshaphala 60-year Jovian cycle anchor** (`varshapal_service.dart`):
+  - In `calculateVarshapal`, unified samvatsara determination directly with `getCurrentVarshaNumber(varshaDateTime)` (anchored to Prabhava 1987), eliminating the dead unanchored Jupiter-6° branch and unused Jupiter lookup.
+- **Vajra and Yava Nabhasa Yogas presence rule** (`yoga_service.dart`):
+  - In `vajra_yoga` and `yava_yoga`, removed the over-restrictive `all*` conjuncts that were mathematically incompatible with maximum planetary elongations (Mercury/Venus 90° from Sun). Conformed to PyJHora BVR-84/85 presence rules: `hasBeneficIn1 && hasBeneficIn7 && hasMaleficIn4 && hasMaleficIn10` for Vajra, and reciprocal for Yava.
+- **Varshaphala Egyptian Hadda bounds** (`varshapal_service.dart`):
+  - Conformed Gemini, Leo, and Scorpio term bounds in `_getHaddaLord` to classical *Hayanaratna* and *Tajaka Neelakanthi* Egyptian bounds rather than Ptolemy's modified bounds, correcting Mercury's hadda at 11°–19° Scorpio and Jupiter at 19°–24° Scorpio.
+- **Varshaphala Maasa period duration** (`varshapal_service.dart`):
+  - In `_addMaasaDuration`, scaled month lengths to 1/12th of the solar year (`365.24219 / 12` ≈ 30.437 days) instead of fixed 30 days, so the 12 periods fully span the annual return year.
+- **Varshaphala Dina-Ratri Lord day/night evaluation** (`varshapal_service.dart`):
+  - In `determineVarshesh`, evaluated `isDay` from the natal birth chart (`natalChart`) rather than the annual solar return chart, conforming to the classical Janma-kalina rule and PyJHora parity.
+- **AspectService exactOrb sign normalization** (`aspect_service.dart`):
+  - Enforced `exactOrb: orb.abs()` in `_createAspect`, ensuring orbs are consistently positive across degree-based calculations.
+
+### Tests
+- Added `test/confirmed_fixes_test.dart` (5 comprehensive test suites) verifying:
+  - Transit aspect windows and non-negative `exactOrb` via `getTransitPositions` and `getTransitEvents`.
+  - Atmakaraka consistency between DashaService and JaiminiService with retrograde Rahu reverse degree traversal.
+  - Varshaphala Samvatsara 1-60 cycle coverage and 2026 Paraabhava alignment.
+  - Vajra and Yava yoga dual-pole occupancy gating.
+  - Vipareetha Raja Yoga negative and positive cross-dusthana test cases.
+
+---
+
 ## [2.20.6] - 2026-10-09
 
 ### Fixed

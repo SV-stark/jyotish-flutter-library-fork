@@ -142,7 +142,7 @@ void main() {
 
     // 4. JaiminiService Tests
     group('JaiminiService', () {
-      final jaiminiService = JaiminiService();
+      final jaiminiService = const JaiminiService();
 
       test('calculates Chara Karakas ranking', () {
         final result8 = jaiminiService.getCharaKarakas(chart, useEightKarakaScheme: true);

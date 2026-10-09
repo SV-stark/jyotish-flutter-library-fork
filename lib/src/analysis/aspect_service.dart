@@ -32,7 +32,7 @@ class AspectService {
     VedicChart chart, {
     bool activeOnly = true,
   }) {
-    final jaiminiService = JaiminiService();
+    final jaiminiService = const JaiminiService();
     return activeOnly
         ? jaiminiService.calculateActiveRashiDrishti(chart)
         : jaiminiService.calculateRashiDrishti(chart);
@@ -602,7 +602,7 @@ class AspectService {
       aspectingPlanet: planet1,
       aspectedPlanet: planet2,
       type: type,
-      exactOrb: orb,
+      exactOrb: orb.abs(),
       isApplying: isApplying,
       strength: strength,
       aspectingLongitude: pos1.longitude,

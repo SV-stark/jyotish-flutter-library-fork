@@ -5,6 +5,8 @@ import 'package:jyotish/src/models/vedic_chart.dart';
 
 /// Service for Jaimini astrology calculations (Karakamsa, Rashi Drishti).
 class JaiminiService {
+  const JaiminiService();
+
   /// Returns all Chara Karakas ranked from highest to lowest degree.
   ///
   /// [useEightKarakaScheme] - if true (default), uses 8 candidates including Rahu.

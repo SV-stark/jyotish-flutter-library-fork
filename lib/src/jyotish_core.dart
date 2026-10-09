@@ -270,7 +270,7 @@ class Jyotish {
       _arudhaPadaService = ArudhaPadaService();
       _argalaService = ArgalaService();
       _bhavaBalaService = BhavaBalaService(_shadbalaService!);
-      _jaiminiService = JaiminiService();
+      _jaiminiService = const JaiminiService();
       _prashnaService = PrashnaService(_ephemerisService!);
       _gocharaVedhaService = GocharaVedhaService();
       _strengthAnalysisService = StrengthAnalysisService();

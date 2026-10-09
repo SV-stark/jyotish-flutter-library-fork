@@ -269,7 +269,7 @@ class TransitService {
       aspectingPlanet: transitPos.planet,
       aspectedPlanet: natalPlanet,
       type: type,
-      exactOrb: orb,
+      exactOrb: orb.abs(),
       isApplying: transitPos.longitudeSpeed > 0,
       strength: 1.0 - (orb.abs() / type.defaultOrb).clamp(0.0, 1.0),
       aspectingLongitude: transitPos.longitude,
@@ -332,7 +332,7 @@ class TransitService {
                         0.0))
                 .abs();
             final halfSpanDays = relativeSpeed > 1e-9
-                ? aspect.exactOrb / relativeSpeed
+                ? aspect.exactOrb.abs() / relativeSpeed
                 : config.intervalDays.toDouble();
             final halfSpan = Duration(
               microseconds:
