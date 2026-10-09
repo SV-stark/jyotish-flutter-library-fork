@@ -343,10 +343,20 @@ class TransitService {
   }
 
   List<TransitEvent> _deduplicateEvents(List<TransitEvent> events) {
+    // Two events are the same only when every identifying field matches:
+    // transiting planet, the natal body or point aspected, the aspect, and the
+    // exact instant. Bucketing the date into 7-day windows (as this did) made
+    // two genuinely different exact aspects of the same pair and type collapse
+    // whenever they fell in the same week — so a Tuesday exact opposition and
+    // a Thursday exact trine to the same natal planet could not both be
+    // reported. Bucketing cannot distinguish them at all, because the key is
+    // the same for any instant inside the week.
     final seen = <String>{};
     return events.where((e) {
-      final key =
-          '${e.transitPlanet}-${e.natalPlanet}-${e.aspectType}-${(e.exactDate.millisecondsSinceEpoch / (1000 * 60 * 60 * 24 * 7)).floor()}';
+      final key = '${e.transitPlanet}-'
+          '${e.natalPlanet?.name ?? e.natalPointName}-'
+          '${e.aspectType.name}-'
+          '${e.exactDate.millisecondsSinceEpoch}';
       return seen.add(key);
     }).toList();
   }

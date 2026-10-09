@@ -111,9 +111,24 @@ class DashaService {
 
     String? precisionWarning;
     if (birthTimeUncertainty != null && birthTimeUncertainty > 0) {
+      // A birth-time error moves the Moon along its nakshatra, and the dasha
+      // balance is that fractional error multiplied by the first dasha's years.
+      // The Moon advances one nakshatra (nakshatraWidth degrees) per synodic
+      // day, so one minute of clock error is 1/1440 of a nakshatra.
+      //
+      // The previous warning reported `uncertainty / 60 * 0.2` days, which for a
+      // one-hour uncertainty gave 0.2 days. The real figure is up to
+      // 20 years * (1/24) * 365.25 = ~304 days — three orders of magnitude
+      // larger — and it propagates to every subsequent dasha boundary because
+      // the whole timeline is shifted by the same amount.
+      final fractionalError = birthTimeUncertainty / (24 * 60);
+      final driftDays = firstDashaYears * fractionalError * yearLength;
       precisionWarning =
           'Birth time uncertain by $birthTimeUncertainty minutes. '
-          'Dasha timing may vary by up to ${(birthTimeUncertainty / 60 * 0.2).toStringAsFixed(1)} days.';
+          'This shifts the Moon by '
+          '${(birthTimeUncertainty * nakshatraWidth / (24 * 60)).toStringAsFixed(2)} '
+          'degrees and moves every dasha boundary by up to '
+          '${driftDays.toStringAsFixed(1)} days.';
     }
 
     if (yearLength != defaultYearLength) {
@@ -1236,9 +1251,14 @@ class DashaService {
   }
 
   Planet _getAtmakaraka(VedicChart chart) {
+    // Jaimini's Chara Karaka scheme includes Rahu, giving eight karakas. The
+    // rest of the library (JaiminiService.getAtmakaraka, and getCharaKarakas on
+    // the facade) defaults to that eight-karaka scheme, so using only the seven
+    // traditional planets here made Narayana dasha's Atmakaraka disagree with
+    // the Jaimini API whenever Rahu held the highest degree.
     Planet ak = Planet.sun;
     double maxDeg = -1.0;
-    for (final planet in Planet.traditionalPlanets) {
+    for (final planet in [...Planet.traditionalPlanets, Planet.meanNode]) {
       final deg = (chart.getPlanet(planet)?.longitude ?? 0) % 30;
       if (deg > maxDeg) {
         maxDeg = deg;

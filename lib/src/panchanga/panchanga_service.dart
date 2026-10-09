@@ -1036,6 +1036,100 @@ class PanchangaService {
     );
   }
 
+  /// Verifies that [moment] is genuinely a Tithi junction.
+  ///
+  /// The search window spans 48 hours, across which the Moon-Sun elongation
+  /// advances about 585 degrees — more than a full cycle — so the target angle
+  /// is crossed **twice** inside the window. A signed-difference bisection
+  /// assumes monotonicity and can converge on either crossing; picking the
+  /// wrong one lands about 29.5 days out while still returning a
+  /// plausible-looking timestamp. Verifying converts that silent wrong answer
+  /// into a loud failure.
+  Future<void> _verifyElongationJunction(
+    DateTime moment,
+    double targetElongation,
+    GeographicLocation location,
+    CalculationFlags flags,
+  ) async {
+    final sunPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: moment,
+      location: location,
+      flags: flags,
+    );
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: moment,
+      location: location,
+      flags: flags,
+    );
+    final elongation = (moonPos.longitude - sunPos.longitude + 360) % 360;
+    final diff = (elongation - targetElongation + 180) % 360 - 180;
+    if (diff.abs() > 0.01) {
+      throw StateError(
+        'No Tithi junction found within the 48-hour search window. The '
+        'bisection converged on $moment, which is '
+        '${diff.abs().toStringAsFixed(3)} degrees from the target. Pass a '
+        'startDate closer to the junction.',
+      );
+    }
+  }
+
+  /// Verifies that [moment] is genuinely a Nakshatra junction.
+  Future<void> _verifyMoonJunction(
+    DateTime moment,
+    double targetLongitude,
+    GeographicLocation location,
+    CalculationFlags flags,
+  ) async {
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: moment,
+      location: location,
+      flags: flags,
+    );
+    final diff = (moonPos.longitude - targetLongitude + 180) % 360 - 180;
+    if (diff.abs() > 0.01) {
+      throw StateError(
+        'No Nakshatra junction found within the 48-hour search window. The '
+        'bisection converged on $moment, which is '
+        '${diff.abs().toStringAsFixed(3)} degrees from the target. Pass a '
+        'startDate closer to the junction.',
+      );
+    }
+  }
+
+  /// Verifies that [moment] is genuinely a Yoga junction.
+  Future<void> _verifyYogaJunction(
+    DateTime moment,
+    double targetValue,
+    GeographicLocation location,
+    CalculationFlags flags,
+  ) async {
+    final sunPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: moment,
+      location: location,
+      flags: flags,
+    );
+    final moonPos = await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.moon,
+      dateTime: moment,
+      location: location,
+      flags: flags,
+    );
+    final yogaValue = (sunPos.longitude + moonPos.longitude + 360) % 360;
+    final diff = (yogaValue - targetValue + 180) % 360 - 180;
+    if (diff.abs() > 0.01) {
+      throw StateError(
+        'No Yoga junction found within the 48-hour search window. The '
+        'bisection converged on $moment, which is '
+        '${diff.abs().toStringAsFixed(3)} degrees from the target. Pass a '
+        'startDate closer to the junction.',
+      );
+    }
+  }
+
   /// Gets the exact junction (change point) of a specific Tithi.
   ///
   /// This provides microsecond-level precision for when a Tithi changes,
@@ -1108,6 +1202,7 @@ class PanchangaService {
       }
     }
 
+    await _verifyElongationJunction(searchStart, targetElongation, location, flags);
     return searchStart;
   }
 
@@ -1159,6 +1254,7 @@ class PanchangaService {
       }
     }
 
+    await _verifyMoonJunction(searchStart, targetLongitude, location, flags);
     return searchStart;
   }
 
@@ -1216,6 +1312,7 @@ class PanchangaService {
       }
     }
 
+    await _verifyYogaJunction(searchStart, targetValue, location, flags);
     return searchStart;
   }
 

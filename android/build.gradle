@@ -1,5 +1,5 @@
 group 'com.jyotish'
-version '2.20.4'
+version '2.20.5'
 
 buildscript {
     ext.kotlin_version = '1.9.20'

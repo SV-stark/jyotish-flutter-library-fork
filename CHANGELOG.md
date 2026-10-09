@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.5] - 2026-10-09
+
+### Fixed
+- **`ArgumentService.calculateArgalaForPlanet` reported every Argala as unobstructed** (`argala_service.dart`):
+  - `isObstructed` was hard-coded to `false` with a "simplified" comment, while `calculateArgalaForHouse` — the other half of the same public API — computed Virodha Argala properly. The two methods therefore disagreed on every chart. Obstructing houses are now looked up with the same offsets the house-based method uses (12th obstructs the 2nd; 10th and 9th obstruct the 4th and 5th; 3rd obstructs the 11th).
+- **`DashaResult.precisionWarning` understated timing drift by ~3 orders of magnitude** (`dasha_service.dart`):
+  - The warning reported `uncertainty / 60 * 0.2` days — 0.2 days for a one-hour uncertainty. The real figure is the fractional nakshatra error (one minute of clock error is 1/1440 of the Moon's synodic day) times the first dasha's years, which for a 20-year dasha is **~304 days**. Because the whole timeline is shifted by the same amount, that error propagates to every subsequent dasha boundary, so it is now reported as such.
+- **`_deduplicateEvents` collapsed genuinely distinct exact aspects** (`transit_service.dart`):
+  - The dedupe key bucketed `exactDate` into 7-day windows, so any two events sharing a transiting planet, natal body and aspect type within the same week collapsed into one — a Tuesday exact opposition and a Thursday exact trine to the same natal planet could not both be reported. The key is now the full identifying tuple including the exact instant.
+- **Junction searches could return a silently wrong instant** (`panchanga_service.dart`):
+  - `getTithiJunction`, `getNakshatraJunction` and `getYogaJunction` bisect a 48-hour window and return the converged bound with no check that it is actually the requested junction. Because the Moon-Sun elongation advances ~585 degrees across that span — more than a full cycle — the target angle is crossed **twice** inside the window, and a signed-difference bisection assumes monotonicity and can converge on either. The wrong crossing is ~29.5 days out. Each search now verifies its result and throws a `StateError` naming the actual offset instead of returning a plausible-looking wrong timestamp.
+- **`_getAtmakaraka` used the 7-karaka scheme, contradicting the rest of the library** (`dasha_service.dart`):
+  - It iterated only `Planet.traditionalPlanets`, so a chart whose Rahu held the highest degree got a different Atmakaraka from `JaiminiService.getAtmakaraka` and the facade's `getCharaKarakas`, both of which default to the eight-karaka scheme. Now consistent.
+
+### Verified, not changed
+- **Yogini enum** audited as having Mangala/Pingala swapped. Not a defect: classically Mangala is ruled by the Moon and Pingala by the Sun, which is what the enum declares. The nakshatra-to-Yogini starting index `(nakshatraIndex + 3) % 8` is also correct, matching the Ashwini→Bhramari, Ardra→Mangala, Krittika→Ulka, Mrigashira→Sankata assignment.
+- **`HouseSystem.getHouseForLongitude` silent house-1 fallback** — already throws `ArgumentError` listing the malformed cusps.
+- **`CalculationFlags.fromJson` silent enum defaults** — already throws `ArgumentError` for unrecognised `system`, `nodeType` and `siderealMode`, with identifier matching preferred over the legacy label.
+- **`AspectService.getPlanetsAspectingSign` counting same-sign as aspecting** — already returns `true` only for the 6th-house separation.
+
+---
+
 ## [2.20.4] - 2026-10-09
 
 ### Verified
