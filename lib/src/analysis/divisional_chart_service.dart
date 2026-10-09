@@ -102,9 +102,35 @@ class DivisionalChartService {
     );
     planetHouseMap[rahuInfoTemp.position.planet] = rahuInfoTemp.house;
 
-    final ketuInfoTemp = KetuPosition(rahuPosition: rahuInfoTemp.position);
-    final ketuHouse = dHouses.getHouseForLongitude(ketuInfoTemp.longitude);
-    planetHouseMap[Planet.ketu] = ketuHouse;
+    // Ketu's varga placement must come from Ketu's own NATAL longitude
+    // (Rahu + 180) run through the varga mapping — NOT from the already
+    // projected Rahu. For evenly divided vargas the two agree, because a
+    // 180-degree rotation always maps to six varga signs; but the uneven
+    // Trimsamsa (D30) and D249 do not commute with that rotation, so deriving
+    // Ketu from the mapped Rahu puts Ketu in the wrong varga sign.
+    final natalKetuLongitude = (rashiChart.rahu.longitude + 180.0) % 360.0;
+    final ketuInfoTemp = _calculatePlanetVarga(
+      originalInfo: VedicPlanetInfo(
+        position: PlanetPosition(
+          planet: Planet.ketu,
+          dateTime: rashiChart.rahu.position.dateTime,
+          longitude: natalKetuLongitude,
+          latitude: -rashiChart.rahu.position.latitude,
+          distance: rashiChart.rahu.position.distance,
+          longitudeSpeed: rashiChart.rahu.position.longitudeSpeed,
+          latitudeSpeed: -rashiChart.rahu.position.latitudeSpeed,
+          distanceSpeed: rashiChart.rahu.position.distanceSpeed,
+          isRetrograde: true,
+        ),
+        house: dHouses.getHouseForLongitude(natalKetuLongitude),
+        dignity: PlanetaryDignity.neutralSign,
+      ),
+      type: type,
+      dHouses: dHouses,
+      planetHouseMap: null,
+      config: config,
+    );
+    planetHouseMap[Planet.ketu] = ketuInfoTemp.house;
 
     // Second pass: Calculate dignity
     final finalPlanets = <Planet, VedicPlanetInfo>{};
@@ -149,7 +175,21 @@ class DivisionalChartService {
       subSpan: rahuInfoTemp.subSpan,
     );
 
-    final finalKetu = KetuPosition(rahuPosition: finalRahu.position);
+    // `KetuPosition` derives Ketu from a Rahu position, so to pin Ketu at its
+    // own varga longitude we hand it a Rahu proxy exactly 180 degrees behind.
+    // Every other field comes from the mapped Rahu, so Ketu's date, speed and
+    // distance are unchanged from before.
+    final ketuRahuProxy = PlanetPosition(
+      planet: rahuInfoTemp.position.planet,
+      dateTime: rahuInfoTemp.position.dateTime,
+      longitude: (ketuInfoTemp.longitude + 180.0) % 360.0,
+      latitude: rahuInfoTemp.position.latitude,
+      distance: rahuInfoTemp.position.distance,
+      longitudeSpeed: rahuInfoTemp.position.longitudeSpeed,
+      latitudeSpeed: rahuInfoTemp.position.latitudeSpeed,
+      distanceSpeed: rahuInfoTemp.position.distanceSpeed,
+    );
+    final finalKetu = KetuPosition(rahuPosition: ketuRahuProxy);
 
     return VedicChart(
       dateTime: rashiChart.dateTime,

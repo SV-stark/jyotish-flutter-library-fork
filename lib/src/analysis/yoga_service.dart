@@ -9,6 +9,10 @@ class YogaService {
   const YogaService();
 
   /// Gets the house number (1-12) of a planet.
+  ///
+  /// The trailing `?? 1` is an unreachable defensive branch: callers go through
+  /// [detectNatalYogas], which first rejects any chart missing a traditional
+  /// planet. It is deliberately not a silent default.
   int _getPlanetHouse(VedicChart chart, Planet planet) {
     if (planet == Planet.ketu) {
       return chart.houses.getHouseForLongitude(chart.ketu.longitude);
@@ -20,6 +24,10 @@ class YogaService {
   }
 
   /// Gets the sign index (0-11) of a planet (Aries=0, Pisces=11).
+  ///
+  /// The trailing `?? 0` is an unreachable defensive branch: callers go through
+  /// [detectNatalYogas], which first rejects any chart missing a traditional
+  /// planet. It is deliberately not a silent default.
   int _getPlanetSign(VedicChart chart, Planet planet) {
     if (planet == Planet.ketu) {
       return (chart.ketu.longitude / 30).floor() % 12;
@@ -101,6 +109,20 @@ class YogaService {
   /// Detects all natal, Raja, and Nabhasa yogas for a Vedic Chart.
   List<NatalYoga> detectNatalYogas(VedicChart chart) {
     final result = <NatalYoga>[];
+
+    // Every yoga below is keyed off the seven traditional planets. If one is
+    // missing the chart is malformed, and quietly substituting a placeholder
+    // (house 1 / Aries) would fabricate yoga results from invented data, so the
+    // failure is surfaced here instead.
+    for (final planet in Planet.traditionalPlanets) {
+      if (chart.getPlanet(planet) == null) {
+        throw StateError(
+          'Chart for ${chart.location} at '
+          '${chart.dateTime.toIso8601String()} has no position for '
+          '${planet.displayName}; cannot detect yogas.',
+        );
+      }
+    }
 
     // House positions for traditional planets (Sun to Saturn)
     final pMap = <Planet, int>{};
@@ -1235,10 +1257,42 @@ class YogaService {
     // Evaluation for gaja_kesari_yoga
     {
       final diffJupMoon = (pMap[Planet.jupiter]! - moonHouse + 12) % 12;
-      final isPresent = [0, 3, 6, 9].contains(diffJupMoon);
+      final inKendraFromMoon = [0, 3, 6, 9].contains(diffJupMoon);
+
+      final jupiterInfo = chart.getPlanet(Planet.jupiter);
+      final jupiterHouse = pMap[Planet.jupiter]!;
+
+      // Condition (2): a benefic conjoins or aspects Jupiter.
+      final conjunctBenefic = traditionalPlanetsInHouse(
+        jupiterHouse,
+      ).any((p) => p != Planet.jupiter && benefics.contains(p));
+      final aspectingBenefic = benefics.any(
+        (p) => p != Planet.jupiter && _doesPlanetAspectHouse(chart, p, jupiterHouse),
+      );
+      final hasBeneficSupport = conjunctBenefic || aspectingBenefic;
+
+      // Condition (3): Jupiter is not debilitated, combust, or in an enemy's
+      // house. An exalted Jupiter strengthens the yoga rather than spoiling it,
+      // so exaltation is deliberately not a disqualifier.
+      final dignity = jupiterInfo?.dignity;
+      final notAfflicted =
+          dignity != PlanetaryDignity.debilitated &&
+          !(jupiterInfo?.isCombust ?? false) &&
+          dignity != PlanetaryDignity.enemySign &&
+          dignity != PlanetaryDignity.greatEnemy;
+
+      final isPresent = inKendraFromMoon && hasBeneficSupport && notAfflicted;
+
       final explanation = isPresent
-          ? 'Jupiter is in house ${diffJupMoon + 1} from Moon'
-          : 'Jupiter not in Kendra from Moon';
+          ? 'Jupiter is in house ${diffJupMoon + 1} from Moon, supported by a '
+              'benefic, and unafflicted'
+          : !inKendraFromMoon
+              ? 'Jupiter not in Kendra from Moon'
+              : !hasBeneficSupport
+                  ? 'Jupiter in Kendra from Moon but without benefic '
+                      'conjunction or aspect'
+                  : 'Jupiter in Kendra from Moon but debilitated, combust or '
+                      'in an enemy\'s house';
       result.add(
         NatalYoga(
           key: "gaja_kesari_yoga",

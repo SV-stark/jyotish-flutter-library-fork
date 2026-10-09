@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.2] - 2026-10-09
+
+### Fixed
+- **Ashtakoota Compatibility Tables**:
+  - Varna Koota: replaced the incomplete 26-of-27 nakshatra table — under which only Mula reached the `Shudra` fallback, producing a 12/10/4/1 distribution found in no classical source — with the complete Dakshin-Bharat serpentine classification (7 Brahmin, 7 Kshatriya, 7 Vaishya, 6 Shudra), sourced from the Madhaviya Grantha / Muhurta tables and cross-verified against two independent transcriptions that agree exactly.
+  - Yoni Koota: replaced the four-value matrix (`{0, 2, 3, 4}`) with the classical five-tier Muhurta Chintamani / Saravali matrix, restoring the missing `1 = inimical` band. The seven sworn-enemy pairs (Horse/Buffalo, Elephant/Lion, Goat/Monkey, Serpent/Mongoose, Dog/Deer, Cat/Rat, Cow/Tiger) remain the only cells scoring 0, and the matrix stays symmetric.
+  - Gana Koota: replaced the non-standard symmetric 3/0 scoring with the directional Parashari table — same gana 6, Deva groom + Manushya bride 6, the reverse 5, Rakshasa groom + Deva bride 1, all remaining cross-gana pairs 0.
+- **Shadbala**:
+  - Saptavargaja Bala: removed the non-existent `exalted => 60 Virupas` tier together with the non-classical 22.5 / 7.5 / 3.75 / 1.875 grades. The planet is now scored against the lord of the sign it occupies in each of the seven vargas, per BPHS Ch. 27 v.2-4 (Moolatrikona 45, own sign 30, great friend 20, friend 15, neutral 10, enemy 4, great enemy 2). This brings Sthana Bala back inside the classical 480-Virupa ceiling, which the old table could exceed.
+  - Chesta Bala: un-transposed *Manda* (30) and *Mandatara* (15), which were reversed relative to the table the remaining bands already followed.
+  - Saptavargaja Moolatrikona range for the Moon corrected to Taurus 4°–20°; 0°–3° of Taurus is the exaltation point and is not part of the Moolatrikona.
+- **Nitya Yoga Lords**:
+  - Replaced the scrambled ruling-planet table — which gave a 6/5/4/4/3/3/2 distribution, impossible for a seven-planet rotation over 27 entries — with the classical nine-planet Parashari cycle (Saturn, Mercury, Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter) repeated three times, so each planet rules exactly three of the 27 yogas. The `nature` classification (malefic = 1, 6, 9, 10, 13, 15, 17, 19, 27) was verified correct and left unchanged.
+- **Yoga Detection**:
+  - Gaja-Kesari Yoga now enforces all three of its stated conditions. Previously only the quadrant-from-Moon test was applied, so a Jupiter debilitated in Capricorn with no benefic association and no cancellation was reported as a full Gaja-Kesari.
+  - A chart missing any of the seven traditional planets now raises `StateError` from `detectNatalYogas` instead of substituting house 1 / Aries and fabricating yoga results from invented data.
+- **Jaimini Arudha**:
+  - `_getStrongerLord` now selects the *unassociated* co-lord for Scorpio (Mars/Ketu) and Aquarius (Saturn/Rahu), consistent with the own-sign rule immediately above it, which already preferred the candidate not tied up in the sign.
+- **Divisional Charts**:
+  - Ketu's varga placement is now derived from Ketu's own natal longitude (Rahu + 180°) run through the varga mapping, rather than from the already-projected Rahu. The two are equivalent for evenly divided vargas, so D2/D3/D4/D9/D10/D12/D16/D20/D24/D40/D45/D60 are unaffected, but D30 Trimsamsa and D249 did not commute with a 180° rotation and reported the wrong sign.
+- **Dasha**:
+  - The Mars/Ketu and Saturn/Rahu co-lord comparisons in `_getSignLordAdvanced` now count the lunar nodes themselves. `VedicChart.getPlanetsInHouse` iterates only the seven traditional planets, so a lone node previously always scored zero conjunctions while a lone Mars or Saturn scored its own presence — a structural bias towards the traditional lord.
+- **Panchanga**:
+  - `AdhikaMasaType.nija` is now returned when the preceding lunar month was Adhika. Previously it was never produced at all, so a Nija month was indistinguishable from any other ordinary month.
+- **Manglik Dosha**:
+  - Parihara 16 (Mars conjunct Jupiter or Moon) no longer fabricates an Aries Jupiter from a missing planet, which could spuriously cancel the dosha.
+- **Error Handling**:
+  - A missing Moon, Venus or Jupiter in `CompatibilityService` now raises `StateError`, and an unrecognised nakshatra name raises `ArgumentError`. These replace silent `?? 0` / `?? 'Ashwini'` / `?? 1` defaults that scored a coupling against fabricated Aries or Ashwini data. Callers relying on the previous permissive behaviour must handle these exceptions.
+  - Removed a second `return 1` in `calculateYoni` that shadowed the new unknown-nakshatra check.
+
+### Tests
+- Added `test/classical_table_fixes_test.dart` (11 tests) covering the Varna, Yoni, Gana and Nitya-Yoga tables, including the 7/7/7/6 Varna distribution, the five-tier Yoni scale, the directional Gana table, and the three-yogas-per-planet Nitya-Yoga distribution.
+- Added `test/divisional_ketu_fix_test.dart` (3 tests) covering Ketu's independent D30 projection and its preserved opposition to Rahu in the evenly divided D9.
+- Extended `test/natal_yoga_test.dart` with a negative Gaja-Kesari case (kendra from Moon without benefic support) and a positive case. The previous assertion encoded the incomplete single-condition rule and has been replaced.
+- Total passing tests grew from 215 to 229.
+
+---
+
 ## [2.20.1] - 2026-10-08
 
 ### Fixed

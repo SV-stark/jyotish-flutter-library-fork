@@ -1162,18 +1162,32 @@ class DashaService {
         : savyaSequences[(pada - 1) % 4].reversed.toList();
   }
 
+  /// Counts the bodies occupying the sign at [longitude].
+  ///
+  /// [VedicChart.getPlanetsInHouse] only iterates the seven traditional
+  /// planets, so it can never count a lunar node in its own sign. That made the
+  /// Mars/Ketu and Saturn/Rahu co-lord comparisons structurally biased towards
+  /// the traditional lord: a lone node always scored 0 conjunctions while a
+  /// lone Mars or Saturn scored its own presence. Counting the nodes too makes
+  /// the two candidates comparable.
+  int _countBodiesInSign(VedicChart chart, double? longitude) {
+    if (longitude == null) return 0;
+    final sign = Rashi.fromLongitude(longitude);
+    var count = 0;
+    for (final info in chart.planets.values) {
+      if (Rashi.fromLongitude(info.longitude) == sign) count++;
+    }
+    if (Rashi.fromLongitude(chart.rahu.longitude) == sign) count++;
+    if (Rashi.fromLongitude(chart.ketu.longitude) == sign) count++;
+    return count;
+  }
+
   Planet _getSignLordAdvanced(Rashi sign, VedicChart chart) {
     if (sign == Rashi.scorpio) {
       final mars = chart.getPlanet(Planet.mars);
       final ketu = chart.ketu;
-      final marsSignPlanets = chart
-          .getPlanetsInHouse(
-            chart.houses.getHouseForLongitude(mars?.longitude ?? 0),
-          )
-          .length;
-      final ketuSignPlanets = chart
-          .getPlanetsInHouse(chart.houses.getHouseForLongitude(ketu.longitude))
-          .length;
+      final marsSignPlanets = _countBodiesInSign(chart, mars?.longitude);
+      final ketuSignPlanets = _countBodiesInSign(chart, ketu.longitude);
       if (marsSignPlanets > ketuSignPlanets) return Planet.mars;
       if (ketuSignPlanets > marsSignPlanets) return Planet.ketu;
       return (mars?.longitude ?? 0) % 30 > (ketu.longitude % 30)
@@ -1182,16 +1196,8 @@ class DashaService {
     } else if (sign == Rashi.aquarius) {
       final saturn = chart.getPlanet(Planet.saturn);
       final rahu = chart.getPlanet(Planet.meanNode);
-      final saturnSignPlanets = chart
-          .getPlanetsInHouse(
-            chart.houses.getHouseForLongitude(saturn?.longitude ?? 0),
-          )
-          .length;
-      final rahuSignPlanets = chart
-          .getPlanetsInHouse(
-            chart.houses.getHouseForLongitude(rahu?.longitude ?? 0),
-          )
-          .length;
+      final saturnSignPlanets = _countBodiesInSign(chart, saturn?.longitude);
+      final rahuSignPlanets = _countBodiesInSign(chart, rahu?.longitude);
       if (saturnSignPlanets > rahuSignPlanets) return Planet.saturn;
       if (rahuSignPlanets > saturnSignPlanets) return Planet.meanNode;
       return (saturn?.longitude ?? 0) % 30 > (rahu?.longitude ?? 0) % 30

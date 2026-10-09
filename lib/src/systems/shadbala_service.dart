@@ -8,6 +8,14 @@ import 'package:jyotish/src/analysis/divisional_chart_service.dart';
 import 'package:jyotish/src/analysis/graha_yuddha_service.dart';
 import 'package:jyotish/src/astronomy/ephemeris_service.dart';
 
+/// The five friendship classes used by Saptavargaja Bala (BPHS Ch. 27).
+///
+/// Declared at library scope because Dart does not permit nested enums inside a
+/// class. Collapsing the two "great" tiers reproduces the library's existing
+/// three-tier Naisargika friendship table exactly, which is how this table was
+/// cross-checked.
+enum _SaptavargajaClass { greatFriend, friend, neutral, enemy, greatEnemy }
+
 /// Service for calculating Shadbala (Six-fold Strength) of planets.
 ///
 /// Shadbala consists of six types of strength:
@@ -236,10 +244,17 @@ class ShadbalaService {
   }
 
   /// Calculates Saptavargaja Bala (Strength in 7 divisional charts).
+  ///
+  /// BPHS Ch. 27 v.2-4 scores the planet against the *lord of the sign it
+  /// occupies in each varga* — not against exaltation, which plays no part in
+  /// this bala. The seven classes and their values are:
+  /// Moolatrikona 45, own sign 30, great friend 20, friend 15, neutral 10,
+  /// enemy 4, great enemy 2 Virupas. The theoretical maximum is therefore
+  /// 7 x 45 = 315 Virupas, not 420.
   double _calculateSaptavargajaBala(Planet planet, VedicChart rashiChart) {
     if (Planet.lunarNodes.contains(planet)) return 0.0;
 
-    final charts = [
+    const charts = [
       DivisionalChartType.d1,
       DivisionalChartType.d2,
       DivisionalChartType.d3,
@@ -258,24 +273,156 @@ class ShadbalaService {
       final info = vargaChart.getPlanet(planet);
       if (info == null) continue;
 
-      totalStrength += _getSaptavargajaScore(info.dignity);
+      totalStrength += _getSaptavargajaScore(planet, info.longitude);
     }
 
     return totalStrength;
   }
 
-  double _getSaptavargajaScore(PlanetaryDignity dignity) {
-    return switch (dignity) {
-      PlanetaryDignity.moolaTrikona => 45.0,
-      PlanetaryDignity.ownSign => 30.0,
-      PlanetaryDignity.greatFriend => 22.5,
-      PlanetaryDignity.friendSign => 15.0,
-      PlanetaryDignity.neutralSign => 7.5,
-      PlanetaryDignity.enemySign => 3.75,
-      PlanetaryDignity.greatEnemy => 1.875,
-      PlanetaryDignity.exalted => 60.0,
-      PlanetaryDignity.debilitated => 0.0,
+  /// Scores [planet] against the lord of the sign at [longitude] using the
+  /// BPHS Saptavargaja classes.
+  double _getSaptavargajaScore(Planet planet, double longitude) {
+    final signLord = _getSignLordForLongitude(longitude);
+
+    if (planet == signLord) {
+      // Own sign, but a Moolatrikona placement scores higher than an ordinary
+      // own-sign placement.
+      return _isInMoolaTrikonaRange(planet, longitude) ? 45.0 : 30.0;
+    }
+
+    final friendship = _naturalFriendship(planet, signLord);
+    return switch (friendship) {
+      _SaptavargajaClass.greatFriend => 20.0,
+      _SaptavargajaClass.friend => 15.0,
+      _SaptavargajaClass.neutral => 10.0,
+      _SaptavargajaClass.enemy => 4.0,
+      _SaptavargajaClass.greatEnemy => 2.0,
     };
+  }
+
+  /// Returns the sign (Rashi) lord for a zodiac longitude.
+  Planet _getSignLordForLongitude(double longitude) {
+    final index = ((longitude % 360.0) / 30.0).floor() % 12;
+    const lords = [
+      Planet.mars, // Aries
+      Planet.venus, // Taurus
+      Planet.mercury, // Gemini
+      Planet.moon, // Cancer
+      Planet.sun, // Leo
+      Planet.mercury, // Virgo
+      Planet.venus, // Libra
+      Planet.mars, // Scorpio
+      Planet.jupiter, // Sagittarius
+      Planet.saturn, // Capricorn
+      Planet.saturn, // Aquarius
+      Planet.jupiter, // Pisces
+    ];
+    return lords[index];
+  }
+
+  /// Moolatrikona degree ranges per BPHS (sign index, from-degree, to-degree).
+  /// Half-open [from, to). Mirrors the verified ranges in the Vedic chart
+  /// service — note the Moon's Moolatrikona is Taurus 4-20, not Cancer, since
+  /// Taurus 0-3 is the exaltation point.
+  bool _isInMoolaTrikonaRange(Planet planet, double longitude) {
+    const ranges = <Planet, (int, double, double)>{
+      Planet.sun: (4, 0.0, 20.0), // Leo 0-20
+      Planet.moon: (1, 4.0, 20.0), // Taurus 4-20
+      Planet.mars: (0, 0.0, 12.0), // Aries 0-12
+      Planet.mercury: (5, 16.0, 20.0), // Virgo 16-20
+      Planet.jupiter: (8, 0.0, 10.0), // Sagittarius 0-10
+      Planet.venus: (6, 0.0, 15.0), // Libra 0-15
+      Planet.saturn: (10, 0.0, 20.0), // Aquarius 0-20
+    };
+    final range = ranges[planet];
+    if (range == null) return false;
+    final (signIndex, from, to) = range;
+    final degreeInSign = ((longitude % 360.0) % 30.0);
+    final currentSign = ((longitude % 360.0) / 30.0).floor() % 12;
+    return currentSign == signIndex && degreeInSign >= from && degreeInSign < to;
+  }
+
+  /// Natural (Naisargika) friendship from [planet] towards [other].
+  ///
+  /// This is the five-tier Parashari table. Collapsing the two "great" tiers
+  /// reproduces the library's existing three-tier Naisargika friendship table
+  /// exactly, which is how this table was cross-checked.
+  _SaptavargajaClass _naturalFriendship(Planet planet, Planet other) {
+    if (planet == other) return _SaptavargajaClass.greatFriend;
+
+    const table = <Planet, Map<Planet, _SaptavargajaClass>>{
+      Planet.sun: {
+        Planet.moon: _SaptavargajaClass.friend,
+        Planet.mars: _SaptavargajaClass.friend,
+        Planet.jupiter: _SaptavargajaClass.greatFriend,
+        Planet.mercury: _SaptavargajaClass.neutral,
+        Planet.venus: _SaptavargajaClass.enemy,
+        Planet.saturn: _SaptavargajaClass.enemy,
+      },
+      Planet.moon: {
+        Planet.sun: _SaptavargajaClass.greatFriend,
+        Planet.mercury: _SaptavargajaClass.friend,
+        Planet.mars: _SaptavargajaClass.neutral,
+        Planet.jupiter: _SaptavargajaClass.neutral,
+        Planet.venus: _SaptavargajaClass.neutral,
+        Planet.saturn: _SaptavargajaClass.neutral,
+      },
+      Planet.mars: {
+        Planet.sun: _SaptavargajaClass.friend,
+        Planet.moon: _SaptavargajaClass.friend,
+        Planet.jupiter: _SaptavargajaClass.greatFriend,
+        Planet.mercury: _SaptavargajaClass.greatEnemy,
+        Planet.venus: _SaptavargajaClass.neutral,
+        Planet.saturn: _SaptavargajaClass.neutral,
+      },
+      Planet.mercury: {
+        Planet.sun: _SaptavargajaClass.friend,
+        Planet.venus: _SaptavargajaClass.friend,
+        Planet.moon: _SaptavargajaClass.greatEnemy,
+        Planet.mars: _SaptavargajaClass.neutral,
+        Planet.jupiter: _SaptavargajaClass.neutral,
+        Planet.saturn: _SaptavargajaClass.neutral,
+      },
+      Planet.jupiter: {
+        Planet.sun: _SaptavargajaClass.greatFriend,
+        Planet.moon: _SaptavargajaClass.friend,
+        Planet.mars: _SaptavargajaClass.greatFriend,
+        Planet.mercury: _SaptavargajaClass.greatEnemy,
+        Planet.venus: _SaptavargajaClass.greatEnemy,
+        Planet.saturn: _SaptavargajaClass.neutral,
+      },
+      Planet.venus: {
+        Planet.mercury: _SaptavargajaClass.friend,
+        Planet.saturn: _SaptavargajaClass.greatFriend,
+        Planet.sun: _SaptavargajaClass.greatEnemy,
+        Planet.moon: _SaptavargajaClass.greatEnemy,
+        Planet.mars: _SaptavargajaClass.neutral,
+        Planet.jupiter: _SaptavargajaClass.neutral,
+      },
+      Planet.saturn: {
+        Planet.mercury: _SaptavargajaClass.friend,
+        Planet.venus: _SaptavargajaClass.greatFriend,
+        Planet.sun: _SaptavargajaClass.greatEnemy,
+        Planet.moon: _SaptavargajaClass.greatEnemy,
+        Planet.mars: _SaptavargajaClass.greatEnemy,
+        Planet.jupiter: _SaptavargajaClass.neutral,
+      },
+    };
+
+    // Nodes act like Saturn (Rahu) and Mars (Ketu) for friendship purposes.
+    final resolved = switch (planet) {
+      Planet.meanNode || Planet.trueNode => Planet.saturn,
+      Planet.ketu => Planet.mars,
+      _ => planet,
+    };
+    final resolvedOther = switch (other) {
+      Planet.meanNode || Planet.trueNode => Planet.saturn,
+      Planet.ketu => Planet.mars,
+      _ => other,
+    };
+    if (resolved == resolvedOther) return _SaptavargajaClass.greatFriend;
+
+    return table[resolved]?[resolvedOther] ?? _SaptavargajaClass.neutral;
   }
 
   double _calculateOjayugmarasyamsaBala(
@@ -1279,10 +1426,12 @@ class ShadbalaService {
       return 60.0; // Vakra (Retrograde)
     }
 
-    // Forward states per classical BPHS
+    // Forward states per classical BPHS (Chesta Bala values):
+    //   Vikala (stationary) 15, Vakra (retrograde) 60, Mandatara 15, Manda 30,
+    //   Sama 7.5, Chara 45, Atichara 30.
     final ratio = speed / avgSpeed;
-    if (ratio < 0.5) return 30.0; // Mandatara (Very Slow)
-    if (ratio < 1.0) return 15.0; // Manda (Slow)
+    if (ratio < 0.5) return 15.0; // Mandatara (Very Slow)
+    if (ratio < 1.0) return 30.0; // Manda (Slow)
     if (ratio < 1.5) return 7.5; // Sama (Normal/Even)
     if (ratio < 2.0) return 45.0; // Chara (Fast)
     return 30.0; // Atichara (Very Fast)

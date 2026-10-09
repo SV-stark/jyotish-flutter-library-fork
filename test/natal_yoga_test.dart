@@ -195,10 +195,20 @@ void main() {
       final nipuna = detected.firstWhere((y) => y.key == 'nipuna_yoga');
       expect(nipuna.isPresent, isTrue);
 
+      // Jupiter is in a Kendra from the Moon (house 5 from the Moon in house 2),
+      // satisfying Gaja-Kesari condition (1). But no benefic conjoins or aspects
+      // Jupiter's house, so conditions (2) and (3) fail and the yoga must NOT be
+      // reported. Before the fix, only condition (1) was checked and this chart
+      // was wrongly reported as a full Gajakesari Yoga.
       final gajaKesari = detected.firstWhere(
         (y) => y.key == 'gaja_kesari_yoga',
       );
-      expect(gajaKesari.isPresent, isTrue);
+      expect(
+        gajaKesari.isPresent,
+        isFalse,
+        reason: 'Jupiter in Kendra from Moon without benefic support is not '
+            'Gaja-Kesari Yoga',
+      );
 
       final sasa = detected.firstWhere((y) => y.key == 'sasa_yoga');
       expect(
@@ -217,6 +227,99 @@ void main() {
         sunapha.isPresent,
         isFalse,
       ); // No planets in 2nd from Moon (Gemini - House 3 is empty of traditional planets)
+    });
+
+    test('Gaja-Kesari Yoga requires a benefic to support Jupiter', () {
+      final now = DateTime.now();
+
+      // Whole-sign chart, Ascendant at 15 Aries.
+      final houses = HouseSystem(
+        system: 'Whole Sign',
+        cusps: List.generate(12, (i) => i * 30.0),
+        ascendant: 15.0,
+        midheaven: 270.0,
+      );
+
+      VedicPlanetInfo info(
+        Planet planet,
+        double longitude,
+        int house,
+        PlanetaryDignity dignity,
+      ) {
+        return VedicPlanetInfo(
+          position: PlanetPosition(
+            planet: planet,
+            dateTime: now,
+            longitude: longitude,
+            latitude: 0.0,
+            distance: 1.0,
+            longitudeSpeed: 0.1,
+            latitudeSpeed: 0.0,
+            distanceSpeed: 0.0,
+          ),
+          house: house,
+          dignity: dignity,
+        );
+      }
+
+      // Moon in Taurus (house 2); Jupiter in Leo (house 5) is in a Kendra from
+      // the Moon. Mercury — a natural benefic — is conjunct Jupiter, and Jupiter
+      // is in a friendly sign and uncombust, so all three conditions hold.
+      final planets = <Planet, VedicPlanetInfo>{
+        Planet.sun: info(Planet.sun, 10.0, 1, PlanetaryDignity.exalted),
+        Planet.moon: info(Planet.moon, 40.0, 2, PlanetaryDignity.exalted),
+        Planet.mercury: info(
+          Planet.mercury,
+          136.0,
+          5,
+          PlanetaryDignity.neutralSign,
+        ),
+        Planet.venus: info(Planet.venus, 285.0, 10, PlanetaryDignity.friendSign),
+        Planet.mars: info(Planet.mars, 225.0, 8, PlanetaryDignity.ownSign),
+        Planet.jupiter: info(
+          Planet.jupiter,
+          135.0,
+          5,
+          PlanetaryDignity.friendSign,
+        ),
+        Planet.saturn: info(Planet.saturn, 195.0, 7, PlanetaryDignity.exalted),
+      };
+
+      final rahuPos = PlanetPosition(
+        planet: Planet.meanNode,
+        dateTime: now,
+        longitude: 90.0,
+        latitude: 0.0,
+        distance: 1.0,
+        longitudeSpeed: -0.05,
+        latitudeSpeed: 0.0,
+        distanceSpeed: 0.0,
+      );
+      final rahuInfo = VedicPlanetInfo(
+        position: rahuPos,
+        house: 4,
+        dignity: PlanetaryDignity.neutralSign,
+      );
+      final ketu = KetuPosition(rahuPosition: rahuPos);
+
+      final chart = VedicChart(
+        dateTime: now,
+        location: 'Delhi',
+        latitude: 28.6139,
+        longitudeCoord: 77.2090,
+        houses: houses,
+        planets: planets,
+        rahu: rahuInfo,
+        ketu: ketu,
+      );
+
+      const yogaService = YogaService();
+      final detected = yogaService.detectNatalYogas(chart);
+      final gajaKesari = detected.firstWhere(
+        (y) => y.key == 'gaja_kesari_yoga',
+      );
+      expect(gajaKesari.isPresent, isTrue);
+      expect(gajaKesari.explanation, contains('benefic'));
     });
   });
 }

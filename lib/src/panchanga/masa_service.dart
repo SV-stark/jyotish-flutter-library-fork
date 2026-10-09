@@ -265,27 +265,43 @@ class MasaService {
     MasaType type,
   ) async {
     final flags = CalculationFlags.defaultFlags();
+
+    Future<int> sunRashiAt(DateTime moment) async {
+      final pos = await _ephemerisService.calculatePlanetPosition(
+        planet: Planet.sun,
+        dateTime: moment,
+        location: location,
+        flags: flags,
+      );
+      return (pos.longitude / 30).floor();
+    }
+
     final monthEnd = await _findNextMasaStart(monthStart, location, type);
 
-    final sunAtStart = await _ephemerisService.calculatePlanetPosition(
-      planet: Planet.sun,
-      dateTime: monthStart,
-      location: location,
-      flags: flags,
-    );
-    final sunAtEnd = await _ephemerisService.calculatePlanetPosition(
-      planet: Planet.sun,
-      dateTime: monthEnd,
-      location: location,
-      flags: flags,
-    );
+    final rashiAtStart = await sunRashiAt(monthStart);
+    final rashiAtEnd = await sunRashiAt(monthEnd);
 
-    final rashiAtStart = (sunAtStart.longitude / 30).floor();
-    final rashiAtEnd = (sunAtEnd.longitude / 30).floor();
-
-    // Sun in the same rashi at both ends of the month => no Sankranti inside.
+    // Sun in the same rashi at both ends of the month => no Sankranti inside,
+    // so the Sun never left the rashi and this is an Adhika (leap) month.
     if (rashiAtStart == rashiAtEnd) {
       return AdhikaMasaType.adhika;
+    }
+
+    // A regular month is the Nija ("real") month only when the lunar month
+    // immediately before it was Adhika: the Adhika month and the Nija month
+    // that follows share a month name, and they are told apart precisely by
+    // which of the two contains the missing Sankranti. Without this check a
+    // Nija month was indistinguishable from any other ordinary month.
+    final previousMonthStart = await _findMasaStart(
+      monthStart.subtract(const Duration(days: 1)),
+      location,
+      type,
+    );
+    if (previousMonthStart.isBefore(monthStart)) {
+      final rashiAtPreviousStart = await sunRashiAt(previousMonthStart);
+      if (rashiAtPreviousStart == rashiAtStart) {
+        return AdhikaMasaType.nija;
+      }
     }
 
     return AdhikaMasaType.none;
