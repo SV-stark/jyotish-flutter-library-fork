@@ -313,15 +313,39 @@ class TransitService {
         for (final aspect in transit.aspectsToNatal) {
           // Check if aspect is becoming exact (transitioning from applying)
           if (aspect.isExact) {
+            // The window during which the aspect holds must be COMPUTED, not
+            // guessed. An aspect is within orb while the separation sits
+            // inside `exactOrb` degrees of exact, and the separation changes
+            // at the two bodies' relative angular speed, so the time spent
+            // inside the orb is `exactOrb / relativeSpeed` days either side.
+            //
+            // The previous value, `±3 × intervalDays`, was fabricated from the
+            // sampling interval and bore no relation to the actual aspect: a
+            // tight orb between two slow planets yields a window of months,
+            // while a wide orb between fast planets yields hours — and the
+            // fabricated window was identical for both.
+            final relativeSpeed = (transit.transitPosition.longitudeSpeed -
+                    (natalChart
+                            .getPlanet(aspect.aspectedPlanet)
+                            ?.position
+                            .longitudeSpeed ??
+                        0.0))
+                .abs();
+            final halfSpanDays = relativeSpeed > 1e-9
+                ? aspect.exactOrb / relativeSpeed
+                : config.intervalDays.toDouble();
+            final halfSpan = Duration(
+              microseconds:
+                  (halfSpanDays * Duration.microsecondsPerDay).round(),
+            );
+
             final event = TransitEvent(
               transitPlanet: planet,
               natalPlanet: aspect.aspectedPlanet,
               aspectType: aspect.type,
               exactDate: currentDate,
-              startDate:
-                  currentDate.subtract(Duration(days: config.intervalDays * 3)),
-              endDate:
-                  currentDate.add(Duration(days: config.intervalDays * 3)),
+              startDate: currentDate.subtract(halfSpan),
+              endDate: currentDate.add(halfSpan),
               isRetrograde: transit.isRetrograde,
               description: _generateTransitDescription(
                 aspect,

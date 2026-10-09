@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.6] - 2026-10-09
+
+### Fixed
+- **`findTransitEvents` fabricated the aspect window** (`transit_service.dart`):
+  - The `startDate`/`endDate` of every transit event were set to `exactDate ± 3 × intervalDays`, i.e. derived from the sampling interval rather than from the aspect itself. A 1-degree orb between two slow planets yields a window of months, and a wide orb between fast planets yields hours, yet both got the identical fabricated span. The window is now computed as `exactOrb / relativeSpeed` days either side, where the relative speed is the difference between the transiting and natal bodies' `longitudeSpeed`. A degenerate zero relative speed falls back to the sampling interval.
+
+### Tests
+- Added `test/classical_data_tables_test.dart` (6 tests) giving first-ever coverage to the two data tables that previously had none:
+  - **`naturalRelationships`** pinned to the table derived from the BPHS 3.55 rule, all 42 directed pairs, plus the four deliberately asymmetric pairs most likely to be "tidied" into symmetry, plus the Panchadha Maitri arithmetic.
+  - **Bhinnashtakavarga fixed totals** checked on two unrelated births, since 48/49/39/54/56/52/39 → 337 is a property of the tables rather than of any chart. This is the hard checksum B.V. Raman describes: a single mis-transcribed house list moves the total.
+  - **Minimum required Shadbala** pinned to BPHS 27.32-33, with the Sun's 390 virupas called out explicitly and asserted *not* to be 300.
+
+---
+
 ## [2.20.5] - 2026-10-09
 
 ### Fixed
