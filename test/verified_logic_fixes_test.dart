@@ -378,7 +378,7 @@ void main() {
       expect(sahams['Bhratru'], isNot(equals(sahams['Kali'])));
     });
 
-    test('12. Special Lagnas rate and Sun anchor', () {
+    test('12. Special Lagnas anchor at SUNRISE, not at birth', () {
       final now = DateTime(2026, 1, 1, 12, 0); // Noon
       final sunrise = DateTime(2026, 1, 1, 6, 0); // 6 hours elapsed
       const houses = HouseSystem(
@@ -394,7 +394,7 @@ void main() {
         longitude: 250.0,
         latitude: 0,
         distance: 1,
-        longitudeSpeed: 1,
+        longitudeSpeed: 1, // 1 degree/day
         latitudeSpeed: 0,
         distanceSpeed: 0,
       );
@@ -416,14 +416,36 @@ void main() {
       );
 
       const specialLagnasService = SpecialLagnasService();
-      final lagnas = specialLagnasService.calculateSpecialLagnas(chart, sunrise);
 
-      // Elapsed hours = 6.0
-      // Hora Lagna: (250.0 + 6.0 * 30.0) % 360.0 = (250 + 180) % 360 = 70.0
-      expect(lagnas.horaLagna, closeTo(70.0, 0.001));
+      // Independent derivation (NOT a restatement of the formula under test):
+      //
+      //  * Elapsed interval = 6 h from sunrise to birth.
+      //  * The Sun travels 1 deg/day, so in 6 h it moves 6/24 = 0.25 deg.
+      //    At sunrise it therefore stood at 250.0 - 0.25 = 249.75, not 250.0.
+      //  * Hora Lagna gains one sign (30 deg) per 2.5 ghatis, and 2.5 ghatis is
+      //    60 minutes, i.e. one hour. Over 6 h that is 6 x 30 = 180 deg.
+      //      (249.75 + 180) mod 360 = 69.75
+      //  * Ghati Lagna gains one sign per ghati (24 min). 6 h = 15 ghatis, so
+      //    15 x 30 = 450 deg.
+      //      (249.75 + 450) mod 360 = 339.75
+      //
+      // Anchoring on the birth-moment Sun instead (250.0) would give 70.0 and
+      // 340.0 — the ~1 deg/hour double-count of the Sun's own motion.
+      final lagnas = specialLagnasService.calculateSpecialLagnas(
+        chart,
+        sunrise,
+      );
+      expect(lagnas.horaLagna, closeTo(69.75, 1e-9));
+      expect(lagnas.ghatiLagna, closeTo(339.75, 1e-9));
 
-      // Ghati Lagna: (250.0 + (6.0 / 0.4) * 30.0) % 360.0 = (250 + 450) % 360 = 340.0
-      expect(lagnas.ghatiLagna, closeTo(340.0, 0.001));
+      // When the caller already knows the Sun at sunrise, it is used verbatim.
+      final pinned = specialLagnasService.calculateSpecialLagnas(
+        chart,
+        sunrise,
+        sunLongitudeAtSunrise: 200.0,
+      );
+      expect(pinned.horaLagna, closeTo((200.0 + 180.0) % 360.0, 1e-9));
+      expect(pinned.ghatiLagna, closeTo((200.0 + 450.0) % 360.0, 1e-9));
     });
 
     test('13. VedicChart.copyWith preserves calculationFlags', () {

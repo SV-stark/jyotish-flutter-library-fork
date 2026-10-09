@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.20.3] - 2026-10-09
+
+### Fixed
+- **Special Lagnas anchoring** (`special_lagnas_service.dart`):
+  - Hora and Ghati Lagna are now anchored on the Sun's longitude at **sunrise** — the start of the elapsed interval — rather than on the Sun at the birth moment. Anchoring on the birth Sun while adding hours measured from sunrise counted the Sun's own motion across that window twice, an error of roughly 1 degree per hour of elapsed time (~6 degrees for a 6-hour gap), so the bias scales with birth hour.
+  - New optional `sunLongitudeAtSunrise` parameter on `SpecialLagnasService.calculateSpecialLagnas` and the `Jyotish` facade pins the anchor exactly when the caller already knows it. When omitted it is derived by rewinding the chart's Sun with its own `longitudeSpeed`, accurate to < 0.01 degrees.
+- **FFI error-buffer handling** (`ephemeris_service.dart`):
+  - All five `swe_*` error buffers now allocate with `calloc` and release with `calloc.free`. One site freed a `calloc`-allocated buffer with `malloc.free`, and the other four still allocated with `malloc` despite a comment explaining that an unwritten buffer must read as a genuine empty string rather than stale heap bytes — so the empty-error case remained non-deterministic on those paths. The rationale stated at the call site now holds everywhere.
+- **Unbounded divisional-chart cache** (`divisional_chart_service.dart`):
+  - The cache is now an LRU bounded at 512 entries. `VedicChart.isVargottama` holds a `static` shared `DivisionalChartService`, and `_cache` had no eviction, so the cache was process-global and grew without limit across every chart ever computed — an unbounded leak in any long-lived app or server.
+- **Purnimanta month naming** (`masa_service.dart`):
+  - The Amanta month name — used as the basis for both calendars — is now derived from the exact bisected **new-moon boundary** instead of being extrapolated from the current instant with a mean synodic rate. Previously the Adhika test used the bisected boundary while the month name came from a mean-rate estimate of the current Sun, so the two could disagree near a sankranti.
+  - The Purnimanta offset (Amanta name advanced by one during Krishna paksha, unchanged during Shukla paksha) is unchanged: it is a pure calendar convention needing no astronomical estimate, so it is now layered on top of the exact boundary-derived Amanta month rather than being folded into an approximation.
+  - `_calculateAmantaMonth` and `_calculatePurnimantaMonth` (the mean-rate estimators) were removed.
+
+### Migration Notes
+- **`Rashi.name` and `SiderealMode.name` now return the enum identifier**, not the display label. `Rashi.aries.name` is `'aries'` (previously `'Aries'`); `SiderealMode.lahiri.name` is `'lahiri'` (previously `'Lahiri'`). Use `Rashi.label` / `SiderealMode.label` for display, and `.name` for persistence, cache keys and matching. `CalculationFlags.toJson`/`fromJson` and the divisional-chart cache key already use the identifier, so serialised data is unaffected.
+  - `lib/` was grepped for comparisons of `.name` against labels — there are none, so the library itself is internally consistent.
+  - External code doing `rashi.name == 'Aries'` or `siderealMode.name == 'Lahiri'` will silently stop matching and must switch to `.label`.
+
+### Tests
+- Replaced the `Special Lagnas` test, which re-derived the implementation (`(250 + 6*30) % 360 = 70`) and therefore validated nothing, with an independent derivation: a Sun travelling 1 degree/day stands at 249.75 after a 6-hour rewind, giving Hora Lagna 69.75 and Ghati Lagna 339.75 — values that the previous birth-moment anchoring cannot produce. A pinned-anchor case is covered too.
+- Added `test/round7_fixes_test.dart` (3 tests): the paksha-aware Purnimanta invariant checked daily across a full year (exercising both halves of the cycle, and the days either side of a sankranti), boundary/Adhika consistency, and LRU eviction with cache-hit identity preserved.
+
+### Verification
+- `flutter analyze` — no issues.
+- `flutter test` — 232 passing (was 229).
+
+---
+
 ## [2.20.2] - 2026-10-09
 
 ### Fixed

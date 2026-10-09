@@ -542,10 +542,21 @@ class Jyotish {
   /// Calculates special time-proportionate and mathematical wealth and power lagnas
   /// (Hora Lagna, Ghati Lagna, and Sree Lagna).
   ///
+  /// [sunLongitudeAtSunrise] optionally pins the anchor exactly; when omitted it
+  /// is derived by rewinding the chart's Sun using its own `longitudeSpeed`.
+  ///
   /// Returns [SpecialLagnas] containing the calculated degrees.
-  SpecialLagnas calculateSpecialLagnas(VedicChart chart, DateTime sunrise) {
+  SpecialLagnas calculateSpecialLagnas(
+    VedicChart chart,
+    DateTime sunrise, {
+    double? sunLongitudeAtSunrise,
+  }) {
     _ensureInitialized();
-    return _specialLagnasService!.calculateSpecialLagnas(chart, sunrise);
+    return _specialLagnasService!.calculateSpecialLagnas(
+      chart,
+      sunrise,
+      sunLongitudeAtSunrise: sunLongitudeAtSunrise,
+    );
   }
 
   /// Generates a comprehensive Marriage Compatibility Report for two charts.

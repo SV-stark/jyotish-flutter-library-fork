@@ -1,4 +1,3 @@
-import 'dart:collection';
 import '../exceptions/jyotish_exception.dart';
 import 'package:jyotish/src/models/divisional_chart_type.dart';
 import 'package:jyotish/src/models/planet.dart';
@@ -9,9 +8,17 @@ import 'package:jyotish/src/models/varga_configuration.dart';
 
 /// Service for calculating Divisional Charts (Varga).
 class DivisionalChartService {
+  /// Upper bound on [_cache] entries.
+  ///
+  /// The cache is keyed on natal chart identity, so a long-lived process that
+  /// computes charts for many births would otherwise grow it without bound.
+  /// [_evictOldest] keeps only the most recently used entries once the bound is
+  /// reached.
+  static const int _maxCacheSize = 512;
+
   /// Cache for calculated divisional charts.
   /// Key: composite of natal chart identity + divisional type.
-  final _cache = HashMap<String, VedicChart>();
+  final _cache = <String, VedicChart>{};
 
   /// Calculates a specific divisional chart from a base Rashi chart.
   VedicChart calculateDivisionalChart(
@@ -38,10 +45,24 @@ class DivisionalChartService {
         '_${rashiChart.ascendant.hashCode}'
         '_${planetsHash}_${type.name}$configKey';
 
-    return _cache.putIfAbsent(
-      key,
-      () => _computeDivisionalChart(rashiChart, type, config: config),
-    );
+    final cached = _cache.remove(key);
+    if (cached != null) {
+      // Re-insert so the insertion order tracks recency of use.
+      _cache[key] = cached;
+      return cached;
+    }
+
+    final computed = _computeDivisionalChart(rashiChart, type, config: config);
+    _cache[key] = computed;
+    _evictOldest();
+    return computed;
+  }
+
+  /// Drops least-recently-used entries until the cache is back within bound.
+  void _evictOldest() {
+    while (_cache.length > _maxCacheSize) {
+      _cache.remove(_cache.keys.first);
+    }
   }
 
   VedicChart _computeDivisionalChart(

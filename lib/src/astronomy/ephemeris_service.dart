@@ -187,7 +187,7 @@ class EphemerisService {
         final ayanamsa = _bindings!.getAyanamsaUT(julianDay);
 
         // Calculate position (tropical, then we subtract ayanamsa)
-        final errorBuffer = malloc<ffi.Char>(256);
+        final errorBuffer = calloc<ffi.Char>(256);
         try {
           // Issue 5: Ketu (ID 60) calculation fails in Swiss Ephemeris because it lacks elements.
           // We calculate Rahu (Node) and add 180 degrees to get Ketu.
@@ -255,7 +255,7 @@ class EphemerisService {
             isRetrograde: isRetrograde,
           );
         } finally {
-          malloc.free(errorBuffer);
+          calloc.free(errorBuffer);
         }
       } catch (e, stackTrace) {
         if (e is CalculationException) rethrow;
@@ -301,7 +301,7 @@ class EphemerisService {
     }
 
     return _calculationLock.synchronized(() async {
-      final errorBuffer = malloc<ffi.Char>(256);
+      final errorBuffer = calloc<ffi.Char>(256);
       try {
         final results = _bindings!.calculateUT(
           julianDay: julianDay,
@@ -319,7 +319,7 @@ class EphemerisService {
 
         return (results[0], results[1]);
       } finally {
-        malloc.free(errorBuffer);
+        calloc.free(errorBuffer);
       }
     });
   }
@@ -536,7 +536,7 @@ class EphemerisService {
           // Convert Julian Day back to DateTime
           return _julianDayToDateTime(result);
         } finally {
-          malloc.free(errorBuffer);
+          calloc.free(errorBuffer);
         }
       } catch (e, stackTrace) {
         throw CalculationException(
@@ -1007,7 +1007,7 @@ class EphemerisService {
   ) async {
     return _calculationLock.synchronized(() async {
       final jd = _dateTimeToJulianDay(globalDate);
-      final errorBuffer = malloc<ffi.Char>(256);
+      final errorBuffer = calloc<ffi.Char>(256);
 
       try {
         // 1. Get precise local maximum and contact times using swe_sol_eclipse_when_loc.
@@ -1081,7 +1081,7 @@ class EphemerisService {
               '${type.name} Eclipse (Local Mag: ${localMagnitude.toStringAsFixed(3)})',
         );
       } finally {
-        malloc.free(errorBuffer);
+        calloc.free(errorBuffer);
       }
     });
   }
@@ -1132,7 +1132,7 @@ class EphemerisService {
   ) async {
     return _calculationLock.synchronized(() async {
       final jd = _dateTimeToJulianDay(date);
-      final errorBuffer = malloc<ffi.Char>(256);
+      final errorBuffer = calloc<ffi.Char>(256);
 
       try {
         // 1. Get detailed magnitude and attribute info at moment of maximum.
@@ -1234,7 +1234,7 @@ class EphemerisService {
           moonset: moonset,
         );
       } finally {
-        malloc.free(errorBuffer);
+        calloc.free(errorBuffer);
       }
     });
   }

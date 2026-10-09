@@ -18,34 +18,65 @@ class MasaService {
   }) async {
     final flags = CalculationFlags.defaultFlags();
 
+    final monthStart = await _findMasaStart(dateTime, location, type);
+
+    // Current positions fix the tithi (and so the paksha, which sets the
+    // Purnimanta offset) and supply the reported Sun longitude.
     final sunPos = await _ephemerisService.calculatePlanetPosition(
       planet: Planet.sun,
       dateTime: dateTime,
       location: location,
       flags: flags,
     );
-
     final moonPos = await _ephemerisService.calculatePlanetPosition(
       planet: Planet.moon,
       dateTime: dateTime,
       location: location,
       flags: flags,
     );
-
     final tithi = _calculateTithi(sunPos, moonPos);
 
-    LunarMonth month;
-    int monthNumber;
+    // The Amanta month name is ALWAYS derived from the exact new-moon boundary,
+    // whichever calendar the caller asked for. The previous implementation
+    // estimated that new moon's Sun longitude from the current instant using a
+    // mean rate, which is what let the Adhika verdict (computed from the bisected
+    // boundary) and the month name disagree near a sankranti.
+    final amantaBoundary = type == MasaType.amanta
+        ? monthStart
+        : await _findMasaStart(dateTime, location, MasaType.amanta);
+    final sunAtAmantaBoundary =
+        await _ephemerisService.calculatePlanetPosition(
+      planet: Planet.sun,
+      dateTime: amantaBoundary,
+      location: location,
+      flags: flags,
+    );
+    final amantaMonth =
+        MasaInfo.getMonthFromSunLongitude(sunAtAmantaBoundary.longitude);
 
+    final LunarMonth month;
     if (type == MasaType.amanta) {
-      month = _calculateAmantaMonth(sunPos.longitude, tithi);
-      monthNumber = _getAmantaMonthNumber(month);
+      // An Amanta month begins AT its new moon, so its name is simply the
+      // Amanta name for the Sun's longitude at that boundary.
+      month = amantaMonth;
     } else {
-      month = _calculatePurnimantaMonth(sunPos.longitude, tithi);
-      monthNumber = _getPurnimantaMonthNumber(month);
+      // A Purnimanta month spans the second half of one Amanta month and the
+      // first half of the next, because it ends on its own Purnima. So the
+      // Purnimanta name is the Amanta name advanced by one during KRISHNA
+      // paksha, and equals the Amanta name during SHUKLA paksha.
+      //
+      // That offset is a pure calendar convention needing no astronomical
+      // estimate, so it is layered on top of the exact boundary-derived Amanta
+      // month rather than being folded into a mean-rate approximation.
+      final offset = tithi.paksha == Paksha.krishna ? 1 : 0;
+      final amantaIndex = MasaInfo.amantaMonthOrder.indexOf(amantaMonth);
+      month = MasaInfo.amantaMonthOrder[(amantaIndex + offset) % 12];
     }
 
-    final monthStart = await _findMasaStart(dateTime, location, type);
+    final monthNumber = type == MasaType.amanta
+        ? _getAmantaMonthNumber(month)
+        : _getPurnimantaMonthNumber(month);
+
     final adhikaType = await _checkAdhikaMasa(monthStart, location, type);
 
     return MasaInfo(
@@ -76,30 +107,6 @@ class MasaService {
       paksha: paksha,
       elapsed: elapsed,
     );
-  }
-
-  LunarMonth _calculateAmantaMonth(double sunLongitude, TithiInfo tithi) {
-    final elongation = (tithi.number - 1 + tithi.elapsed) * 12.0;
-    // Sun moves ~29.1° across the ~29.53-day synodic lunar month.
-    final sunAtNewMoon =
-        (sunLongitude - (elongation * 29.1 / 360.0) + 360) % 360;
-    return MasaInfo.getMonthFromSunLongitude(sunAtNewMoon);
-  }
-
-  LunarMonth _calculatePurnimantaMonth(double sunLongitude, TithiInfo tithi) {
-    final amantaMonth = _calculateAmantaMonth(sunLongitude, tithi);
-
-    // In Purnimanta system, the month starts on Krishna Paksha Pratipada (tithi 16)
-    // which precedes the Shukla Paksha of the corresponding Amanta month.
-    // Therefore, during Krishna Paksha (tithi 16-30), the Purnimanta month is
-    // one month ahead of the Amanta month.
-    if (tithi.number >= 16 && tithi.number <= 30) {
-      final currentIndex = MasaInfo.amantaMonthOrder.indexOf(amantaMonth);
-      final nextIndex = (currentIndex + 1) % 12;
-      return MasaInfo.amantaMonthOrder[nextIndex];
-    }
-
-    return amantaMonth;
   }
 
   int _getAmantaMonthNumber(LunarMonth month) {
