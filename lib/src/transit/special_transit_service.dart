@@ -94,6 +94,48 @@ class SpecialTransitService {
     );
   }
 
+  /// Calculates Sade Sati status for given natal Moon and transit Saturn longitudes.
+  Future<SadeSatiStatus> calculateSadeSati({
+    required double natalMoonLongitude,
+    required double transitSaturnLongitude,
+    required DateTime checkDate,
+    Duration signExitAccuracy = const Duration(minutes: 1),
+    Duration signEntryAccuracy = const Duration(minutes: 10),
+  }) =>
+      _calculateSadeSati(
+        natalMoonLongitude: natalMoonLongitude,
+        transitSaturnLongitude: transitSaturnLongitude,
+        checkDate: checkDate,
+        signExitAccuracy: signExitAccuracy,
+        signEntryAccuracy: signEntryAccuracy,
+      );
+
+  /// Calculates Dhaiya (small panoti) status for given natal Moon and transit Saturn longitudes.
+  Future<DhaiyaStatus> calculateDhaiya({
+    required double natalMoonLongitude,
+    required double transitSaturnLongitude,
+    required DateTime checkDate,
+    Duration signExitAccuracy = const Duration(minutes: 1),
+    Duration signEntryAccuracy = const Duration(minutes: 10),
+  }) =>
+      _calculateDhaiya(
+        natalMoonLongitude: natalMoonLongitude,
+        transitSaturnLongitude: transitSaturnLongitude,
+        checkDate: checkDate,
+        signExitAccuracy: signExitAccuracy,
+        signEntryAccuracy: signEntryAccuracy,
+      );
+
+  /// Calculates Panchak status for a transit Moon longitude.
+  PanchakStatus calculatePanchak({
+    required double transitMoonLongitude,
+    required DateTime checkDate,
+  }) =>
+      _calculatePanchak(
+        transitMoonLongitude: transitMoonLongitude,
+        checkDate: checkDate,
+      );
+
   /// Calculates Sade Sati status.
   Future<SadeSatiStatus> _calculateSadeSati({
     required double natalMoonLongitude,
@@ -106,8 +148,7 @@ class SpecialTransitService {
     final saturnSign = (transitSaturnLongitude / 30).floor();
 
     // Calculate house from Moon (1-12)
-    var houseFromMoon = (saturnSign - moonSign + 12) % 12;
-    if (houseFromMoon == 0) houseFromMoon = 12;
+    final houseFromMoon = ((saturnSign - moonSign) % 12 + 12) % 12 + 1;
 
     // Check if Saturn is in Sade Sati houses (12th, 1st, or 2nd from Moon)
     final isActive = SaturnTransitConstants.sadeSatiHouses.contains(
@@ -361,8 +402,7 @@ class SpecialTransitService {
     final saturnSign = (transitSaturnLongitude / 30).floor();
 
     // Calculate house from Moon (1-12)
-    var houseFromMoon = (saturnSign - moonSign + 12) % 12;
-    if (houseFromMoon == 0) houseFromMoon = 12;
+    final houseFromMoon = ((saturnSign - moonSign) % 12 + 12) % 12 + 1;
 
     // Check if Saturn is in Dhaiya houses (4th or 8th from Moon)
     final isActive = SaturnTransitConstants.dhaiyaHouses.contains(

@@ -368,7 +368,7 @@ void main() {
         ketu: KetuPosition(rahuPosition: pos(Planet.meanNode, 220.0)),
       );
 
-      final tajaka = TajakaService();
+      final tajaka = const TajakaService();
       final enhancement = tajaka.calculateTajakaEnhancements(
         natalChart: chart,
         annualChart: chart,

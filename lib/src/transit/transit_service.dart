@@ -91,6 +91,13 @@ class TransitService {
     return transits;
   }
 
+  /// Calculates aspects from a single transit planet position to all natal positions.
+  List<AspectInfo> calculateTransitAspects(
+    PlanetPosition transitPos,
+    VedicChart natalChart,
+  ) =>
+      _calculateTransitAspects(transitPos, natalChart);
+
   /// Calculates aspects from a single transit planet to all natal positions.
   List<AspectInfo> _calculateTransitAspects(
     PlanetPosition transitPos,

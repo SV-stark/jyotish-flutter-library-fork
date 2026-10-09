@@ -40,6 +40,18 @@ class BhavaBalaService {
     };
   }
 
+  /// Categorizes a house's strength into a qualitative strength category.
+  BhavaStrengthCategory getBhavaStrengthCategory(double strength) =>
+      _getBhavaStrengthCategory(strength);
+
+  /// Determines the ruling planet (lord) of a given house number (1-12).
+  Planet getHouseLord(VedicChart chart, int houseNumber) =>
+      _getHouseLord(chart, houseNumber);
+
+  /// Calculates directional strength (Dig Bala) for a given house.
+  double calculateBhavaDigBala(int houseNumber, double ascendant) =>
+      _calculateBhavaDigBala(houseNumber, ascendant);
+
   BhavaStrengthCategory _getBhavaStrengthCategory(double strength) {
     if (strength >= 480) return BhavaStrengthCategory.veryStrong;
     if (strength >= 420) return BhavaStrengthCategory.strong;

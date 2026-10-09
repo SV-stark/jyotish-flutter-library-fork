@@ -171,7 +171,7 @@ void main() {
 
     // 6. TajakaService Tests
     group('TajakaService', () {
-      final tajakaService = TajakaService();
+      final tajakaService = const TajakaService();
 
       test('calculates Tajaka Muntha and Sahams', () async {
         final annualChart = await Jyotish().calculateVedicChart(
@@ -193,7 +193,7 @@ void main() {
 
     // 7. NadiService Tests
     group('NadiService', () {
-      final nadiService = NadiService();
+      final nadiService = const NadiService();
 
       test('resolves Nadi from longitude and seeds', () {
         final nadi = nadiService.getNadiFromLongitude(45.5);
